@@ -6,6 +6,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Concept MVP scope: map-first home, social hookup features and Activities moved into v1 (owner decision).
 - Concept: approved features: group/party hosting, private profile notes, disappearing chats default, multiple profiles, venue check-in, Tonight board.
 - Concept: Activities intent (gym buddies, sports): SFW activity profile, activity posts, open-to-more flag, queer clubs/teams, gym venues.
 - Concept: home screen = map first with Active-now card tray and Map/Grid toggle (owner decision); mockup added to canvas.

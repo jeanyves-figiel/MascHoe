@@ -301,6 +301,9 @@ In:
 - Export/delete.
 - Share link / QR to own profile (for bios on other apps, see §15).
 - Moderation console v0.
+- **Home = map first** + Active-now tray, Map/Grid toggle, Tonight tab.
+- **Social hookup features** (owner: all in v1): party hosting, private notes, disappearing chats (default 7 d), multiple profiles, venue check-in, Tonight board.
+- **Activities**: intent, SFW activity profile, activity posts, open-to-more flag, clubs & teams, gym check-in.
 
 Out (v2+): groups, video calls, events, travel planner, health module, vouching, Plus billing, multi-device, duress PIN.
 
