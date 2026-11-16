@@ -78,6 +78,16 @@ Cross-app pain points (user reviews):
 - **Ice-breaker prompts** vs. "hey" dead ends; optional, not AI-generated messages.
 - **Friends mode**: non-sexual social graph so coupled users stay (retention).
 
+### Activities (gym buddies, sports)
+- New intent **Activities**: gym buddy, running, cycling, climbing, swimming, team sports, hiking, yoga, martial arts, etc.
+- **Activity profile**: SFW variant of the profile (vanilla photos only, no position/practice tags). Shown in Activities mode; hookup content never leaks into it.
+- **Activity posts**: "Leg day, Basic-Fit Oberkampf, 19:00, need a spotter" / "10 km Sunday 9:00, 5:30 pace". Expiring, RSVP, verified-only by default.
+- **Open-to-more flag** per user: "just sport" / "open to more". Viewers filter by it, so nobody is surprised.
+- **Clubs & teams**: queer sports clubs (rugby, football, volleyball, running crews) get pages, events, join requests. Partnership channel (listings, not ads).
+- Gyms/sports venues in venue layer: check-in visible only to opted-in people at same place.
+- Location: same levels as everywhere; Activities default = Area.
+- Why: non-hookup reason to open the app daily → retention for coupled/off-season users; strong local density driver; brand not only hookups.
+
 ### Photos & media policy
 | Where | Limit | Allowed | Checked by |
 |---|---|---|---|

@@ -6,6 +6,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Concept: Activities intent (gym buddies, sports): SFW activity profile, activity posts, open-to-more flag, queer clubs/teams, gym venues.
 - Concept: home screen = map first with Active-now card tray and Map/Grid toggle (owner decision); mockup added to canvas.
 - Concept v0.3: audience = anyone who identifies as a man (incl. trans, non-binary); App Store + Play distribution; photo policy (1 vanilla main + 4 spicy public, AI-checked; unlimited private albums incl. video, E2EE); worldwide day-1 launch with density mitigations.
 - Concept v0.2: hookup-first positioning (friends/chat secondary); user-chosen location precision (Hidden / City / Area default / Exact opt-in with auto-expiry, audience control, off in Safe Mode); anti-bot section §9.1 (verification gate, device attestation, shadow quarantine, creator label); map + anti-bot moved into MVP; link to key-screen mockups.
