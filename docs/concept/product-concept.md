@@ -67,7 +67,8 @@ Cross-app pain points (user reviews):
 ## 5. Differentiating features
 
 ### Discovery
-- **Grid + Map** (Sniffies-style map: area heat by default; exact pins only for users who opted in, see §6.2).
+- **Home = map first** (owner decision 2026-11-16): live map + "Active now" card tray; Map/Grid toggle; tabs Explore / Tonight / Chats / Me. Deliberately not a Grindr-style grid home.
+- **Grid + Map** (map: area heat by default; exact pins only for users who opted in, see §6.2).
 - **Intents** (default selected: Now + Hookup): Now / Hookup / Chat / Friends / Travel. Filter by intent; free.
 - **Hookup tooling**: hosting / can travel / door open status; position, practices, PrEP/safer-sex prefs as filterable tags (shown to verified viewers only); "Now" posts with exact pin opt-in; quick-yes/no tap replies to cut chat time.
 - **Right Now with expiry**: post auto-deletes (1–6 h); visible to cell-ring only.
