@@ -1,9 +1,14 @@
-# MascHoe — Product Concept v0.1
+# MascHoe — Product Concept v0.2
 
-Status: draft · 2026-11-16 · Owner: Jean-Yves
+Status: draft v0.2 (hookup-first, location choice, anti-bot) · 2026-11-16 · Owner: Jean-Yves
 
-Goal: queer men's discovery/dating app that outlasts Grindr, Scruff, Romeo, Hornet, Jack'd, Taimi, Feeld, Sniffies.
-Pillars: **functionality · privacy · speed · control**. Usable fully free.
+Goal: gay/bi/queer men's **hookup-first** app (also friends + chat) that outlasts Grindr, Scruff, Romeo, Hornet, Jack'd, Taimi, Feeld, Sniffies.
+Pillars: **functionality · privacy · speed · control**. Usable fully free. **Zero bots.**
+
+Positioning:
+- **Primary job: hookups.** Fastest path from "horny now" to "door open", safely. Every default optimizes this.
+- Secondary: chat, friends. Same profile, intent toggle; never dilutes primary flow.
+- Mockups: [MascHoe app screens](https://claude.ai/artifact/TErsb1tkyu5qWo8JQxD6VG) (private canvas; share from its menu).
 
 ---
 
@@ -59,8 +64,9 @@ Cross-app pain points (user reviews):
 ## 5. Differentiating features
 
 ### Discovery
-- **Grid + Map** (Sniffies-style map, cell-level only, not pins).
-- **Intents**: Now / Date / Friends / Networking / Travel. Filter by intent; free.
+- **Grid + Map** (Sniffies-style map: area heat by default; exact pins only for users who opted in, see §6.2).
+- **Intents** (default selected: Now + Hookup): Now / Hookup / Chat / Friends / Travel. Filter by intent; free.
+- **Hookup tooling**: hosting / can travel / door open status; position, practices, PrEP/safer-sex prefs as filterable tags (shown to verified viewers only); "Now" posts with exact pin opt-in; quick-yes/no tap replies to cut chat time.
 - **Right Now with expiry**: post auto-deletes (1–6 h); visible to cell-ring only.
 - **All filters free**: age, distance bucket, intent, tags, verified-only, has-photo, online.
 - **Travel planner**: set future location; preview + pre-chat locals. 1 free trip active; more = paid.
@@ -102,8 +108,8 @@ Cross-app pain points (user reviews):
 ### 6.1 Data minimization
 | Data | Stored server-side? |
 |---|---|
-| Precise GPS | **Never** |
-| Location | Coarse H3 cell (res ~7, ~5 km²) + timestamp; overwritten, no history |
+| Precise GPS | **Only if user opts into Exact** (§6.2): RAM-only, TTL-bound, no history, no logs, never backed up |
+| Location (default) | Coarse H3 cell (res ~7, ~5 km²) + timestamp; overwritten, no history |
 | Phone number / email | Optional. Account = keypair. Recovery via recovery phrase or optional email hash |
 | Real name, DOB | No. Age = boolean "18+ verified" credential |
 | Messages / media | Ciphertext only, deleted after delivery (or TTL 30 d undelivered) |
@@ -112,13 +118,35 @@ Cross-app pain points (user reviews):
 | Analytics | Aggregate, on-device differential privacy; no per-user event stream |
 | IP | Not logged beyond abuse-rate-limiting window (24 h, hashed) |
 
-### 6.2 Location (anti-trilateration)
+### 6.2 Location: user's choice, safe by default
+
+Precision is the user's call. Four levels, switchable anytime (mockup: Location control):
+
+| Level | Others see | Server stores | Default |
+|---|---|---|---|
+| Hidden | Nothing (browse only) | Cell for own grid query, not indexed | |
+| City | City name | City-level cell (res ~5) | Safe Mode |
+| Area | Distance bucket ("1–3 km"), cell heat on map | Cell res ~7 | **Yes** |
+| Exact | Pin on map + distance in metres | Exact point, RAM-only, TTL | Opt-in only |
+
+Exact opt-in rules:
+- Explicit action each time; one-screen warning ("anyone you allow sees your exact spot").
+- **Auto-expiry required**: 30 min / 1 h / 3 h / until you leave the spot (geofence on device). Never permanent.
+- Audience: verified only (default) / people I chat with / everyone verified-or-not.
+- Pin jittered ≤ 10–20 m (enough to come knock, not enough to identify flat).
+- Blocked users never see it; new/unverified accounts can't see it unless user picks "everyone".
+- Server keeps exact point in memory store with TTL; no disk, no logs, purged on expiry.
+- **Disabled automatically in Safe Mode countries**; user can't override without a second, explicit warning.
+- Also available per-chat: "share exact location with this person only" (E2EE, expiring).
+
+Anti-trilateration (Hidden/City/Area levels):
 - Device snaps GPS → H3 cell locally. Only cell ID sent.
 - Grid query = k-ring of cells. Server returns profiles grouped by cell; **no per-user distance computed server-side**.
 - Client shows distance **buckets** ("< 1 km", "1–3 km", "3–10 km") derived from cell centroids.
 - Per-user stable random offset within cell (seeded per day) prevents edge-averaging.
 - Location update rate-limited + velocity check (spoofed teleports for triangulation throttled/flagged).
-- Map shows cell heat, not pins. Optional "exact meet point" shared only inside E2EE chat.
+- Map shows cell heat for Area users; pins only for Exact opt-ins.
+- Exact users' distance is real by design (they chose it); trilateration against them only reveals what they already share, within jitter and TTL.
 - Hostile-country mode: res drops to city-level (res ~5) automatically.
 
 ### 6.3 E2EE + local-first
@@ -168,6 +196,33 @@ Cross-app pain points (user reviews):
 - CSAM: hash matching on **public** profile photos only (server-visible); E2EE content via user reports. Age gate + verification.
 - Transparency report quarterly.
 
+### 9.1 Anti-bot: zero-bot target
+
+Bots = #1 complaint category-wide (Grindr, Taimi, HER). Goal: a bot costs more than it earns, and gets no reach before it's caught.
+
+Gate (before visibility):
+- **Verification required to appear in grid/map and to start chats.** Unverified = browse-only + reply-only to people who messaged them first. No exceptions.
+- Liveness check with randomized challenge (turn head, blink, gesture) on-device; defeats stock photos + replayed videos; deepfake/injection detection.
+- **Device attestation** (Play Integrity / App Attest): emulators, rooted farms, scripted clients rejected.
+- One verified human ↔ max N active accounts (credential is rate-limited, unlinkable but non-reusable).
+- Private API: signed requests, attested client, no public endpoints; certificate pinning.
+
+Behavior (after visibility; metadata only, E2EE intact):
+- Send-rate caps scaling with account age + trust.
+- Signals: identical first messages across recipients (client-side hash, no content leak), link/handle in first messages, reply-to-message ratio, 24/7 activity, cell-hopping, never-moving, opening-line templates.
+- First-message link block: no URLs, handles, or "check my bio" until a reply exists.
+- Bio: commercial links banned; OnlyFans/creators only under labelled "Creator" profile type (filterable off by default).
+- Shadow quarantine: suspect accounts keep sending, nobody receives; zero feedback for bot operators.
+
+Community:
+- One-tap "bot" report; 3 independent verified reports → instant quarantine pending review.
+- Reporters with good track record weigh more.
+- Public bot-rate KPI (bot reports / 1k MAU) in transparency report.
+
+Economics:
+- No ads = no incentive to inflate MAU with fake profiles.
+- Verification cost per account kills bulk farms; bans tied to device attestation + credential, not email.
+
 ## 10. Speed
 
 - Native-feel cross-platform UI; shared Rust core (crypto, H3, storage).
@@ -198,8 +253,11 @@ Governance: steward-ownership or foundation clause locking "no ads / no data sal
 
 In:
 - Account (keypair, optional email), profile, photos (public + 1 private album).
-- On-device verification → badge.
-- Grid (cell-based) + distance buckets, all filters, intents.
+- On-device verification → badge; **verification required to be visible / start chats** (anti-bot gate, §9.1).
+- Grid (cell-based) + distance buckets, all filters, intents (Now + Hookup default).
+- Location levels Hidden / City / Area / Exact (opt-in, expiring) + map view with area heat and exact pins.
+- Hookup status: hosting / can travel / door open.
+- Anti-bot v1: device attestation, send-rate caps, first-message link block, shadow quarantine, bot report.
 - E2EE 1:1 chat, media, view-once, block/report (franking).
 - Incognito, Safe Mode basics (disguised icon, city-level, no previews).
 - Right Now (expiring posts).
@@ -208,7 +266,7 @@ In:
 - Share link / QR to own profile (for bios on other apps, see §15).
 - Moderation console v0.
 
-Out (v2+): map view, groups, video calls, events, travel planner, health module, vouching, Plus billing, multi-device, duress PIN.
+Out (v2+): groups, video calls, events, travel planner, health module, vouching, Plus billing, multi-device, duress PIN.
 
 Launch: 1–2 dense EU cities (e.g. Paris, Berlin). Seed via venues, parties, Pride, community orgs. Waitlist + invite codes to guarantee density before opening grid.
 
@@ -233,8 +291,8 @@ Each recurring complaint (app-store reviews, Reddit, press) → incumbent cause 
 | 1 | "Unusable without paying" | Grindr, Taimi, Romeo, Feeld | Core usability paywalled (filters, scroll cap, ad removal) | Free = complete. All filters, unlimited scroll, unlimited messages free. Plus sells convenience only. |
 | 2 | Ads everywhere, full-screen, slow | Grindr | Ad revenue model | No ads, no ad SDKs. Written into ToS/bylaws. |
 | 3 | My data/HIV status sold or shared | Grindr (Norway fine, UK settlement) | Ad-tech SDKs, forced consent | Zero third-party SDKs; health fields E2EE to chosen users; consent refusable. |
-| 4 | Someone found my exact location | Grindr, Romeo, Hornet | Precise coords server-side, exact distances | Cell-only location; distance buckets; no server distance calc. |
-| 5 | Bots, OnlyFans spam, scammers | Grindr, Taimi, HER | No verification, profit from MAU counts | On-device verification; verified-only inbox free; creator label; metadata spam ML. |
+| 4 | Someone found my exact location | Grindr, Romeo, Hornet | Precise coords server-side, exact distances, no choice | Area by default; exact only by explicit, expiring, audience-limited opt-in; off in Safe Mode. |
+| 5 | Bots, OnlyFans spam, scammers | Grindr, Taimi, HER | No verification, profit from MAU counts | Verification required to be visible/initiate; device attestation; shadow quarantine; creator label (§9.1). |
 | 6 | Extortion / sextortion | Grindr | Unverified accounts, screenshots | Verified badge, view-once, viewer watermark, first-nude warning, one-tap revoke. |
 | 7 | Reports ignored, automated moderation | Grindr, Scruff, Taimi | Moderation as cost center | Regional human mods, SLAs, appeals, quarterly transparency report. |
 | 8 | Racism, body-shaming bios | All | No friction at write-time | Write-time nudge, repeat → hidden; ethnicity filter not offered. |
