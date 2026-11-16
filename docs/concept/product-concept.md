@@ -78,6 +78,14 @@ Cross-app pain points (user reviews):
 - **Ice-breaker prompts** vs. "hey" dead ends; optional, not AI-generated messages.
 - **Friends mode**: non-sexual social graph so coupled users stay (retention).
 
+### Social hookup features (owner-approved 2026-11-16)
+- **Group & party hosting**: "3 hosting tonight, 2 spots left"; host sets capacity, rules, audience; RSVP verified-only; address revealed only to accepted guests, E2EE.
+- **Private notes & tags on profiles**: "met 03/11", "flaky"; stored on device only, synced E2EE across own devices.
+- **Disappearing chats by default**: per-chat timer 24 h / 7 d / never; default 7 d (user-changeable).
+- **Multiple profiles**: e.g. Now profile + Friends/Activities profile; unlinkable to viewers; one verification covers all.
+- **Venue check-in**: sauna, bar, party, gym; "who's here" visible only to others checked in who opted in; auto check-out on leaving geofence / after 4 h.
+- **Tonight board**: plans for later today (not just now): "free after 22:00, hosting", expiring at end of night; own tab on home.
+
 ### Activities (gym buddies, sports)
 - New intent **Activities**: gym buddy, running, cycling, climbing, swimming, team sports, hiking, yoga, martial arts, etc.
 - **Activity profile**: SFW variant of the profile (vanilla photos only, no position/practice tags). Shown in Activities mode; hookup content never leaks into it.

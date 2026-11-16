@@ -6,6 +6,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Concept: approved features: group/party hosting, private profile notes, disappearing chats default, multiple profiles, venue check-in, Tonight board.
 - Concept: Activities intent (gym buddies, sports): SFW activity profile, activity posts, open-to-more flag, queer clubs/teams, gym venues.
 - Concept: home screen = map first with Active-now card tray and Map/Grid toggle (owner decision); mockup added to canvas.
 - Concept v0.3: audience = anyone who identifies as a man (incl. trans, non-binary); App Store + Play distribution; photo policy (1 vanilla main + 4 spicy public, AI-checked; unlimited private albums incl. video, E2EE); worldwide day-1 launch with density mitigations.
