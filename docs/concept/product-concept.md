@@ -1,13 +1,16 @@
-# MascHoe — Product Concept v0.2
+# MascHoe — Product Concept v0.3
 
-Status: draft v0.2 (hookup-first, location choice, anti-bot) · 2026-11-16 · Owner: Jean-Yves
+Status: draft v0.3 (audience, photo policy, worldwide launch) · 2026-11-16 · Owner: Jean-Yves
 
-Goal: gay/bi/queer men's **hookup-first** app (also friends + chat) that outlasts Grindr, Scruff, Romeo, Hornet, Jack'd, Taimi, Feeld, Sniffies.
+Goal: **hookup-first** app for anyone who identifies as a man (cis, trans, non-binary masc-identified; gay, bi, queer) (also friends + chat) that outlasts Grindr, Scruff, Romeo, Hornet, Jack'd, Taimi, Feeld, Sniffies.
 Pillars: **functionality · privacy · speed · control**. Usable fully free. **Zero bots.**
 
 Positioning:
 - **Primary job: hookups.** Fastest path from "horny now" to "door open", safely. Every default optimizes this.
 - Secondary: chat, friends. Same profile, intent toggle; never dilutes primary flow.
+- Audience: self-identified men, incl. trans men and non-binary people who identify as men. Self-declared identity; no proof asked. Gender/identity fields + filters inclusive from v1; transphobia = moderation offence.
+- Distribution: **App Store + Google Play** (native). Store rules drive public-photo policy (§5 Photos).
+- Scope: **worldwide from day 1** (§12).
 - Mockups: [MascHoe app screens](https://claude.ai/artifact/TErsb1tkyu5qWo8JQxD6VG) (private canvas; share from its menu).
 
 ---
@@ -73,6 +76,19 @@ Cross-app pain points (user reviews):
 - **Events & venues**: bars, saunas, parties, Pride; RSVP privately; "who's going" only to mutual-opt-in.
 - **Ice-breaker prompts** vs. "hey" dead ends; optional, not AI-generated messages.
 - **Friends mode**: non-sexual social graph so coupled users stay (retention).
+
+### Photos & media policy
+| Where | Limit | Allowed | Checked by |
+|---|---|---|---|
+| Main public photo (1) | — | **Vanilla**: face/body, clothed or shirtless; no underwear focus, no nudity | Server AI, strict |
+| Other public photos | max 4 (5 total) | "Spicy": shirtless, underwear, jockstrap, suggestive; **no genitals, no sex acts, no visible erection** | Server AI, permissive; human review on flag |
+| Private albums | **No limit** (photos + videos) | Anything legal between consenting adults | E2EE, not scanned server-side; user reports (franking) + on-device CSAM/minor safety check |
+| Chat media | No limit | Same as private albums | Same |
+
+- Public line = App Store guideline 1.1.4 (no "overtly sexual or pornographic material") + Play "sexual content" policy. Grindr/Scruff operate at this line; the store app's public surface can't go further.
+- Explicit content allowed only inside E2EE private albums/chat (user-to-user, not published) + 18+ age rating + verified-only.
+- Unsolicited explicit media: blurred by default for receiver ("tap to view"), receiver controls per-sender.
+- Videos: private albums/chat only, size cap per file (e.g. 100 MB / 3 min), E2EE, view-once option.
 
 ### Chat
 - E2EE 1:1 and groups (MLS / Signal protocol).
@@ -193,7 +209,8 @@ Anti-trilateration (Hidden/City/Area levels):
 - Profile text nudge: discriminatory phrases ("no fats/fems/asians") flagged at write-time with prompt; repeated → hidden.
 - OnlyFans/promo: commercial links banned in bio; separate opt-in "creator" label instead of whack-a-mole.
 - Extortion/sextortion: proactive warning when sharing first nude with new contact; one-tap report + block + media revoke.
-- CSAM: hash matching on **public** profile photos only (server-visible); E2EE content via user reports. Age gate + verification.
+- Public photos: server AI classifier (vanilla for main photo, permissive for others, §5 Photos); flags → human review.
+- CSAM: hash matching on **public** profile photos (server-visible); private/E2EE media checked by on-device classifier + hash match before send (blocks, never reports content plaintext to server), plus user reports via franking. Age gate + verification.
 - Transparency report quarterly.
 
 ### 9.1 Anti-bot: zero-bot target
@@ -252,7 +269,7 @@ Governance: steward-ownership or foundation clause locking "no ads / no data sal
 ## 12. MVP scope (v1)
 
 In:
-- Account (keypair, optional email), profile, photos (public + 1 private album).
+- Account (keypair, optional email), profile (inclusive gender/identity fields), 5 public photos (main vanilla + 4 spicy, AI-checked), unlimited private albums incl. video.
 - On-device verification → badge; **verification required to be visible / start chats** (anti-bot gate, §9.1).
 - Grid (cell-based) + distance buckets, all filters, intents (Now + Hookup default).
 - Location levels Hidden / City / Area / Exact (opt-in, expiring) + map view with area heat and exact pins.
@@ -268,7 +285,13 @@ In:
 
 Out (v2+): groups, video calls, events, travel planner, health module, vouching, Plus billing, multi-device, duress PIN.
 
-Launch: 1–2 dense EU cities (e.g. Paris, Berlin). Seed via venues, parties, Pride, community orgs. Waitlist + invite codes to guarantee density before opening grid.
+Launch: **worldwide, day 1** (owner decision). Density is the risk of a global launch (empty grid → uninstall), so:
+- Adaptive radius: grid widens automatically until it shows ≥ N profiles; shows "nearest active" instead of empty states.
+- Travel + "who's around this weekend" fill sparse areas.
+- Marketing concentrated on top gay hubs simultaneously (Paris, Berlin, London, Madrid, NYC, SF, São Paulo, Bangkok, Sydney...) while app is open everywhere.
+- Partners: venues, parties, Pride orgs, NGOs per region.
+- Localization at launch: EN, FR, DE, ES, PT, IT + RTL-ready; moderation coverage scales with regional signups.
+- Safe Mode live worldwide from day 1 (ILGA list).
 
 KPIs: D1/D30 retention, % verified, bot reports/1k MAU, reply rate, time-to-first-meet, p95 latencies, NPS on "feel safe".
 
@@ -336,8 +359,8 @@ User ask: let people link existing Grindr/Scruff/Romeo/Hornet accounts and use t
 
 | Risk | Mitigation |
 |---|---|
-| Cold start / density | City-by-city, invite waves, events tie-in |
-| App store adult-content rules | Strict public-photo policy; explicit only in E2EE chat; web fallback (Sniffies precedent) |
+| Cold start / density (worldwide launch) | Adaptive radius, hub-focused marketing, travel, events tie-in |
+| App store adult-content rules | Main photo vanilla, others no genitals/sex; explicit only in E2EE private albums/chat; 17+/18+ rating; report/block per guideline 1.2 |
 | Age-verification laws | Zero-retention age estimation, boolean credential |
 | E2EE abuse / CSAM scrutiny | Franking, verification, metadata ML, public-photo hashing |
 | Funding w/o ads | Low cost base, Plus conversion 5–8%, events revenue |
