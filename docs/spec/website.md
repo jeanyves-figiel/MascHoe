@@ -11,7 +11,7 @@ Issue #40. Owner (2026-11-17): visitors to the web domain see a small marketing 
 | DEV `https://localhost:7446` | site served by local Phoenix (`noindex`) | API |
 
 - R-W.1 Served by the Phoenix release (plug `ThirstrWeb.Plugs.Site`) from `priv/static/site`, built at image build from `web/site/`. No separate hosting, no CDN, no third-party origin.
-- R-W.2 `thirstr.fun` + `www.thirstr.fun` point at Fly app `thirstr-api-prod` (Fly certs; GoDaddy apex A + AAAA, `www` CNAME → `thirstr-api-prod.fly.dev`, `_acme-challenge.*` CNAMEs). Runbook `docs/runbooks/fly.md` › Domain.
+- R-W.2 `thirstr.fun` + `www.thirstr.fun` point at Fly app `thirstr-api-prod` (Fly certs; GoDaddy apex A + AAAA, `www` CNAME → `thirstr.fun`, `_acme-challenge.*` CNAMEs). Runbook `docs/runbooks/fly.md` › Domain.
 - R-W.3 Unknown path on a site request → `404.html` with status 404 (language from path prefix). `HEAD` same as `GET` without body.
 - R-W.4 Only `GET`/`HEAD` reach the site. Other methods on non-API paths fall through to the router (404).
 - R-W.5 Expo web client: removed from the release image and from staging (`SERVE_WEB_CLIENT` dropped). DEV keeps the Expo web build at `https://localhost:7443` as a developer tool only.
