@@ -1,3 +1,4 @@
+import './src/crypto/setup';
 import { registerRootComponent } from 'expo';
 
 import App from './App';

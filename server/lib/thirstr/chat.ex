@@ -257,22 +257,18 @@ defmodule Thirstr.Chat do
       else: {:error, {:validation, %{to_device_id: ["unknown device"]}}}
   end
 
+  # Contact pair is stored ordered (profile_a < profile_b); the increments are bound params.
   defp count_contact(from, to, now) do
-    {a, b, col} = if from < to, do: {from, to, "a_sent"}, else: {to, from, "b_sent"}
+    {a, b, da, db} = if from < to, do: {from, to, 1, 0}, else: {to, from, 0, 1}
 
     Repo.query!(
       """
       INSERT INTO contacts (profile_a, profile_b, a_sent, b_sent, created_at, updated_at)
       VALUES ($1, $2, $3, $4, $5, $5)
-      ON CONFLICT (profile_a, profile_b) DO UPDATE SET #{col} = contacts.#{col} + 1, updated_at = $5
+      ON CONFLICT (profile_a, profile_b) DO UPDATE
+        SET a_sent = contacts.a_sent + $3, b_sent = contacts.b_sent + $4, updated_at = $5
       """,
-      [
-        dump(a),
-        dump(b),
-        if(col == "a_sent", do: 1, else: 0),
-        if(col == "b_sent", do: 1, else: 0),
-        now
-      ]
+      [dump(a), dump(b), da, db, now]
     )
   end
 
@@ -370,10 +366,12 @@ defmodule Thirstr.Chat do
 
   @max_blob 210 * 1024 * 1024
 
-  @doc "Upload slot for an encrypted blob. Expiry ≤ 30 d (R-08.3, R-08.10)."
+  @doc "Upload slot for an encrypted blob (R-08.2). Chat media expiry ≤ 30 d; album items kept."
   def create_blob(%Account{} = a, params) do
     size = params["size"]
-    ttl = min(params["ttl_s"] || @retention_d * 86_400, @retention_d * 86_400)
+    # Chat media ≤ 30 d (R-08.10); private-album items live until the owner deletes them (R-08.4).
+    max_ttl = if params["album"] == true, do: 10 * 365 * 86_400, else: @retention_d * 86_400
+    ttl = min(params["ttl_s"] || max_ttl, max_ttl)
 
     with true <-
            (is_integer(size) and size > 0 and size <= @max_blob) ||

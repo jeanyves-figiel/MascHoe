@@ -123,3 +123,6 @@ export async function putBlob(url: string, uri: string, contentType: string) {
   const res = await fetch(url, { method: 'PUT', headers: { 'content-type': contentType }, body: blob });
   if (!res.ok) throw new ApiError(res.status, 'upload_failed', 'Upload failed');
 }
+
+/** Current access token (realtime socket auth). Call any `api()` first to refresh an expired one. */
+export const accessToken = () => secure.get(K.access);

@@ -10,7 +10,7 @@ defmodule ThirstrWeb.ChatController do
 
   def upload_key_packages(conn, params) do
     with {:ok, counts} <- Chat.upload_key_packages(a(conn), d(conn), params),
-         do: json(conn, %{counts: counts})
+         do: json(conn, %{counts: counts, device_id: d(conn)})
   end
 
   def key_package_counts(conn, _),
