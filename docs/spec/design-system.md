@@ -1,50 +1,80 @@
 # Design system: tokens, copy & i18n
 
-Source of truth for `/design/tokens.json` and `/design/strings/`. Mockups: [canvas](https://claude.ai/artifact/TErsb1tkyu5qWo8JQxD6VG). Rationale: [onboarding-and-design.md](../concept/onboarding-and-design.md).
+Source of truth for `/design/tokens.json` and `/design/strings/`. Theme: **Pop** (only theme, chosen 2026-11-17, #38). Mockups: [Pop direction canvas](https://claude.ai/artifact/KfanUPTq3GCiWjzEa55mFW) (row "Pop"); earlier v0.1 screens: [canvas](https://claude.ai/artifact/TErsb1tkyu5qWo8JQxD6VG) for flows only, their colours are superseded. Rationale: [onboarding-and-design.md](../concept/onboarding-and-design.md).
+
+## Theme: Pop
+- One theme only: dark ink base, saturated colour used for meaning (mode, privacy, status), never as decoration. No light theme, no alternate themes, no user accent picker.
+- Colour is a fill with ink text on top; long text always sits on ink or `bg.raised`.
+- Each mode owns a colour. Switching mode recolours accent surfaces (active mode chip, active tab, map zones, own location ring, tray badges, hot card outline).
+- Teal is privacy/location/trust and never changes with mode. Sunflower marks private/personal things (private note, "Default" badge, disappearing timer).
 
 ## Tokens (`/design/tokens.json`, W3C Design Tokens format)
 Generated to TS (RN theme) by Style Dictionary in CI. Hard-coded colours/sizes in app code MUST fail lint.
 
 ### Colour
-| Token | Dark (default) | Light | Use |
-|---|---|---|---|
-| `bg.base` | #0B0B0F | #FFFFFF | screen background |
-| `bg.raised` | #16161D | #F4F4F7 | cards, sheets |
-| `bg.overlay` | #1F1F28 | #FFFFFF | modals, menus |
-| `fg.primary` | #F5F5F7 | #111116 | body text |
-| `fg.secondary` | #A1A1AA | #52525B | meta text |
-| `fg.muted` | #6B6B76 | #8A8A94 | disabled, hints |
-| `line` | #2A2A33 | #E4E4E7 | dividers |
-| `mode.hookup` | #FF7A33 | #E8611A | Hookup accent |
-| `mode.sport` | #C6F432 | #6E9A00 | Sport accent |
-| `mode.friends` | #A98BFF | #7A5AF0 | Friends accent |
-| `trust` | #4DA3FF | #1F7AE0 | verified, location, links |
-| `trust.soft` | #6FB6FF | #4B95EA | Area ring, pins |
-| `safety` | #8FE3A0 | #1F9D4A | E2EE line, check-in OK |
-| `danger` | #FF5A5F | #D92D33 | block, report, panic |
-| `warn` | #FFC94D | #B07A00 | expiring pin, cooldown |
-- Accent = current mode token; trust/safety colours never change with mode.
-- Contrast: text ≥ 4.5:1, large text/icons ≥ 3:1 on `bg.base` and `bg.raised` (checked in CI).
-- Light theme: follows OS by default (F-17), dark is design reference.
+| Token | Value | Use |
+|---|---|---|
+| `bg.base` | #17142E | screen background (ink) |
+| `bg.map` | #1B1836 | map land |
+| `bg.raised` | #262248 | cards, sheets, segmented tracks, inputs |
+| `bg.overlay` | #2E2A55 | modals, menus, incoming chat bubble |
+| `bg.inverse` | #FFFFFF | bottom nav bar, back buttons on photos, "You" label |
+| `fg.primary` | #FFFFFF | body text |
+| `fg.secondary` | #C2BDE3 | meta text (≥ 9:1 on `bg.base`) |
+| `fg.muted` | #8A86B0 | disabled, hints (large text/icons only) |
+| `fg.onColor` | #17142E | text/icons on any colour fill and on `bg.inverse` |
+| `line` | #39346A | borders, dividers |
+| `line.subtle` | #2E2A55 | header/composer separators |
+| `map.road` | #282449 | main roads |
+| `map.road.minor` | #221E40 | minor roads |
+| `map.water` | #1F3A5C | water |
+| `mode.hookup` | #FF6B5B | Hookup (coral) |
+| `mode.friends` | #A78BFA | Friends (violet) |
+| `mode.sport` | #B8F04A | Sport (lime) |
+| `trust` | #3DD6C3 | verified, location, privacy, E2EE, Save in privacy flows (teal) |
+| `personal` | #FFC93C | private note, defaults, disappearing timer (sunflower) |
+| `danger` | #FF4D6D | block, report, panic: always icon + label, never a plain fill beside `mode.hookup` |
+| `tile.*` | #7A2F3B, #4B3A8C, #2F6B5E, #7A5A1E, #5B2F6E, #2E4F8C | photo placeholder / skeleton tones before an image loads (rotate by user id hash) |
+- Accent = current mode token. `trust`, `personal`, `danger` never change with mode.
+- Map pins are coloured by the person's own current mode (status), not the viewer's mode. Pin = solid circle, 3 pt `bg.base` outline, initial in `fg.onColor`.
+- Contrast: `fg.onColor` on every colour fill ≥ 4.5:1 (coral 6.4, violet 6.6, lime 12, teal 9.5, sunflower 11); `fg.primary`/`fg.secondary` on `bg.base` and `bg.raised` ≥ 4.5:1. Checked in CI.
+- Colour is never the only signal: mode chips carry a label, status badges carry text, pins have an accessible label.
 
 ### Type
 | Token | Size/line | Weight | Use |
 |---|---|---|---|
-| `type.display` | 32/38 | 700 | onboarding headlines |
-| `type.title` | 22/28 | 700 | screen titles |
-| `type.headline` | 17/22 | 600 | card names |
+| `type.display` | 32/38 | 800 | onboarding headlines, profile name |
+| `type.title` | 22/28 | 800 | screen titles, tray titles |
+| `type.headline` | 16/21 | 800 | card names, list titles |
 | `type.body` | 15/21 | 400 | text |
 | `type.meta` | 13/18 | 500 | distance, time |
-| `type.caption` | 11/14 | 600 | badges, chips |
-- Family: Inter (bundled, OFL); system fallback. Tabular numerals for counts/distances.
+| `type.caption` | 11/14 | 800 | badges, chips, tab labels |
+- Family: **Bricolage Grotesque** (OFL, bundled, weights 400/500/700/800). Letter spacing −0.03 em on display/title, 0 elsewhere. System fallback.
+- Tabular numerals for counts/distances (`fontVariant: tabular-nums`); if the bundled cut lacks `tnum`, numerals in counters fall back to Inter. Verify at implementation.
 - MUST respect OS Dynamic Type / font scale up to 200 %; layouts reflow, no truncation of actions.
+
+### Logo
+- Wordmark: `thirstr` all lowercase, Bricolage Grotesque 800, letter spacing −0.04 em. The final `r` in `mode.hookup` coral; the rest `fg.primary`. Followed by three dots (Ø 0.3 em, gap 0.08 em, baseline-aligned): `personal` sunflower, `mode.friends` violet, `mode.sport` lime.
+- The wordmark colours are fixed brand colours: they do NOT follow the current mode.
+- Header use: 27 pt, left-aligned, on `bg.base` or the map.
+- App icon: ink `bg.base` square, lowercase `t` in white 800 followed by the coral `r` and the three dots (short form of the wordmark). Final artwork is a separate task; disguised-icon builds (I-03) keep their neutral icons.
+- Clear space = height of the `t`. Never outline, stretch, recolour or put on a photo.
 
 ### Space, radius, elevation, motion
 - `space`: 2, 4, 8, 12, 16, 20, 24, 32, 48. Screen gutter 16.
-- `radius`: sm 8, md 12, lg 20, pill 999. Grid tiles md; sheets lg (top only).
+- `radius`: sm 12, md 22, lg 32, pill 999. Grid tiles md (22); tray cards 24; chat bubbles 22 with a 6 pt tail corner; sheets and the profile photo lg (32); buttons, chips, segmented controls, inputs pill.
 - `elevation`: 0 flat, 1 card, 2 sheet, 3 modal (shadow + `bg` step).
-- `motion.fast` 120 ms, `motion.base` 220 ms, `motion.slow` 360 ms; easing `standard` cubic-bezier(0.2,0,0,1). Sheets use spring (damping 20). Reduce Motion ⇒ cross-fade only.
+- `motion.fast` 120 ms, `motion.base` 220 ms, `motion.slow` 360 ms; easing `standard` cubic-bezier(0.2,0,0,1). Sheets use spring (damping 20). Mode switch cross-fades accent colours over `motion.base`. Reduce Motion ⇒ cross-fade only.
 - Touch targets ≥ 44×44 pt.
+
+### Key component rules (Pop)
+- Bottom nav: floating `bg.inverse` pill (16 pt side inset, 18 pt from bottom, 64 pt high); active tab is a filled pill in the current mode colour with `fg.onColor`; inactive tabs #4A4570. Unread badge `mode.hookup` with count.
+- Mode switch: segmented pill on `bg.raised`; each selected segment fills with its own mode colour.
+- Map/Grid toggle: segmented pill; selected = `bg.inverse` with `fg.onColor`.
+- Location chip (header): `bg.raised` pill, `trust` pin icon + current level label.
+- Primary button: pill, fill = context colour (`mode.hookup` for Message, `trust` for Save in location/privacy), label `fg.onColor` 800.
+- Chat: own bubbles = mode colour of the conversation's origin mode (default Hookup), incoming = `bg.overlay`; E2EE line in `trust`; disappearing timer chip `personal`; shared exact-pin card `trust`.
+- Profile: interest/status chips use the palette fills; private note card is `personal` with ink text; "Ask to unlock" album button `mode.friends`.
 
 ### Iconography
 - 24 px grid, 1.75 px stroke, rounded. Set lives in `/design/icons` (SVG → RN components).
