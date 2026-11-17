@@ -19,8 +19,8 @@ kill_signal = "SIGTERM"
   WELCOME_DEFAULT_CITY = "Zurich"
   S3_REGION = "auto"
   # Apple Team ID (public, not a secret): enables /.well-known/apple-app-site-association
-  # for iOS passkeys. Set once the owner shares it (#31).
-  # APPLE_TEAM_ID = ""
+  # for iOS passkeys (#31).
+  APPLE_TEAM_ID = "U7VAR53G86"
 
 [http_service]
   internal_port = 4000

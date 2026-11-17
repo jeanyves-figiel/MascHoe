@@ -7,6 +7,9 @@ Beta testers install the real app from TestFlight. Builds point at **staging** (
 - EAS Build (Expo's macOS builders) compiles profile `staging` from `apps/mobile/eas.json`, bumps the build number (remote), signs with certificates EAS creates and stores from the App Store Connect API key, then auto-submits to App Store Connect. Apple processes the build (~5–15 min) and it appears in TestFlight.
 - Without the secrets below the workflow skips with a warning; nothing fails.
 
+## Current values (2026-11-17)
+- Team ID `U7VAR53G86` (Individual), App ID `app.thirstr` (Sign in with Apple, Associated Domains), App Store Connect app `6835938923`, API key `Thirstr CI` (App Manager).
+
 ## One-time owner setup
 | Item | Where | Goes to |
 |---|---|---|
