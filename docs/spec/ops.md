@@ -40,7 +40,7 @@
 - Image registry: `registry.fly.io`, images signed with cosign; deploy by digest only.
 - Secrets: `fly secrets` (per app); pepper/KMS keys stay outside Fly (EU KMS).
 - Region policy: primary_region `fra`; no machine outside EU regions (CI check on fly.toml).
-- Access: Fly org `thirstr`; CI uses org-scoped deploy token in GitHub environment secrets; humans via SSO + 2FA.
+- Access: Fly org `thirstr`; CI uses org-scoped deploy token `FLY_TOKEN` in GitHub environment secrets; humans via SSO + 2FA.
 - Exit path: same Docker images run on Hetzner k3s; review before public launch (#23).
 - Observability: OpenTelemetry → Grafana stack; SLOs: API availability 99.9 %, grid p95 < 300 ms, message p95 < 500 ms.
 - Backups: Postgres PITR 7 d + daily encrypted snapshots 30 d; restore drill monthly.
