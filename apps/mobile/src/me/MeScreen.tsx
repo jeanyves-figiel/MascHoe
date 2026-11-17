@@ -7,6 +7,7 @@ import { useSession } from '../app/session';
 import { LocationSheet } from '../explore/LocationSheet';
 import { tx } from '../i18n/app';
 import { color, modeColor, radius, space, type } from '../theme/tokens';
+import Svg, { Circle } from 'react-native-svg';
 import { Banner, Button, ErrorText, ListRow, Photo, Section, Segmented, Toggle, VerifiedTick, Wordmark } from '../ui';
 import type { Notice } from '../trust/NoticesScreen';
 import { NowSheet } from './NowSheet';
@@ -53,7 +54,9 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
   return (
     <View style={{ flex: 1, backgroundColor: color.bgBase }}>
       <ScrollView contentContainerStyle={{ padding: space.l, paddingTop: insets.top + space.s, gap: space.l, paddingBottom: 140, maxWidth: 560, width: '100%', alignSelf: 'center' }}>
-        <Wordmark />
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Wordmark />
+        </View>
         <Segmented
           grow
           label="Profile"
@@ -65,8 +68,11 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
         {me.status === 'paused' ? <Banner tone="warn" text={tx.me.paused} /> : null}
         {p ? (
           <>
-            <View style={{ flexDirection: 'row', gap: space.l, alignItems: 'center' }}>
-              <Photo uri={main?.url} id={p.id} label={p.display_name} style={{ width: 96, height: 120, borderRadius: radius.md, borderWidth: 3, borderColor: accent }} />
+            <View style={{ flexDirection: 'row', gap: space.l, alignItems: 'center', padding: space.l, borderRadius: 24, backgroundColor: color.bgRaised }}>
+              <View style={{ width: 104, height: 104, alignItems: 'center', justifyContent: 'center' }}>
+                <Ring pct={p.completeness} c={accent} />
+                <Photo uri={main?.url} id={p.id} label={p.display_name} style={{ position: 'absolute', width: 86, height: 86, borderRadius: 43 }} />
+              </View>
               <View style={{ flex: 1, gap: space.xs }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.s }}>
                   <Text style={{ ...type.title, color: color.fgPrimary }}>
@@ -74,13 +80,12 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
                   </Text>
                   {me.verified ? <VerifiedTick size={18} /> : null}
                 </View>
-                <Text style={{ ...type.meta, color: color.fgSecondary }}>{tx.me.completeness(p.completeness)}</Text>
-                <View style={{ height: 8, borderRadius: radius.pill, backgroundColor: color.line, overflow: 'hidden' }} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: p.completeness }}>
-                  <View style={{ width: `${p.completeness}%`, height: 8, backgroundColor: accent }} />
-                </View>
+                <Text accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: p.completeness }} style={{ ...type.meta, color: accent }}>
+                  {tx.me.completeness(p.completeness)}
+                </Text>
               </View>
             </View>
-            <Button testID="edit-profile" title={tx.me.editProfile} fill={accent} onPress={() => navigation.navigate('EditProfile', { id: p.id })} />
+            <Button testID="edit-profile" title={tx.me.editProfile} fill={color.fgPrimary} onPress={() => navigation.navigate('EditProfile', { id: p.id })} />
             <View style={{ gap: space.xs }}>
               <Text style={{ ...type.meta, color: color.fgSecondary }}>{tx.me.previewAs}</Text>
               <View style={{ flexDirection: 'row', gap: space.s }}>
@@ -89,7 +94,7 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
                     key={as}
                     accessibilityRole="button"
                     onPress={() => navigation.navigate('Profile', { id: p.id, preview: as })}
-                    style={{ flex: 1, paddingVertical: space.s, borderRadius: radius.pill, borderWidth: 1, borderColor: color.line, alignItems: 'center' }}
+                    style={{ flex: 1, height: 40, justifyContent: 'center', borderRadius: radius.pill, backgroundColor: color.bgRaised, alignItems: 'center' }}
                   >
                     <Text style={{ ...type.meta, color: color.fgPrimary }}>{tx.me.previews[as]}</Text>
                   </Pressable>
@@ -136,5 +141,17 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
       <LocationSheet visible={loc} onClose={() => setLoc(false)} />
       <NowSheet visible={now} onClose={() => setNow(false)} />
     </View>
+  );
+}
+
+// Completeness ring around the main photo (App v2, issue 58).
+function Ring({ pct, c }: { pct: number; c: string }) {
+  const r = 48;
+  const len = 2 * Math.PI * r;
+  return (
+    <Svg width={104} height={104} viewBox="0 0 104 104">
+      <Circle cx={52} cy={52} r={r} stroke={color.line} strokeWidth={5} fill="none" />
+      <Circle cx={52} cy={52} r={r} stroke={c} strokeWidth={5} fill="none" strokeLinecap="round" strokeDasharray={`${(len * Math.max(0, Math.min(100, pct))) / 100} ${len}`} transform="rotate(-90 52 52)" />
+    </Svg>
   );
 }

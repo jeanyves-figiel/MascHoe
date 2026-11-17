@@ -6,7 +6,7 @@ import type { MyProfile, ProfileView, Visibility } from '../api/types';
 import { useSession } from '../app/session';
 import { distanceLabel, tx } from '../i18n/app';
 import { color, radius, space, type } from '../theme/tokens';
-import { Badge, Banner, Button, ErrorState, Loading, Photo, Sheet, useAccent, VerifiedTick } from '../ui';
+import { Badge, Banner, Button, ErrorState, Icon, Loading, Photo, Scrim, Sheet, useAccent, VerifiedTick } from '../ui';
 import { getLocal } from '../me/localFields';
 import { FieldList } from './FieldList';
 import { PrivateNote } from './PrivateNote';
@@ -61,6 +61,7 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const width = Math.min(Dimensions.get('window').width, 560);
+  const [page, setPage] = useState(0);
 
   const [nowTs] = useState(() => Date.now());
   const [local, setLocal] = useState<Record<string, unknown>>({});
@@ -118,28 +119,41 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
   return (
     <View style={{ flex: 1, backgroundColor: color.bgBase }}>
       <ScrollView contentContainerStyle={{ paddingBottom: 140 }}>
-        <FlatList
-          horizontal
-          pagingEnabled
-          data={photos}
-          keyExtractor={(_, i) => String(i)}
-          showsHorizontalScrollIndicator={false}
-          renderItem={({ item, index }) => (
-            <Photo uri={item} id={p.id + index} label={`${p.display_name} photo ${index + 1}`} style={{ width, height: width * 1.25 }} />
-          )}
-        />
-        <View style={{ padding: space.l, gap: space.m, maxWidth: 560, width: '100%', alignSelf: 'center' }}>
+        <View>
+          <FlatList
+            horizontal
+            pagingEnabled
+            data={photos}
+            keyExtractor={(_, i) => String(i)}
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={(e) => setPage(Math.round(e.nativeEvent.contentOffset.x / width))}
+            renderItem={({ item, index }) => (
+              <Photo uri={item} id={p.id + index} label={`${p.display_name}'s photo ${index + 1} of ${photos.length}`} style={{ width, height: width * 1.33 }} />
+            )}
+          />
+          <Scrim height={160} max={1} steps={12} />
+          {photos.length > 1 ? (
+            <View pointerEvents="none" style={{ position: 'absolute', top: insets.top + 4, left: space.l, right: space.l, flexDirection: 'row', gap: 4 }}>
+              {photos.map((_, i) => (
+                <View key={i} style={{ flex: 1, height: 4, borderRadius: radius.pill, backgroundColor: color.fgPrimary, opacity: i === page ? 1 : 0.35 }} />
+              ))}
+            </View>
+          ) : null}
+        </View>
+        <View style={{ marginTop: -64, paddingHorizontal: space.xl, gap: 14, maxWidth: 560, width: '100%', alignSelf: 'center' }}>
           {preview ? <Banner tone="personal" text={`${tx.me.previewAs}: ${tx.me.previews[preview]}`} /> : null}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.s }}>
-            <Text style={{ ...type.display, color: color.fgPrimary, flexShrink: 1 }}>
+            <Text style={{ ...type.display, fontSize: 34, lineHeight: 38, color: color.fgPrimary, flexShrink: 1 }} accessibilityRole="header">
               {p.display_name}, {p.age}
             </Text>
-            {p.verified ? <VerifiedTick size={22} /> : null}
+            {p.verified ? <VerifiedTick size={24} /> : null}
           </View>
-          <Text style={{ ...type.meta, color: color.fgSecondary }}>
-            {[distanceLabel(p.distance), p.fields.pronouns as string | undefined, tx.profile.memberSince(years)].filter(Boolean).join(' · ')}
-          </Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.s }}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+            {p.distance ? <Chip text={distanceLabel(p.distance)} fg={color.trust} /> : null}
+            {p.fields.pronouns ? <Chip text={String(p.fields.pronouns)} /> : null}
+            <Chip text={tx.profile.memberSince(years)} />
+          </View>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
             {p.now ? <Badge label={tx.now[p.now.status] + (p.now.text ? ` · ${p.now.text}` : '')} fill={accent} /> : null}
             {p.tapped_me ? <Badge label={tx.profile.tappedYou} fill={color.personal} /> : null}
             {p.verified_since ? <Badge label={tx.profile.verifiedSince(new Date(p.verified_since).toLocaleDateString())} fill={color.trust} /> : null}
@@ -154,7 +168,7 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
             <View testID="profile-linked" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.s }}>
               {p.linked_accounts.map((l) => (
                 <Pressable key={l.platform + l.handle} accessibilityRole="link" onPress={() => l.url && Linking.openURL(l.url)}>
-                  <Badge label={`${tx.linked.platforms[l.platform] ?? l.platform} @${l.handle}${l.verified ? ' ✓' : ''}`} fill={color.fgSoft} />
+                  <Badge label={`${tx.linked.platforms[l.platform] ?? l.platform} @${l.handle}${l.verified ? ' · verified' : ''}`} fill={color.fgSoft} />
                 </Pressable>
               ))}
             </View>
@@ -169,9 +183,9 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
         accessibilityRole="button"
         accessibilityLabel={tx.common.back}
         onPress={navigation.goBack}
-        style={{ position: 'absolute', top: insets.top + space.s, left: space.l, width: 44, height: 44, borderRadius: 22, backgroundColor: color.scrim, alignItems: 'center', justifyContent: 'center' }}
+        style={{ position: 'absolute', top: insets.top + 16, left: space.l, width: 44, height: 44, borderRadius: 22, backgroundColor: color.bgInverse, alignItems: 'center', justifyContent: 'center' }}
       >
-        <Text style={{ color: color.fgPrimary, fontSize: 22 }}>‹</Text>
+        <Icon.Back c={color.onAccent} />
       </Pressable>
       {!p.self ? (
         <Pressable
@@ -179,25 +193,25 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
           accessibilityRole="button"
           accessibilityLabel={tx.profile.menu}
           onPress={() => setMenu(true)}
-          style={{ position: 'absolute', top: insets.top + space.s, right: space.l, width: 44, height: 44, borderRadius: 22, backgroundColor: color.scrim, alignItems: 'center', justifyContent: 'center' }}
+          style={{ position: 'absolute', top: insets.top + 16, right: space.l, width: 44, height: 44, borderRadius: 22, backgroundColor: color.bgInverse, alignItems: 'center', justifyContent: 'center' }}
         >
-          <Text style={{ color: color.fgPrimary, fontSize: 20 }}>⋯</Text>
+          <Icon.More c={color.onAccent} />
         </Pressable>
       ) : null}
 
       {!p.self ? (
-        <View style={{ position: 'absolute', left: space.l, right: space.l, bottom: insets.bottom + space.l, flexDirection: 'row', gap: space.s, maxWidth: 560, alignSelf: 'center', width: '100%' }}>
+        <View style={{ position: 'absolute', left: space.l, right: space.l, bottom: insets.bottom + space.l, flexDirection: 'row', alignItems: 'center', gap: 10, maxWidth: 560, alignSelf: 'center', width: '100%' }}>
+          <Pressable
+            testID="tap-btn"
+            accessibilityRole="button"
+            accessibilityLabel={p.tapped ? tx.profile.tapped : tx.profile.tap}
+            accessibilityState={{ disabled: p.tapped, busy }}
+            onPress={p.tapped || busy ? undefined : () => act(() => api('POST', `/profiles/${p.id}/tap`), () => setP({ ...p, tapped: true }))}
+            style={({ pressed }) => [{ width: 58, height: 58, borderRadius: 29, alignItems: 'center', justifyContent: 'center', backgroundColor: p.tapped ? color.personal : color.bgRaised }, pressed && { transform: [{ scale: 0.95 }] }]}
+          >
+            <Icon.Star c={p.tapped ? color.onAccent : color.fgPrimary} fill={p.tapped ? color.onAccent : 'none'} />
+          </Pressable>
           <View style={{ flex: 1 }}>
-            <Button
-              testID="tap-btn"
-              kind="secondary"
-              title={p.tapped ? tx.profile.tapped : tx.profile.tap}
-              disabled={p.tapped}
-              busy={busy}
-              onPress={() => act(() => api('POST', `/profiles/${p.id}/tap`), () => setP({ ...p, tapped: true }))}
-            />
-          </View>
-          <View style={{ flex: 2 }}>
             <Button
               testID="message-btn"
               title={tx.profile.message}
@@ -243,6 +257,14 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
           </View>
         )}
       </Sheet>
+    </View>
+  );
+}
+
+function Chip({ text, fg = color.fgSecondary }: { text: string; fg?: string }) {
+  return (
+    <View style={{ paddingHorizontal: space.m, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: color.bgRaised }}>
+      <Text style={{ ...type.meta, fontFamily: type.headline.fontFamily, color: fg }}>{text}</Text>
     </View>
   );
 }

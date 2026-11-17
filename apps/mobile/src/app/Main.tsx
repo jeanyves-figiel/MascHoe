@@ -38,7 +38,7 @@ import { NoticesScreen } from '../trust/NoticesScreen';
 import { ReportScreen } from '../trust/ReportScreen';
 import { VenueScreen } from '../scene/VenueScreens';
 import { color, modeColor, radius, space, type } from '../theme/tokens';
-import { ModeContext } from '../ui';
+import { Icon, ModeContext } from '../ui';
 import { useSession } from './session';
 
 const Tab = createBottomTabNavigator();
@@ -46,7 +46,14 @@ const Stack = createNativeStackNavigator();
 
 const navTheme = { ...DarkTheme, colors: { ...DarkTheme.colors, background: color.bgBase, card: color.bgBase, primary: color.hookup, text: color.fgPrimary, border: color.line } };
 
-// Pop bottom nav: white floating pill; active tab filled with the mode colour (design-system.md › Pop).
+const TAB_ICON: Record<string, (c: string) => React.ReactNode> = {
+  Explore: (c) => <Icon.Pin c={c} />,
+  Tonight: (c) => <Icon.Moon c={c} />,
+  Chats: (c) => <Icon.Chat c={c} />,
+  Me: (c) => <Icon.User c={c} />,
+};
+
+// Pop bottom nav (App v2): white floating pill, icons; active tab grows, shows its label and fills with the mode colour.
 function PillBar({ state, navigation }: BottomTabBarProps) {
   const { mode } = useSession();
   const insets = useSafeAreaInsets();
@@ -56,7 +63,7 @@ function PillBar({ state, navigation }: BottomTabBarProps) {
   return (
     <View
       accessibilityRole="tablist"
-      style={{ position: 'absolute', left: space.l, right: space.l, bottom: insets.bottom + space.s, flexDirection: 'row', backgroundColor: color.bgInverse, borderRadius: radius.pill, padding: 6, maxWidth: 520, alignSelf: 'center' }}
+      style={{ position: 'absolute', left: space.l, right: space.l, bottom: insets.bottom + space.s, flexDirection: 'row', backgroundColor: color.bgInverse, borderRadius: radius.pill, padding: 6, gap: 4, maxWidth: 520, shadowColor: color.bgBase, shadowOpacity: 0.4, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 12, alignSelf: 'center' }}
     >
       {state.routes.map((r, i) => {
         const on = state.index === i;
@@ -71,12 +78,13 @@ function PillBar({ state, navigation }: BottomTabBarProps) {
               if (Platform.OS !== 'web' && prefs().haptics) Haptics.selectionAsync().catch(() => {});
               if (!on) navigation.navigate(r.name);
             }}
-            style={{ flex: 1, height: 48, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? modeColor[mode] : 'transparent' }}
+            style={{ flex: on ? 1.6 : 1, height: 52, borderRadius: radius.pill, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? modeColor[mode] : 'transparent' }}
           >
-            <Text style={{ ...type.headline, fontSize: 14, color: on ? color.onAccent : color.navInactive }}>{labels[r.name]}</Text>
-            {r.name === 'Chats' && unread > 0 ? (
-              <View testID="chats-badge" style={{ position: 'absolute', top: 6, right: 14, minWidth: 16, height: 16, borderRadius: 8, paddingHorizontal: 4, backgroundColor: color.hookup, alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ ...type.caption, fontSize: 10, color: color.fgPrimary }}>{unread}</Text>
+            {TAB_ICON[r.name]?.(on ? color.onAccent : color.navInactive)}
+            {on ? <Text style={{ ...type.headline, fontSize: 13, color: color.onAccent }}>{labels[r.name]}</Text> : null}
+            {r.name === 'Chats' && unread > 0 && !on ? (
+              <View testID="chats-badge" style={{ position: 'absolute', top: 4, right: 12, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, backgroundColor: color.hookup, borderWidth: 2, borderColor: color.bgInverse, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ ...type.caption, fontSize: 10, color: color.onAccent }}>{unread}</Text>
               </View>
             ) : null}
           </Pressable>

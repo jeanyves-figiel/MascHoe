@@ -8,7 +8,7 @@ import type { Card, MapData } from '../api/types';
 import { useSession } from '../app/session';
 import { tx } from '../i18n/app';
 import { color, modeColor, radius, space, type } from '../theme/tokens';
-import { Banner, EmptyState, ErrorState, Loading, Segmented, Sheet, Wordmark, useAccent } from '../ui';
+import { Banner, EmptyState, ErrorState, Icon, Loading, Segmented, Sheet, Wordmark, useAccent } from '../ui';
 import { ProfileTile } from './Card';
 import { defaultFilters, Filters, loadGrid, loadMap, loadTray } from './explore';
 import { ExploreMap } from './ExploreMap';
@@ -116,57 +116,66 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
   const level = me.location?.level ?? 'city';
   const locLabel = me.incognito ? tx.location.incognito : (tx.location.levels[level] ?? tx.location.levels.city)[0];
 
+  const setViewSaved = (v: View_) => {
+    setView(v);
+    AsyncStorage.setItem(VIEW_KEY, v);
+  };
+  const iconBtn = { width: 40, height: 40, borderRadius: radius.pill, backgroundColor: color.bgRaised, alignItems: 'center' as const, justifyContent: 'center' as const };
+
+  // App v2 header (design-system.md › App v2 rules): wordmark + location chip + filters; mode switch + Map/Grid icons.
   const header = (
-    <View style={{ paddingTop: insets.top + space.s, paddingHorizontal: space.l, gap: space.s }}>
+    <View style={{ paddingTop: insets.top + space.s, paddingHorizontal: space.l, gap: space.m, paddingBottom: space.s }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.s }}>
         <View style={{ flex: 1 }}>
           <Wordmark />
         </View>
-        <Segmented
-          label="View"
-          value={view}
-          onChange={(v) => {
-            setView(v);
-            AsyncStorage.setItem(VIEW_KEY, v);
-          }}
-          options={[
-            { value: 'map', label: tx.explore.map },
-            { value: 'grid', label: tx.explore.grid },
-          ]}
-        />
         <Pressable
           testID="location-pill"
           accessibilityRole="button"
           accessibilityLabel={`Location: ${locLabel}`}
           onPress={() => setShowLocation(true)}
-          style={{ height: 44, paddingHorizontal: space.m, borderRadius: radius.pill, backgroundColor: color.bgRaised, borderWidth: 1, borderColor: color.line, flexDirection: 'row', alignItems: 'center', gap: 6 }}
+          style={({ pressed }) => [{ height: 40, paddingHorizontal: 14, borderRadius: radius.pill, backgroundColor: color.bgRaised, flexDirection: 'row', alignItems: 'center', gap: 6 }, pressed && { opacity: 0.8 }]}
         >
-          <View style={{ width: 10, height: 10, borderRadius: 5, borderWidth: 2.5, borderColor: color.trust }} />
+          <Icon.Pin size={15} c={color.trust} w={2} />
           <Text style={{ ...type.meta, fontFamily: type.headline.fontFamily, color: color.fgPrimary }}>{locLabel}</Text>
         </Pressable>
-      </View>
-      <View style={{ flexDirection: 'row', gap: space.s }}>
-        <Segmented
-          grow
-          label="Mode"
-          value={mode}
-          onChange={setMode}
-          fills={modeColor}
-          options={[
-            { value: 'hookup', label: tx.modes.hookup },
-            { value: 'friends', label: tx.modes.friends },
-            { value: 'sport', label: tx.modes.sport },
-          ]}
-        />
-        <Pressable
-          testID="filters-btn"
-          accessibilityRole="button"
-          accessibilityLabel={tx.explore.filters}
-          onPress={() => setShowFilters(true)}
-          style={{ width: 46, height: 46, borderRadius: 23, borderWidth: 1, borderColor: color.line, backgroundColor: color.bgRaised, alignItems: 'center', justifyContent: 'center' }}
-        >
-          <Text style={{ color: color.fgPrimary, fontSize: 18 }}>☰</Text>
+        <Pressable testID="filters-btn" accessibilityRole="button" accessibilityLabel={tx.explore.filters} onPress={() => setShowFilters(true)} style={({ pressed }) => [iconBtn, pressed && { opacity: 0.8 }]}>
+          <Icon.Filter />
         </Pressable>
+      </View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.s }}>
+        <View style={{ flex: 1 }}>
+          <Segmented
+            label="Mode"
+            value={mode}
+            onChange={setMode}
+            fills={modeColor}
+            options={[
+              { value: 'hookup', label: tx.modes.hookup },
+              { value: 'friends', label: tx.modes.friends },
+              { value: 'sport', label: tx.modes.sport },
+            ]}
+          />
+        </View>
+        <View accessibilityRole="tablist" accessibilityLabel="View" style={{ flexDirection: 'row', gap: 3, padding: 3, borderRadius: radius.pill, backgroundColor: color.bgRaised }}>
+          {(['map', 'grid'] as View_[]).map((v) => {
+            const on = view === v;
+            const I = v === 'map' ? Icon.Map : Icon.Grid;
+            return (
+              <Pressable
+                key={v}
+                testID={`view-${v}`}
+                accessibilityRole="tab"
+                accessibilityLabel={v === 'map' ? tx.explore.map : tx.explore.grid}
+                accessibilityState={{ selected: on }}
+                onPress={() => setViewSaved(v)}
+                style={{ width: 44, height: 38, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? color.bgInverse : 'transparent' }}
+              >
+                <I c={on ? color.onAccent : color.fgPrimary} />
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
       {!me.verified ? <Banner text={tx.explore.verifyBanner} onPress={() => navigation.navigate('Verify')} /> : null}
       {me.safe_mode_active || me.safe_mode === 'on' ? <Banner tone="personal" text={tx.explore.safeMode} /> : null}
@@ -182,7 +191,7 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
         <ExploreMap center={center} me={center} data={mapData} accent={accent} onRegion={onRegion} onSelect={open} />
         <View style={{ position: 'absolute', left: 0, right: 0, bottom: 96 }}>
           <View style={{ flexDirection: 'row', alignItems: 'baseline', paddingHorizontal: space.l, paddingBottom: space.s, gap: space.s }}>
-            <Text style={{ ...type.title, color: color.fgPrimary, flex: 1 }}>{tx.explore.activeNow(tray.length)}</Text>
+            <Text style={{ ...type.headline, color: color.fgPrimary, flex: 1 }}>{tx.explore.activeNow(tray.length)}</Text>
             <Text style={{ ...type.meta, color: color.fgSecondary }}>{tx.explore.nearestFirst}</Text>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingHorizontal: space.l }}>
