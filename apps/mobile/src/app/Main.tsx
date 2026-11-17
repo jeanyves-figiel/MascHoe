@@ -5,10 +5,12 @@ import * as Haptics from 'expo-haptics';
 import React from 'react';
 import { Platform, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AlbumEditScreen, AlbumsScreen, AlbumViewScreen } from '../chat/AlbumScreens';
 import { ChatScreen } from '../chat/ChatScreen';
 import { unreadTotal } from '../chat/engine';
 import { useTopics } from '../chat/hooks';
 import { InboxScreen } from '../chat/InboxScreen';
+import { PushPrompt } from '../chat/PushPrompt';
 import { ExploreScreen } from '../explore/ExploreScreen';
 import { tx } from '../i18n/app';
 import { BlockedScreen } from '../me/BlockedScreen';
@@ -107,8 +109,12 @@ export function Main() {
           <Stack.Screen name="Taps" component={TapsScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="Verify" component={VerifyRoute as React.ComponentType} />
           <Stack.Screen name="Chat" component={ChatScreen as React.ComponentType} />
+          <Stack.Screen name="Albums" component={AlbumsScreen as React.ComponentType} options={sub} />
+          <Stack.Screen name="AlbumEdit" component={AlbumEditScreen as React.ComponentType} options={sub} />
+          <Stack.Screen name="Album" component={AlbumViewScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="Report" component={Soon} options={sub} />
         </Stack.Navigator>
+        <PushPrompt />
       </NavigationContainer>
     </ModeContext.Provider>
   );

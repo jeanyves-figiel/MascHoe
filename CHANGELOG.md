@@ -6,6 +6,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **B2 Chat** (issue 37, full beta build), server:
+  - MLS delivery service: per-device key packages (claim, last resort), ciphertext routing to (profile, device), pull and ack, 30-day sweep, franking tags, block → generic "not delivered", first-contact verification and 30/h new-contact limit.
+  - E2EE media blobs (`/media`): presigned upload/download of ciphertext, owner delete, album items kept until deleted.
+  - Realtime socket (`/socket`, topic `user:me`): `message.new`, taps, typing (symmetric with read receipts).
+  - Push: APNs token auth, generic content-free alert, per-type toggles, quiet hours, Safe Mode wording, 20 s throttle.
+- **B2 Chat** (issue 37), app:
+  - MLS client on ts-mls with a pure-JS `crypto.subtle` shim for Hermes; encrypted device store (SQLCipher).
+  - Chats inbox (S-40): Taps row, New / Chats sections, star, mute, archive, delete, unread badge on the tab.
+  - Chat (S-41): E2EE line, optimistic send and retry, quick replies (6 + 3 custom), first-message rules (R-07.3), read receipts, typing, disappearing messages (24 h / 7 d / off, system message), reactions, delete for me, block and report entry.
+  - Encrypted photos with view-once, expiry and allow-save options; receiver blur per Settings.
+  - Private albums (S-42): create, add photos, share in chat with optional expiry, revoke with key rotation; received album viewer.
+  - "My chats" profile fields sent E2EE to chat partners (R-06.6); private notes and tags on profiles (R-06.9).
+  - Settings: notification toggles, quiet hours, custom quick replies; push pre-prompt on first inbound message (R-16.7).
 - **B1 Explore** (issue 37, full beta build), server:
   - Profiles: field catalogue with per-field visibility (`Thirstr.Profiles.Fields`). Values set to My chats / Only me never reach the server, and health fields are never public. Also: completeness ring, Sport/Friends profiles, photo replace, reorder and remove, NudeNet-label classifier with a DEV stand-in, and bio checks for contact details and links.
   - Explore: grid, map (H3 heat cells, pins and avatars by bbox) and the active-now tray. Includes all R-04.9 exclusions, per-mode filters, distance buckets, sparse-area widening, k-anonymity widening (every minute), and Safe Mode / unverified count-only maps.
@@ -28,6 +41,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Expo web client on staging/release image (`SERVE_WEB_CLIENT`, web build stage): the web shows the marketing site, the app is native only. DEV keeps the Expo web build at https://localhost:7443 as a developer tool. Phoenix default `favicon.ico`/`robots.txt` removed.
 
 ### Changed
+- Push payload: generic visible alert ("Thirstr" / "New activity") instead of a silent `content-available` wake, which iOS does not reliably deliver. Still content-free (api.md › Push payloads); mock push asserts the new shape.
 - Design: **Pop** is the only theme (#38). design-system.md: ink base `#17142E`, mode colours coral/violet/lime, teal for trust/location/privacy, sunflower for personal items, Bricolage Grotesque, new radius scale, logo/wordmark spec (`thirstr` with coral `r` + three dots), Pop component rules. Light theme removed (F-17 theme setting dropped). Concept doc colours/fonts updated.
 
 ### Added

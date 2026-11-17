@@ -13,7 +13,7 @@ import * as E from './engine';
 export type SendOpts = { once: boolean; expiry: '1h' | '24h' | '7d' | 'keep'; save: boolean };
 const EXPIRY_S = { '1h': 3600, '24h': 86400, '7d': 7 * 86400, keep: null } as const;
 
-async function readBytes(uri: string): Promise<Uint8Array> {
+export async function readBytes(uri: string): Promise<Uint8Array> {
   if (Platform.OS === 'web') return new Uint8Array(await (await fetch(uri)).arrayBuffer());
   const { File } = await import('expo-file-system');
   return new File(uri).bytes();

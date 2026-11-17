@@ -369,6 +369,7 @@ defmodule Thirstr.Chat do
   @doc "Upload slot for an encrypted blob (R-08.2). Chat media expiry ≤ 30 d; album items kept."
   def create_blob(%Account{} = a, params) do
     size = params["size"]
+
     # Chat media ≤ 30 d (R-08.10); private-album items live until the owner deletes them (R-08.4).
     max_ttl = if params["album"] == true, do: 10 * 365 * 86_400, else: @retention_d * 86_400
     ttl = min(params["ttl_s"] || max_ttl, max_ttl)

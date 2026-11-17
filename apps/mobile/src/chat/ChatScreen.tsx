@@ -10,6 +10,7 @@ import { Banner, Button, ListRow, Loading, Photo, Segmented, Sheet, Toggle, useA
 import * as E from './engine';
 import { useTopics } from './hooks';
 import { MediaBubble, pickAndSendMedia, SendOpts } from './media';
+import * as Albums from './albums';
 
 type Nav = { navigate: (s: string, p?: object) => void; goBack: () => void; setOptions: (o: object) => void };
 type Params = { cid?: string; profileId?: string; name?: string };
@@ -39,6 +40,10 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
   const [custom, setCustom] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [mediaSheet, setMediaSheet] = useState(false);
+  const [albums, setAlbums] = useState<Albums.Album[]>([]);
+  useEffect(() => {
+    if (mediaSheet) Albums.listAlbums().then(setAlbums);
+  }, [mediaSheet]);
   const [mopts, setMopts] = useState<SendOpts>({ once: false, expiry: 'keep', save: false });
 
   // Open by profile id (Profile › Message): pick my profile for the current mode.
@@ -164,7 +169,10 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
               <Pressable
                 testID={`msg-${m.id}`}
                 onLongPress={() => setMsgMenu(m)}
-                onPress={() => m.status === 'failed' && E.retry(cid, m.id).catch((e) => setProblem(errorText(e)))}
+                onPress={() => {
+                  if (m.status === 'failed') E.retry(cid, m.id).catch((e) => setProblem(errorText(e)));
+                  else if (m.p.t === 'album.grant' && m.from === 'them') navigation.navigate('Album', { cid, album: m.p.album });
+                }}
                 style={{
                   maxWidth: '80%',
                   paddingHorizontal: space.m,
@@ -311,6 +319,24 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
           />
         </View>
         <Toggle label={tx.chat.allowSave} value={mopts.save} onChange={(v) => setMopts({ ...mopts, save: v })} />
+        {albums.length ? (
+          <View>
+            <Text style={{ ...type.meta, color: color.fgSecondary, marginBottom: space.xs }}>{tx.albums.share}</Text>
+            {albums.map((a) => (
+              <ListRow
+                key={a.id}
+                testID={`share-album-${a.name}`}
+                title={a.name}
+                right={`${a.items.length}`}
+                onPress={async () => {
+                  setMediaSheet(false);
+                  const exp = { '1h': 3600, '24h': 86400, '7d': 604800, keep: null }[mopts.expiry];
+                  await Albums.grant(a.id, conv.id, exp).catch((e) => setProblem(errorText(e)));
+                }}
+              />
+            ))}
+          </View>
+        ) : null}
         <Button
           title={tx.chat.choosePhoto}
           busy={busy}

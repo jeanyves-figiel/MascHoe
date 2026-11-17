@@ -58,6 +58,12 @@ defmodule ThirstrWeb.ChatTest do
     assert %{"counts" => counts} = upload(b, 1) |> json_response(200)
     assert counts[b.pid] == %{"count" => 1, "last_resort" => true}
 
+    # the client builds its MLS identity {profile, device} from this device_id
+    assert %{"counts" => %{}, "device_id" => dev} =
+             b.c |> recycle_authed() |> get("/v1/mls/keypackages") |> json_response(200)
+
+    assert dev == b.dev
+
     [k1] = claim(a, b) |> json_response(200) |> Map.fetch!("key_packages")
     assert Base.decode64!(k1["key_package"]) == "kp-#{b.pid}-1"
     assert k1["device_id"] == b.dev

@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Platform, ScrollView, Text, View } from 'react-native';
 import { api, ApiError, clearSession, Me } from '../api/client';
 import type { Settings } from '../api/types';
 import { useSession } from '../app/session';
+import { askPushPermission } from '../chat/engine';
+import { customQuickReplies, setCustomQuickReplies } from '../chat/quick';
 import { tx } from '../i18n/app';
 import { color, space, type } from '../theme/tokens';
 import { Banner, Button, Chip, Chips, ErrorText, Field, ListRow, Loading, Section, Toggle } from '../ui';
@@ -17,6 +19,10 @@ export function SettingsScreen({ navigation }: { navigation: Nav }) {
   const [q, setQ] = useState('');
   const [safeOffAsk, setSafeOffAsk] = useState(false);
   const [del, setDel] = useState<string | null>(null);
+  const [quick, setQuick] = useState<string[]>([]);
+  useEffect(() => {
+    customQuickReplies().then(setQuick);
+  }, []);
 
   useEffect(() => {
     api<Settings>('GET', '/me/settings').then(setSt).catch(() => {});
@@ -93,6 +99,49 @@ export function SettingsScreen({ navigation }: { navigation: Nav }) {
         {choice(tx.settings.whoMessage, st.who_can_message, tx.settings.whoOpts, (v) => put({ who_can_message: v }))}
         {choice(tx.settings.explicit, st.explicit_from_strangers, tx.settings.explicitOpts, (v) => put({ explicit_from_strangers: v }))}
         {choice(tx.settings.disappearing, st.disappearing_default, tx.settings.disOpts, (v) => put({ disappearing_default: v }))}
+        {show(tx.settings.quickReplies) ? (
+          <View style={{ gap: space.xs }}>
+            <Text style={{ ...type.body, color: color.fgPrimary }}>{tx.settings.quickReplies}</Text>
+            <Text style={{ ...type.meta, color: color.fgMuted }}>{tx.settings.quickHint}</Text>
+            {[0, 1, 2].map((i) => (
+              <Field
+                key={i}
+                label={`${i + 1}`}
+                maxLength={40}
+                value={quick[i] ?? ''}
+                onChangeText={(v) => {
+                  const next = [...quick];
+                  next[i] = v;
+                  setQuick(next);
+                }}
+                onEndEditing={() => setCustomQuickReplies(quick)}
+              />
+            ))}
+          </View>
+        ) : null}
+      </Section>
+
+      <Section title={tx.settings.notifications}>
+        {show(tx.settings.notifications) ? <Text style={{ ...type.meta, color: color.fgSecondary, paddingHorizontal: space.m, paddingTop: space.s }}>{tx.settings.notifIntro}</Text> : null}
+        {Platform.OS === 'ios' && show(tx.settings.enablePush) ? <ListRow title={tx.settings.enablePush} onPress={() => askPushPermission()} /> : null}
+        {Object.entries(tx.settings.pushTypes).map(([k, label]) => (
+          <React.Fragment key={k}>{tog(label, st.push?.[k] !== false, (v) => put({ push: { ...(st.push ?? {}), [k]: v } }))}</React.Fragment>
+        ))}
+        {tog(tx.settings.quiet, !!st.quiet_hours, (v) => put({ quiet_hours: v ? { from: 23, to: 7, tz_offset_min: -new Date().getTimezoneOffset() } : null }), tx.settings.quietSub)}
+        {st.quiet_hours && show(tx.settings.quiet) ? (
+          <View style={{ gap: space.s }}>
+            {(['from', 'to'] as const).map((k) => (
+              <View key={k} style={{ gap: space.xs }}>
+                <Text style={{ ...type.meta, color: color.fgSecondary }}>{k === 'from' ? tx.settings.quietFrom : tx.settings.quietTo}</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.xs }}>
+                  {Array.from({ length: 24 }, (_, h) => (
+                    <Chip key={h} label={`${h}:00`} on={st.quiet_hours![k] === h} fill={color.trust} onPress={() => put({ quiet_hours: { ...st.quiet_hours!, [k]: h, tz_offset_min: -new Date().getTimezoneOffset() } })} />
+                  ))}
+                </ScrollView>
+              </View>
+            ))}
+          </View>
+        ) : null}
       </Section>
 
       <Section title={tx.settings.safety}>

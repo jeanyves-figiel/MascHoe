@@ -9,6 +9,7 @@ import type { ProfileView } from '../api/types';
 import { fromB64, fromUtf8, hex, rand, toB64, utf8 } from './bytes';
 import { kv } from './kv';
 import * as mls from './mls';
+import { getLocal } from '../me/localFields';
 
 export type Ttl = '24h' | '7d' | 'never';
 export const TTL_S: Record<Ttl, number | null> = { '24h': 86400, '7d': 7 * 86400, never: null };
@@ -61,6 +62,7 @@ export type Conv = {
   ttl: Ttl;
   gone?: boolean;
   peerFields?: Record<string, unknown>;
+  privSent?: string;
 };
 
 type Wire = Payload & { v: 1; id: string; at: number; fk: string };
@@ -72,7 +74,9 @@ const subs = new Map<string, Set<Fn>>();
 export function on(topic: string, fn: Fn) {
   if (!subs.has(topic)) subs.set(topic, new Set());
   subs.get(topic)!.add(fn);
-  return () => subs.get(topic)!.delete(fn);
+  return () => {
+    subs.get(topic)!.delete(fn);
+  };
 }
 const emit = (topic: string) => subs.get(topic)?.forEach((f) => f());
 
@@ -385,19 +389,7 @@ export async function deleteConv(id: string) {
 
 // ------------------------------------------------------------------ send
 
-// R-07.3: first message to a new contact: text only, ≤ 500 chars, no links/handles/phone/email.
-const LINK = /(https?:\/\/|www\.|\b[a-z0-9-]+\.(com|net|org|io|fun|app|me|co|fr|de|ch|uk)\b)/i;
-const HANDLE = /(^|\s)@[a-z0-9_.]{2,}/i;
-const EMAIL = /[^\s@]+@[^\s@]+\.[a-z]{2,}/i;
-const PHONE = /(\+?\d[\d\s().-]{7,}\d)/;
-
-export function firstMessageProblem(c: Conv, p: Payload): string | null {
-  if (c.theyWrote) return null;
-  if (p.t !== 'text' && p.t !== 'quick_reply') return 'first_text_only';
-  if (p.text.length > 500) return 'first_too_long';
-  if (LINK.test(p.text) || HANDLE.test(p.text) || EMAIL.test(p.text) || PHONE.test(p.text)) return 'first_no_contacts';
-  return null;
-}
+export { firstMessageProblem } from './rules';
 
 async function ensureGroup(c: Conv): Promise<string> {
   if (c.groups.length) return c.groups[0];
@@ -453,6 +445,7 @@ export async function send(cid: string, p: Payload, opts: { silent?: boolean } =
       envelopes,
     });
     if (msg) await setStatus(cid, id, r.undelivered.length ? 'failed' : 'sent');
+    if (p.t !== 'profile.private' && p.t !== 'read') sharePrivate(c).catch(() => {});
   } catch (e) {
     if (msg) await setStatus(cid, id, 'failed');
     throw e;
@@ -552,6 +545,27 @@ export async function deleteMessage(cid: string, id: string) {
     cid,
     (await messages(cid)).filter((x) => x.id !== id && !(x.p.t === 'reaction' && x.p.to === id)),
   );
+}
+
+// R-06.6: fields set to "My chats" are sent E2EE to chat partners when a chat starts or they change.
+async function chatFields(profileId: string): Promise<Record<string, unknown>> {
+  const vis = (me?.profiles ?? []).find((x) => x.id === profileId)?.visibility_map ?? {};
+  const local = await getLocal(profileId);
+  return Object.fromEntries(Object.entries(local).filter(([k, v]) => vis[k] === 'chats' && v !== null && v !== '' && v !== undefined));
+}
+
+async function sharePrivate(c: Conv) {
+  const fields = await chatFields(c.me);
+  const sig = hex(sha256(utf8(JSON.stringify(fields))));
+  if (c.privSent === sig || (!Object.keys(fields).length && !c.privSent)) return;
+  c.privSent = sig;
+  await saveConvs();
+  await send(c.id, { t: 'profile.private', fields }, { silent: true });
+}
+
+/** After editing "My chats" fields: resend to every conversation of that profile. */
+export async function resharePrivate(profileId: string) {
+  for (const c of Object.values(convs)) if (c.me === profileId && c.groups.length && !c.gone) await sharePrivate(c).catch(() => {});
 }
 
 /** Keeps settings (read receipts, disappearing default) in sync with the session. */
