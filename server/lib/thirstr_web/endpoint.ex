@@ -1,6 +1,9 @@
 defmodule ThirstrWeb.Endpoint do
   use Phoenix.Endpoint, otp_app: :thirstr
 
+  # Realtime (api.md › Realtime): user topic for message.new / taps / typing.
+  socket "/socket", ThirstrWeb.UserSocket, websocket: [connect_info: []], longpoll: false
+
   # Code reloading can be explicitly enabled under the
   # :code_reloader configuration of your endpoint.
   if code_reloading? do

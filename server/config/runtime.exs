@@ -28,6 +28,15 @@ config :thirstr,
   valkey_url: env.("VALKEY_URL", "redis://localhost:6379/#{if test?, do: 1, else: 0}"),
   # R-01.2/R-01.3: pepper for identifier hashes. Prod: injected from EU KMS via fly secrets.
   pepper: env.("ID_PEPPER", "dev-pepper-not-secret"),
+  # F-16 push (content-free). APNs token auth; DEV/CI post to the mock instead (PUSH_MOCK_URL).
+  apns: [
+    key_p8: System.get_env("APNS_KEY_P8"),
+    key_id: System.get_env("APNS_KEY_ID"),
+    team_id: System.get_env("APPLE_TEAM_ID"),
+    topic: env.("APNS_TOPIC", "app.thirstr"),
+    host: env.("APNS_HOST", "https://api.push.apple.com"),
+    mock_url: System.get_env("PUSH_MOCK_URL")
+  ],
   # AASA webcredentials (I-03): "<TeamID>.<bundle id>" once APPLE_TEAM_ID is set.
   apple_app_ids:
     (case System.get_env("APPLE_TEAM_ID") do

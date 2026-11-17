@@ -14,7 +14,7 @@ config :thirstr, Thirstr.Mailer, adapter: Swoosh.Adapters.Local
 
 config :thirstr, Oban,
   repo: Thirstr.Repo,
-  queues: [default: 10, maintenance: 2],
+  queues: [default: 10, maintenance: 2, push: 5],
   plugins: [
     {Oban.Plugins.Pruner, max_age: 3600},
     {Oban.Plugins.Cron,
