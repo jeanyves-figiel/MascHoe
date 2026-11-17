@@ -67,7 +67,7 @@ Cross-app pain points (user reviews):
 ## 5. Differentiating features
 
 ### Discovery
-- **Home = map first** (owner decision 2026-11-16): live map + "Active now" card tray; Map/Grid toggle; tabs Explore / Tonight / Chats / Me. Deliberately not a Grindr-style grid home.
+- **Home = map first** (owner decision 2026-11-16): live map + "Active now" card tray; Map/Grid toggle; mode switch Hookup / Sport / Friends (recolours app); tabs Explore / Tonight / Chats / Me. Deliberately not a Grindr-style grid home.
 - **Grid + Map** (map: area heat by default; exact pins only for users who opted in, see §6.2).
 - **Intents** (default selected: Now + Hookup): Now / Hookup / Chat / Friends / Travel. Filter by intent; free.
 - **Hookup tooling**: hosting / can travel / door open status; position, practices, PrEP/safer-sex prefs as filterable tags (shown to verified viewers only); "Now" posts with exact pin opt-in; quick-yes/no tap replies to cut chat time.
@@ -149,6 +149,7 @@ Guardrails (keeps §9.1 anti-bot intact):
 
 ### Control
 - Full field list, per-field visibility and settings tree: [profile-and-settings.md](profile-and-settings.md).
+- Sign-up (passkey-first, no phone number), onboarding flow, design system & audit: [onboarding-and-design.md](onboarding-and-design.md).
 - Visibility per field (public / matches / chosen).
 - Incognito: browse without appearing (free).
 - Pause profile vs. delete.
