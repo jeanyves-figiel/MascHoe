@@ -89,6 +89,7 @@ Card: `{id, display_name, age, verified, photo, online, distance, now, exact, pi
 ### Settings & Safe Mode (F-17, F-14)
 | GET · PATCH | /me/settings | server-enforced settings (hide_from_*, show_in_*, show_distance, online_visible, read_receipts, who_can_message, explicit_from_strangers, disappearing_default, push, quiet_hours) |
 | PUT | /me/safe_mode | {setting: auto\|on\|off, active: bool} → Me (country detection stays on device) |
+| GET | /safe-mode/countries | public, `cache-control: public, max-age=21600` → {version, source, countries: [ISO alpha-2]}; same body for every caller (R-14.1a) |
 
 ### Map tiles
 | GET | /tiles/style.json · /tiles/v/{z}/{x}/{y} · /tiles/fonts/{stack}/{range} | public; Pop dark style, tiles and glyphs proxied from `TILES_UPSTREAM` (OpenFreeMap) so clients never contact a third party |

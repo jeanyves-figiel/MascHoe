@@ -5,8 +5,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+- **Onboarding v2** (F-02, issue 54): new sign-up and onboarding in the Pop design, from the approved clickable mockup. Welcome with live glow, count and promises; sign-up with Apple first and an 18+ consent line instead of a checkbox; one question per screen (name, birthday wheel showing your age, I am with auto-advance, Here for colour tiles); location with a live map preview; main photo frame with inline check; verification payoff screen; new "You're in" screen with your profile card. 7-step progress bar, back within steps, haptics, entry motion (Reduce Motion respected). en/fr/de.
+
+### Fixed
+- **Birthday entry on iPhone** (issue 52): the sign-up birthday field used the number pad, which has no "-" key, so no valid date could be typed. Digits are now kept and the dashes inserted automatically.
+
 ### Added
 - **App icon and splash**: Thirstr icon is the short wordmark `tr` + three dots on ink (concept A). New iOS icon, Android adaptive icon (foreground in the safe zone, ink background, monochrome for themed icons), favicon and a wordmark splash replace the Expo placeholders. Outlined SVG sources and a generator in `design/brand/`; spec in `docs/spec/design-system.md` › Logo.
+- **Safe Mode country list** (F-14, issue 49): Burkina Faso, Zimbabwe and Trinidad and Tobago added (66 countries). The list can now be updated without an app release: every phone downloads the same file at most daily and can only add countries to its built-in list.
 - **French and German** (D-06, issue 37): every app screen and onboarding step now has full fr/de text (informal tu/du), moved to `src/i18n/fr.ts` and `de.ts`; English stays the fallback.
 - **B4d Account, sharing, settings, Safe Mode** (issue 37): Download my data (R-01.11: JSON built on request and sent to the phone, nothing stored; chats, notes and contacts added from the device), linked devices (R-01.6/8: 8-character code or QR valid 2 min, approve on the old phone, new device joins existing encrypted chats), linked accounts (I-01: X, Bluesky, OnlyFans, JFF, Instagram; Bluesky proven by a code in the bio and re-checked every 90 days; visible to everyone, verified or chats), profile share link (I-02: `/p/{slug}` page with name and main photo, no scripts, opens in the app), Settings tree (units km/mi, haptics, auto-delete received media, language, privacy, licences), Safe Mode auto-detect by country with entrapment warning in chats and local resources.
 - **B4c Safety** (F-13, issue 37): trusted contacts (up to 3, invite link shared from the phone; contacts need no app and see a web page at `/c/` that decrypts in the browser), meet check-in from a chat or Me › Safety (notice now, alert with last location, his profile and last 20 messages if you don't confirm by due + 15 min, +30 min up to 3 times), SOS hold with "call 112/911/999?", empty Web Push to contacts, app lock (6-digit PIN, Face ID, lock after 0/1/5/15 min), duress PIN (empty decoy or erase), shake + hold to erase this phone's data. Server keeps ciphertext only; suspended accounts can still use safety.
@@ -66,6 +73,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Expo web client on staging/release image (`SERVE_WEB_CLIENT`, web build stage): the web shows the marketing site, the app is native only. DEV keeps the Expo web build at https://localhost:7443 as a developer tool. Phoenix default `favicon.ico`/`robots.txt` removed.
 
 ### Changed
+- iOS TestFlight builds now run on a GitHub macOS runner (expo prebuild + xcodebuild, automatic signing with the App Store Connect API key, upload via exportArchive) instead of Expo's EAS cloud: no queue, no Expo account. Removed `apps/mobile/eas.json` and the EAS credentials script; `EXPO_TOKEN` / `ASC_APP_ID` secrets no longer used.
 - Push payload: generic visible alert ("Thirstr" / "New activity") instead of a silent `content-available` wake, which iOS does not reliably deliver. Still content-free (api.md › Push payloads); mock push asserts the new shape.
 - Design: **Pop** is the only theme (#38). design-system.md: ink base `#17142E`, mode colours coral/violet/lime, teal for trust/location/privacy, sunflower for personal items, Bricolage Grotesque, new radius scale, logo/wordmark spec (`thirstr` with coral `r` + three dots), Pop component rules. Light theme removed (F-17 theme setting dropped). Concept doc colours/fonts updated.
 

@@ -21,6 +21,7 @@ import { PhotoScreen } from './src/screens/Photo';
 import { VerifyScreen } from './src/screens/Verify';
 import { LinkDeviceScreen } from './src/screens/LinkDevice';
 import { WelcomeScreen } from './src/screens/Welcome';
+import { DoneScreen } from './src/screens/Done';
 import { color } from './src/theme/tokens';
 
 export default function App() {
@@ -68,7 +69,7 @@ export default function App() {
       body = <LinkDeviceScreen onDone={land} onBack={() => setScreen('welcome')} />;
       break;
     case 'create':
-      body = <CreateAccountScreen mode={mode} onDone={land} onEmailSent={() => setScreen('inbox')} onUnderage={() => setScreen('underage')} />;
+      body = <CreateAccountScreen mode={mode} onBack={() => setScreen('welcome')} onDone={land} onEmailSent={() => setScreen('inbox')} onUnderage={() => setScreen('underage')} />;
       break;
     case 'inbox':
       body = <CheckInboxScreen onBack={() => setScreen('create')} />;
@@ -86,7 +87,11 @@ export default function App() {
       body = <PhotoScreen me={me!} onDone={land} />;
       break;
     case 'verify':
-      body = <VerifyScreen onDone={land} />;
+      // S-07 once, right after the last onboarding step (R-02.1g).
+      body = <VerifyScreen onDone={(m) => { setMe(m); setScreen('done'); }} />;
+      break;
+    case 'done':
+      body = <DoneScreen me={me!} onContinue={() => setScreen(screenFor(me))} />;
       break;
     default:
       body = (

@@ -79,6 +79,14 @@ defmodule ThirstrWeb.SafetyTest do
     assert inbox(c, rid) == []
   end
 
+  test "Safe Mode country list is public, identical for everyone and cacheable (R-14.1a)", %{c: c} do
+    conn = get(c, "/v1/safe-mode/countries")
+    body = json_response(conn, 200)
+    assert get_resp_header(conn, "cache-control") == ["public, max-age=21600"]
+    assert "BF" in body["countries"] and "ZW" in body["countries"] and "TT" in body["countries"]
+    assert Enum.all?(body["countries"], &Regex.match?(~r/^[A-Z]{2}$/, &1))
+  end
+
   test "OK deletes the check-in and its held alerts (R-13.10)", %{u: u, c: c} do
     {id, rid} = contact(u, c)
     env = [%{relay: id, ciphertext: ct()}]
