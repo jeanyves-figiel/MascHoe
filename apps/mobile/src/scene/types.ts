@@ -1,4 +1,4 @@
-import type { Distance } from "../api/types";
+import type { Distance } from '../api/types';
 
 export type Person = {
   id: string;
@@ -39,16 +39,16 @@ export type Party = {
   capacity: number;
   seats_taken: number;
   rules: string[];
-  audience: "verified" | "chats" | "invite";
-  status: "open" | "full" | "live" | "ended" | "cancelled";
+  audience: 'verified' | 'chats' | 'invite';
+  status: 'open' | 'full' | 'live' | 'ended' | 'cancelled';
   area_cell: string;
   distance: Distance;
-  my_state: null | "host" | "pending" | "accepted" | "not_this_time" | "left";
+  my_state: null | 'host' | 'pending' | 'accepted' | 'not_this_time' | 'left';
   invite_code?: string | null;
   rating?: { up: number; total: number } | null;
   requests?: {
     profile: Person;
-    state: "pending" | "accepted";
+    state: 'pending' | 'accepted';
     at: string;
     vouches: number;
   }[];
@@ -67,7 +67,7 @@ export type Post = {
   intent: string;
   club: { id: string; name: string } | null;
   distance: Distance;
-  my_state: null | "host" | "joined" | "removed";
+  my_state: null | 'host' | 'joined' | 'removed';
 };
 
 export type Club = {
@@ -75,11 +75,11 @@ export type Club = {
   name: string;
   sport: string;
   description: string | null;
-  join_policy: "open" | "request";
+  join_policy: 'open' | 'request';
   verified_club: boolean;
   members: number;
-  my_state: null | "member" | "requested";
-  my_role: null | "member" | "admin";
+  my_state: null | 'member' | 'requested';
+  my_role: null | 'member' | 'admin';
 };
 
 export type ClubDetail = Club & {
@@ -92,8 +92,8 @@ export type ClubDetail = Club & {
   }[];
   member_list?: {
     profile: Person;
-    role: "member" | "admin";
-    state: "member" | "requested";
+    role: 'member' | 'admin';
+    state: 'member' | 'requested';
   }[];
 };
 
@@ -126,12 +126,9 @@ export type Here = {
   }[];
 };
 
-export const time = (iso: string) =>
-  new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+export const time = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 export const day = (iso: string) => {
   const d = new Date(iso);
   const today = new Date();
-  return d.toDateString() === today.toDateString()
-    ? time(iso)
-    : `${d.toLocaleDateString([], { weekday: "short" })} ${time(iso)}`;
+  return d.toDateString() === today.toDateString() ? time(iso) : `${d.toLocaleDateString([], { weekday: 'short' })} ${time(iso)}`;
 };

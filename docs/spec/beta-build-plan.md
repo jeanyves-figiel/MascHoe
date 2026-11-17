@@ -28,6 +28,10 @@ Every F-01…F-18 / I-01…I-03 rule in beta scope ships before the closed beta 
 | Anonymous credential | RSA-BSSA (RFC 9474) | Chaum **RSA-FDH blind signature** (3072-bit, SHA-384 full-domain hash) | Same unlinkability property; RFC 9474 encoding later. |
 | Attestation | App Attest / Play Integrity on every request | App Attest attestation verified once per device at sign-in when available; device marked `attestation_ok`; unattested devices keep read access but count as a bot signal | Full per-request assertion before public beta (#11). |
 | Push | direct APNs/FCM | direct APNs (token auth, `APNS_KEY_P8` secret), generic visible alert (api.md › Push payloads); FCM when Android ships | Owner adds APNs key. Preview levels need the notification service extension. |
+| Group chats (F-10, F-11) | MLS groups with server-side membership | Host device keeps the MLS group in step with the server member list (add/remove commits) on accept, RSVP, approve and on socket events; members joining before the host is online see "Waiting for the host" | No server-side MLS state; DS stays content-blind. |
+| Party vouches (R-10.4) | vouch count on requests | Shows 0 until vouches ship with B4 trust & safety | |
+| Venue geofence | OS geofencing auto check-out | 4 h auto check-out on the server; leaving the geofence is handled by the app when location updates arrive | No background location in beta. |
+| Club logo | club image | Not in beta (name + sport only) | |
 | Private notes sync | E2EE sync across own devices | Device-only in beta (one device per account) | Sync with device linking (B4). |
 | Admin console | separate LiveView app behind VPN, FIDO2 | `/admin` LiveView in the API app, owner-only passkey login (R-AD.12), not linked anywhere, `ADMIN_ENABLED` env | VPN + separate app before public beta. |
 | Trusted-contact page | separate web page | `GET /t/{token}` static page from API; key in URL fragment, decrypts in browser | |

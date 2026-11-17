@@ -88,24 +88,39 @@ Card: `{id, display_name, age, verified, photo, online, distance, now, exact, pi
 
 ### Tonight & Now (F-09)
 | PUT/DELETE | /me/now | {status: now\|hosting\|can_travel\|door_open, text ≤ 80 (no links/contacts), ttl_s: 1–6 h} (verified only) |
-| GET/POST | /tonight | list / create plan |
-| DELETE | /tonight/{id} | |
+| GET | /tonight?mode&from&to | → {plans: [{id, profile: card, text, tag, audience, window_start, window_end, distance}], mine: [plan]}; area = k-ring 2 around caller's r8 (10 km), widened to 25 km when < 5 plans; `chats` audience only for chat partners |
+| POST | /tonight | {mode, text ≤ 140, tag: hosting\|can_travel\|drinks_first\|party\|other, audience: verified\|chats, window_start, window_end, tz_offset_min} (verified; ≤ 2 live per profile; expires 06:00 local) |
+| DELETE | /tonight/{id} | own plan |
 
 ### Parties (F-10)
-| GET/POST | /parties | list nearby / create |
-| GET/PATCH/DELETE | /parties/{id} | |
-| POST | /parties/{id}/request | |
-| POST | /parties/{id}/requests/{profile_id}/accept\|decline | host |
-| POST | /parties/{id}/leave | |
+| GET | /parties | → {parties: [party]} nearby, live, not hidden (hookup profile) |
+| POST | /parties | {title, starts_at, ends_at, capacity 2–50, rules[], audience: verified\|chats\|invite} (verified, not Safe Mode, 1 live party, 3 created/day) → party (+ `invite_code` for audience invite) |
+| GET | /parties/{id}?code= | party; host view adds `requests: [{profile, state, at, vouches}]` and `invite_code` |
+| PATCH | /parties/{id} | host: {status: open\|full\|ended\|cancelled, cohost_profile_id?} |
+| POST | /parties/{id}/request | {code?} (verified) → party (`my_state: pending`) |
+| POST | /parties/{id}/requests/{profile_id}/accept\|decline\|remove | host or co-host; accept is transactional and sets `full` at capacity |
+| POST | /parties/{id}/leave · /rate {up} · /report {reason} | rate: accepted guests after end; 2 reports → hidden pending review |
+Party: `{id, title, host: card, starts_at, ends_at, capacity, seats_taken, rules, audience, status, distance, my_state: host\|pending\|accepted\|declined\|left\|null, rating?}`. Socket topic `party:{id}` → `seats` updates. Address and door code are never sent to the server: the host sends them E2EE in the guest group chat.
 
-### Activities & clubs (F-11)
-| GET/POST | /activities · POST /activities/{id}/rsvp | |
-| GET/POST | /clubs · POST /clubs/{id}/join · admin endpoints | |
+### Activities & clubs (F-11) — Sport profile
+| GET | /activities?sports= | → {posts: [post]} nearby, not expired |
+| POST | /activities | {sport, title, place_text?, venue_id?, starts_at, capacity?, intent, club_id?} (verified, Sport profile else 409 `sport_profile_required`, ≤ 3 live; expires start + 3 h) |
+| DELETE | /activities/{id} | host |
+| POST | /activities/{id}/rsvp | {going: bool} (capacity checked in a transaction) |
+| GET | /activities/{id}/members · DELETE /activities/{id}/members/{profile_id} | host and going members only · host removes |
+| GET/POST | /clubs | list nearby (r5) / create {name, description, sport, join_policy: open\|approval} (verified, account ≥ 30 days) |
+| GET | /clubs/{id} | club + `events`; members see `member_list` |
+| POST | /clubs/{id}/join · /leave · /members/{profile_id}/approve\|remove\|promote | admin actions for admins |
 
 ### Venues (F-12)
-| GET | /venues/nearby?cell_r8 | |
-| POST | /venues/{id}/checkin {visible} · POST /venues/{id}/checkout | |
-| GET | /venues/{id}/here | visible checked-in only, caller must be checked in |
+| GET | /venues/nearby?mode | → {venues: [{id, name, kind, here: "0"\|"a_few"\|n, distance}]}; kinds by mode (gym only in Sport) |
+| POST | /venues/{id}/checkin?mode | {visible, zone? ≤ 40} (verified, not Safe Mode, ≤ 1.5 km from the venue cell) → here; one check-in per account, auto check-out after 4 h |
+| PATCH | /venues/{id}/checkin | {visible?, zone?} |
+| POST | /venues/checkout | |
+| GET | /venues/{id}/here | 403 unless checked in here; invisible callers see nobody. → {venue, me, stats: {total, visible_to_you, tapped_you}, people: [{profile, zone, since, tapped_me}]} |
+
+### Group chats (parties, activities, clubs)
+MLS groups like 1:1 chats. `context` = `party:{id}` \| `activity:{id}` \| `club:{id}` on `/mls/keypackages/claim` and `/mls/messages` lets members of the same party, activity or club reach each other without first-contact rules and without counting as new contacts. The host (party host, activity host, first club admin) adds and removes members with MLS commits when the member list changes. Welcome wire: `sha256(kp) ‖ '{"ctx":"…"}\n' ‖ Welcome`. Sender name and group title travel inside the E2EE payload.
 
 ### Messaging (F-07, F-08) — MLS Delivery Service
 One MLS identity per (own profile, device): credential identity = `{"p": profile_id, "d": device_id}`. The server routes by (profile, device) and stores ciphertext only (AC-07.1).
@@ -114,8 +129,8 @@ One MLS identity per (own profile, device): credential identity = `{"p": profile
 |---|---|---|
 | GET | /mls/keypackages | → {counts: {profile_id: {count, last_resort}}, device_id} for this device |
 | POST | /mls/keypackages | {profile_id, key_packages: [b64] (≤ 200 stored per device), last_resort?: b64 (replaces previous)} → {counts, device_id} |
-| POST | /mls/keypackages/claim | {from_profile_id, to_profile_id} → {key_packages: [{id, device_id, key_package}]}, one per recipient device, single-use (last-resort reused). First contact needs caller verified unless replying (R-07.2); recipient without packages → 409 `unavailable` |
-| POST | /mls/messages | {from_profile_id, group_id: b64, franking_tag?: b64, envelopes: [{to_profile_id, to_device_id, kind: welcome\|commit\|app, key_package_id?, ciphertext: b64 ≤ 256 KB}] ≤ 200} → {delivered: [profile_id], undelivered: [profile_id]}. Blocked recipients land in `undelivered` (generic "Not delivered", no block reveal). New-contact limit 30/h. Emits `message.new` (no content) + push |
+| POST | /mls/keypackages/claim | {from_profile_id, to_profile_id, context?} → {key_packages: [{id, device_id, key_package}]}, one per recipient device, single-use (last-resort reused). First contact needs caller verified unless replying (R-07.2); recipient without packages → 409 `unavailable` |
+| POST | /mls/messages | {from_profile_id, group_id: b64, franking_tag?: b64, context?, envelopes: [{to_profile_id, to_device_id, kind: welcome\|commit\|app, key_package_id?, ciphertext: b64 ≤ 256 KB}] ≤ 200} → {delivered: [profile_id], undelivered: [profile_id]}. Blocked recipients land in `undelivered` (generic "Not delivered", no block reveal). New-contact limit 30/h. Emits `message.new` (no content) + push |
 | GET | /mls/messages?after= | → {messages: [{id, to_profile_id, from_profile_id, group_id, kind, key_package_id, ciphertext, at}]} for this device, ≤ 200 |
 | POST | /mls/messages/ack | {ids} → deletes them (R-07.12); unacked swept after 30 d |
 | POST | /media/upload | {size ≤ 210 MB, ttl_s?, album?: bool} → 201 {blob_id, put_url}; ciphertext only (AES-256-GCM on device). Chat media ≤ 30 d; album items until deleted |

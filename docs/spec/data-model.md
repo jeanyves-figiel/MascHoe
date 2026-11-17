@@ -74,25 +74,26 @@ Exact coordinates are **not** here (Valkey).
 | profile_id pk · status enum(now, hosting, can_travel, door_open) · text · created_at · expires_at |
 
 ### tonight_plans
-| id · profile_id · window_start · window_end · text (140) · tag enum(hosting, can_travel, drinks_first, party, other) · cell_r8 · expires_at (06:00 local) |
+| id · profile_id · window_start · window_end · text (140) · tag enum(hosting, can_travel, drinks_first, party, other) · audience enum(verified, chats) · cell_r8 · cell_r5 · expires_at (06:00 local, from tz_offset_min) |
 
 ### parties
-| id · host_profile_id · title · starts_at · ends_at · capacity · rules[] · audience enum(verified, chats, invite) · cell_r8 · status enum(open, full, live, ended, cancelled) |
+| id · host_profile_id · cohost_profile_id null · title · starts_at · ends_at · capacity · rules[] · audience enum(verified, chats, invite) · invite_code null · cell_r8 · cell_r5 · status enum(open, full, live, ended, cancelled) · hidden bool (2 reports) |
 ### party_requests
-| party_id · profile_id · state enum(pending, accepted, declined, left) · created_at |
+| party_id · profile_id · state enum(pending, accepted, declined, left) · rating null (up/down after end) · created_at |
+### party_reports (party_id, reporter_account, reason, created_at; unique pair)
 Address/door code: E2EE message to accepted guests, never in DB.
 
 ### activity_posts
-| id · profile_id · sport · title · place_text · venue_id null · starts_at · capacity null · intent enum(just_sport, open_to_more) · cell_r8 · expires_at |
+| id · profile_id · club_id null · sport · title · place_text · venue_id null · starts_at · capacity null · intent enum(just_sport, open_to_more) · cell_r8 · cell_r5 · expires_at (start + 3 h) |
 ### activity_rsvps (post_id, profile_id, state)
 
 ### clubs / club_members
-| clubs: id · name · sport · city_cell_r5 · description · admin_profile_ids[] · verified_club bool |
-| club_members: club_id · profile_id · role enum(member, admin) · state enum(requested, member) |
+| clubs: id · name · sport · cell_r5 · description · join_policy enum(open, approval) · verified_club bool · created_at |
+| club_members: club_id · profile_id · role enum(member, admin) · state enum(requested, member) · joined_at (first admin = owner, runs the club chat) |
 
 ### venues / venue_checkins
-| venues: id · name · kind enum(sauna, bar, club, gym, other) · cell_r9 · geofence_radius_m · added_by enum(team, partner) |
-| venue_checkins: venue_id · profile_id · visible bool · checked_in_at · auto_out_at |
+| venues: id · name · kind enum(sauna, bar, club, gym, other) · cell_r9 · cell_r5 · geofence_radius_m · hours null · tz_offset_min · added_by enum(team, partner) |
+| venue_checkins: venue_id · profile_id (PK) · visible bool · zone (40) null · checked_in_at · auto_out_at (4 h); row deleted at check-out |
 
 ### taps (from_profile_id, to_profile_id, seen, created_at; unique pair; swept after 7 d)
 ### profile_hides (account_id, profile_id) — hidden from the viewer's Explore

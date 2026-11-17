@@ -1,78 +1,40 @@
-import React, { useCallback, useEffect, useState } from "react";
-import {
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  Text,
-  View,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { api, ApiError } from "../api/client";
-import { useOptions } from "../api/options";
-import { useSession } from "../app/session";
-import { distanceLabel, opt, tx } from "../i18n/app";
-import { color, radius, space, type } from "../theme/tokens";
-import {
-  Banner,
-  Button,
-  Chip,
-  Chips,
-  EmptyState,
-  ListRow,
-  Loading,
-  Photo,
-  useAccent,
-  VerifiedTick,
-} from "../ui";
-import { PlanSheet } from "./PlanSheet";
-import type { Club, MyPlan, Party, Plan, Post, Venue } from "./types";
-import { day, time } from "./types";
+import React, { useCallback, useEffect, useState } from 'react';
+import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { api, ApiError } from '../api/client';
+import { useOptions } from '../api/options';
+import { useSession } from '../app/session';
+import { distanceLabel, opt, tx } from '../i18n/app';
+import { color, radius, space, type } from '../theme/tokens';
+import { Banner, Button, Chip, Chips, EmptyState, ListRow, Loading, Photo, useAccent, VerifiedTick } from '../ui';
+import { PlanSheet } from './PlanSheet';
+import type { Club, MyPlan, Party, Plan, Post, Venue } from './types';
+import { day, time } from './types';
 
 type Nav = { navigate: (s: string, p?: object) => void };
-type Win = "now2" | "now4" | "late";
+type Win = 'now2' | 'now4' | 'late';
 
 function windowRange(w: Win): [Date, Date] {
   const from = new Date();
-  if (w === "now2") return [from, new Date(from.getTime() + 2 * 3600e3)];
-  if (w === "now4") return [from, new Date(from.getTime() + 4 * 3600e3)];
+  if (w === 'now2') return [from, new Date(from.getTime() + 2 * 3600e3)];
+  if (w === 'now4') return [from, new Date(from.getTime() + 4 * 3600e3)];
   const to = new Date(from);
   to.setHours(27, 0, 0, 0);
   return [from, to];
 }
 
-export function Who({
-  p,
-  sub,
-  onPress,
-  right,
-}: {
-  p: Plan["profile"];
-  sub?: string;
-  onPress?: () => void;
-  right?: React.ReactNode;
-}) {
+export function Who({ p, sub, onPress, right }: { p: Plan['profile']; sub?: string; onPress?: () => void; right?: React.ReactNode }) {
   return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={{ flexDirection: "row", alignItems: "center", gap: space.m }}
-    >
-      <Photo
-        uri={p.photo}
-        id={p.id}
-        label=""
-        style={{ width: 44, height: 44, borderRadius: 22 }}
-      />
+    <Pressable accessibilityRole="button" onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', gap: space.m }}>
+      <Photo uri={p.photo} id={p.id} label="" style={{ width: 44, height: 44, borderRadius: 22 }} />
       <View style={{ flex: 1 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
           <Text style={{ ...type.headline, color: color.fgPrimary }}>
             {p.display_name}, {p.age}
           </Text>
           {p.verified ? <VerifiedTick size={13} /> : null}
         </View>
-        {sub ? (
-          <Text style={{ ...type.meta, color: color.fgSecondary }}>{sub}</Text>
-        ) : null}
+        {sub ? <Text style={{ ...type.meta, color: color.fgSecondary }}>{sub}</Text> : null}
       </View>
       {right}
     </Pressable>
@@ -95,20 +57,13 @@ export function PartyCard({ p, onPress }: { p: Party; onPress: () => void }) {
         borderColor: accent,
       }}
     >
-      <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-        <Text
-          style={{ ...type.caption, color: accent, textTransform: "uppercase" }}
-        >
-          🎉 {tx.party.status[p.status]}
-        </Text>
-        <Text style={{ ...type.caption, color: color.fgSecondary }}>
-          {tx.party.seats(p.seats_taken, p.capacity)}
-        </Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+        <Text style={{ ...type.caption, color: accent, textTransform: 'uppercase' }}>🎉 {tx.party.status[p.status]}</Text>
+        <Text style={{ ...type.caption, color: color.fgSecondary }}>{tx.party.seats(p.seats_taken, p.capacity)}</Text>
       </View>
       <Text style={{ ...type.title, color: color.fgPrimary }}>{p.title}</Text>
       <Text style={{ ...type.meta, color: color.fgSecondary }}>
-        {day(p.starts_at)}–{time(p.ends_at)} · {distanceLabel(p.distance)} ·{" "}
-        {p.host.display_name}
+        {day(p.starts_at)}–{time(p.ends_at)} · {distanceLabel(p.distance)} · {p.host.display_name}
       </Text>
     </Pressable>
   );
@@ -120,7 +75,7 @@ export function TonightScreen({ navigation }: { navigation: Nav }) {
   const insets = useSafeAreaInsets();
   const accent = useAccent();
   const options = useOptions();
-  const [win, setWin] = useState<Win>("now4");
+  const [win, setWin] = useState<Win>('now4');
   const [plans, setPlans] = useState<Plan[] | null>(null);
   const [mine, setMine] = useState<MyPlan[]>([]);
   const [parties, setParties] = useState<Party[]>([]);
@@ -131,36 +86,22 @@ export function TonightScreen({ navigation }: { navigation: Nav }) {
   const [sheet, setSheet] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const sport = mode === "sport";
+  const sport = mode === 'sport';
 
   const load = useCallback(async () => {
     try {
-      const v = await api<{ venues: Venue[] }>(
-        "GET",
-        `/venues/nearby?mode=${mode}`,
-      );
+      const v = await api<{ venues: Venue[] }>('GET', `/venues/nearby?mode=${mode}`);
       setErr(null);
       setVenues(v.venues);
       if (sport) {
-        const [a, c] = await Promise.all([
-          api<{ posts: Post[] }>(
-            "GET",
-            `/activities?sports=${sports.join(",")}`,
-          ),
-          api<{ clubs: Club[] }>("GET", "/clubs"),
-        ]);
+        const [a, c] = await Promise.all([api<{ posts: Post[] }>('GET', `/activities?sports=${sports.join(',')}`), api<{ clubs: Club[] }>('GET', '/clubs')]);
         setPosts(a.posts);
         setClubs(c.clubs);
       } else {
         const [from, to] = windowRange(win);
         const [t, p] = await Promise.all([
-          api<{ plans: Plan[]; mine: MyPlan[] }>(
-            "GET",
-            `/tonight?mode=${mode}&from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}`,
-          ),
-          mode === "hookup"
-            ? api<{ parties: Party[] }>("GET", "/parties")
-            : Promise.resolve({ parties: [] as Party[] }),
+          api<{ plans: Plan[]; mine: MyPlan[] }>('GET', `/tonight?mode=${mode}&from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}`),
+          mode === 'hookup' ? api<{ parties: Party[] }>('GET', '/parties') : Promise.resolve({ parties: [] as Party[] }),
         ]);
         setPlans(t.plans);
         setMine(t.mine);
@@ -182,16 +123,10 @@ export function TonightScreen({ navigation }: { navigation: Nav }) {
     load().finally(() => setRefreshing(false));
   };
 
-  const noLoc = !me.location?.level || me.location.level === "hidden";
-  const featured = parties
-    .filter(
-      (p) =>
-        p.my_state === "host" ||
-        p.my_state === "accepted" ||
-        p.status === "open" ||
-        p.status === "live",
-    )
-    .slice(0, 2);
+  const noLoc = !me.location?.level || me.location.level === 'hidden';
+  // S-13 featured parties: mine (hosting / going / requested) first, then the open ones nearby.
+  const rank = (p: Party) => (p.my_state === 'host' ? 0 : p.my_state === 'accepted' ? 1 : p.my_state === 'pending' ? 2 : 3);
+  const featured = parties.filter((p) => rank(p) < 3 || p.status === 'open' || p.status === 'live').sort((a, b) => rank(a) - rank(b));
 
   return (
     <View
@@ -208,88 +143,43 @@ export function TonightScreen({ navigation }: { navigation: Nav }) {
           gap: space.l,
           paddingBottom: 160,
         }}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={refresh}
-            tintColor={accent}
-          />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={accent} />}
       >
-        <Text
-          accessibilityRole="header"
-          style={{ ...type.display, color: color.fgPrimary }}
-        >
+        <Text accessibilityRole="header" style={{ ...type.display, color: color.fgPrimary }}>
           {sport ? tx.tonight.sportTitle : tx.tonight.title}
         </Text>
         {noLoc ? <Banner tone="trust" text={tx.tonight.noLocation} /> : null}
-        {!me.verified ? (
-          <Banner
-            tone="warn"
-            text={tx.tonight.verify}
-            onPress={() => navigation.navigate("Verify")}
-          />
-        ) : null}
+        {!me.verified ? <Banner tone="warn" text={tx.tonight.verify} onPress={() => navigation.navigate('Verify')} /> : null}
         {err ? <Banner tone="danger" text={err} onPress={refresh} /> : null}
 
         {sport ? (
           <>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: space.s }}
-            >
-              <Chip
-                label={tx.sport.all}
-                on={sports.length === 0}
-                onPress={() => setSports([])}
-              />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.s }}>
+              <Chip label={tx.sport.all} on={sports.length === 0} onPress={() => setSports([])} />
               {(options?.options.sports ?? []).map((s) => (
-                <Chip
-                  key={s}
-                  label={opt(s)}
-                  on={sports.includes(s)}
-                  onPress={() =>
-                    setSports(
-                      sports.includes(s)
-                        ? sports.filter((x) => x !== s)
-                        : [...sports, s],
-                    )
-                  }
-                />
+                <Chip key={s} label={opt(s)} on={sports.includes(s)} onPress={() => setSports(sports.includes(s) ? sports.filter((x) => x !== s) : [...sports, s])} />
               ))}
             </ScrollView>
             <View style={{ gap: space.s }}>
               <View
                 style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  alignItems: "center",
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
                 }}
               >
-                <Text style={{ ...type.headline, color: color.fgPrimary }}>
-                  {tx.sport.clubs}
-                </Text>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => navigation.navigate("ClubNew")}
-                >
-                  <Text style={{ ...type.meta, color: accent }}>
-                    ＋ {tx.sport.newClub}
-                  </Text>
+                <Text style={{ ...type.headline, color: color.fgPrimary }}>{tx.sport.clubs}</Text>
+                <Pressable accessibilityRole="button" onPress={() => navigation.navigate('ClubNew')}>
+                  <Text style={{ ...type.meta, color: accent }}>＋ {tx.sport.newClub}</Text>
                 </Pressable>
               </View>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: space.s }}
-              >
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.s }}>
                 {clubs.map((c) => (
                   <Pressable
                     key={c.id}
                     testID={`club-${c.name}`}
                     accessibilityRole="button"
-                    onPress={() => navigation.navigate("Club", { id: c.id })}
+                    onPress={() => navigation.navigate('Club', { id: c.id })}
                     style={{
                       width: 170,
                       padding: space.m,
@@ -298,23 +188,14 @@ export function TonightScreen({ navigation }: { navigation: Nav }) {
                       gap: 4,
                     }}
                   >
-                    <Text
-                      numberOfLines={1}
-                      style={{ ...type.headline, color: color.fgPrimary }}
-                    >
-                      {c.verified_club ? "✓ " : ""}
+                    <Text numberOfLines={1} style={{ ...type.headline, color: color.fgPrimary }}>
+                      {c.verified_club ? '✓ ' : ''}
                       {c.name}
                     </Text>
                     <Text style={{ ...type.meta, color: color.fgSecondary }}>
                       {opt(c.sport)} · {tx.sport.members(c.members)}
                     </Text>
-                    {c.my_state ? (
-                      <Text style={{ ...type.caption, color: accent }}>
-                        {c.my_state === "member"
-                          ? tx.sport.joined
-                          : tx.sport.pending}
-                      </Text>
-                    ) : null}
+                    {c.my_state ? <Text style={{ ...type.caption, color: accent }}>{c.my_state === 'member' ? tx.sport.joined : tx.sport.pending}</Text> : null}
                   </Pressable>
                 ))}
               </ScrollView>
@@ -329,7 +210,7 @@ export function TonightScreen({ navigation }: { navigation: Nav }) {
                   key={p.id}
                   testID={`post-${p.title}`}
                   accessibilityRole="button"
-                  onPress={() => navigation.navigate("Activity", { post: p })}
+                  onPress={() => navigation.navigate('Activity', { post: p })}
                   style={{
                     padding: space.l,
                     borderRadius: radius.md,
@@ -339,34 +220,28 @@ export function TonightScreen({ navigation }: { navigation: Nav }) {
                 >
                   <View
                     style={{
-                      flexDirection: "row",
-                      justifyContent: "space-between",
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
                     }}
                   >
                     <Text
                       style={{
                         ...type.caption,
                         color: accent,
-                        textTransform: "uppercase",
+                        textTransform: 'uppercase',
                       }}
                     >
                       {opt(p.sport)}
                     </Text>
-                    <Text style={{ ...type.caption, color: color.fgSecondary }}>
-                      {tx.sport.going(p.joined, p.capacity)}
-                    </Text>
+                    <Text style={{ ...type.caption, color: color.fgSecondary }}>{tx.sport.going(p.joined, p.capacity)}</Text>
                   </View>
-                  <Text style={{ ...type.title, color: color.fgPrimary }}>
-                    {p.title}
-                  </Text>
+                  <Text style={{ ...type.title, color: color.fgPrimary }}>{p.title}</Text>
                   <Text style={{ ...type.meta, color: color.fgSecondary }}>
                     {day(p.starts_at)}
-                    {p.place ? ` · ${p.place}` : ""} ·{" "}
-                    {distanceLabel(p.distance)}
+                    {p.place ? ` · ${p.place}` : ''} · {distanceLabel(p.distance)}
                   </Text>
                   <Text style={{ ...type.meta, color: color.fgMuted }}>
-                    {p.club ? p.club.name : p.host.display_name} ·{" "}
-                    {tx.sport.intent[p.intent]}
+                    {p.club ? p.club.name : p.host.display_name} · {tx.sport.intent[p.intent]}
                   </Text>
                 </Pressable>
               ))
@@ -376,23 +251,15 @@ export function TonightScreen({ navigation }: { navigation: Nav }) {
           <>
             {featured.length ? (
               <View style={{ gap: space.s }}>
-                <Text style={{ ...type.headline, color: color.fgPrimary }}>
-                  {tx.tonight.parties}
-                </Text>
+                <Text style={{ ...type.headline, color: color.fgPrimary }}>{tx.tonight.parties}</Text>
                 {featured.map((p) => (
-                  <PartyCard
-                    key={p.id}
-                    p={p}
-                    onPress={() => navigation.navigate("Party", { id: p.id })}
-                  />
+                  <PartyCard key={p.id} p={p} onPress={() => navigation.navigate('Party', { id: p.id })} />
                 ))}
               </View>
             ) : null}
             {mine.length ? (
               <View style={{ gap: space.s }}>
-                <Text style={{ ...type.headline, color: color.fgPrimary }}>
-                  {tx.tonight.mine}
-                </Text>
+                <Text style={{ ...type.headline, color: color.fgPrimary }}>{tx.tonight.mine}</Text>
                 {mine.map((m) => (
                   <View
                     key={m.id}
@@ -400,52 +267,33 @@ export function TonightScreen({ navigation }: { navigation: Nav }) {
                       padding: space.m,
                       borderRadius: radius.md,
                       backgroundColor: color.bgRaised,
-                      flexDirection: "row",
-                      alignItems: "center",
+                      flexDirection: 'row',
+                      alignItems: 'center',
                       gap: space.m,
                     }}
                   >
                     <View style={{ flex: 1 }}>
-                      <Text style={{ ...type.body, color: color.fgPrimary }}>
-                        {m.text}
-                      </Text>
+                      <Text style={{ ...type.body, color: color.fgPrimary }}>{m.text}</Text>
                       <Text style={{ ...type.meta, color: color.fgSecondary }}>
-                        {time(m.window_start)}–{time(m.window_end)} ·{" "}
-                        {tx.tonight.tags[m.tag]} ·{" "}
-                        {tx.tonight.audiences[m.audience]}
+                        {time(m.window_start)}–{time(m.window_end)} · {tx.tonight.tags[m.tag]} · {tx.tonight.audiences[m.audience]}
                       </Text>
                     </View>
-                    <Pressable
-                      accessibilityRole="button"
-                      onPress={() =>
-                        api("DELETE", `/tonight/${m.id}`).then(load)
-                      }
-                    >
-                      <Text style={{ ...type.meta, color: color.danger }}>
-                        {tx.tonight.remove}
-                      </Text>
+                    <Pressable accessibilityRole="button" onPress={() => api('DELETE', `/tonight/${m.id}`).then(load)}>
+                      <Text style={{ ...type.meta, color: color.danger }}>{tx.tonight.remove}</Text>
                     </Pressable>
                   </View>
                 ))}
               </View>
             ) : null}
             <Chips>
-              {(["now2", "now4", "late"] as Win[]).map((w) => (
-                <Chip
-                  key={w}
-                  label={tx.tonight.window[w]}
-                  on={win === w}
-                  onPress={() => setWin(w)}
-                />
+              {(['now2', 'now4', 'late'] as Win[]).map((w) => (
+                <Chip key={w} label={tx.tonight.window[w]} on={win === w} onPress={() => setWin(w)} />
               ))}
             </Chips>
             {plans === null ? (
               <Loading />
             ) : plans.length === 0 ? (
-              <EmptyState
-                title={tx.tonight.empty}
-                body={tx.tonight.emptyBody}
-              />
+              <EmptyState title={tx.tonight.empty} body={tx.tonight.emptyBody} />
             ) : (
               plans.map((p) => (
                 <View
@@ -460,14 +308,12 @@ export function TonightScreen({ navigation }: { navigation: Nav }) {
                   <Who
                     p={p.profile}
                     sub={distanceLabel(p.distance)}
-                    onPress={() =>
-                      navigation.navigate("Profile", { id: p.profile.id })
-                    }
+                    onPress={() => navigation.navigate('Profile', { id: p.profile.id })}
                     right={
                       <Pressable
                         accessibilityRole="button"
                         onPress={() =>
-                          navigation.navigate("Chat", {
+                          navigation.navigate('Chat', {
                             profileId: p.profile.id,
                             name: p.profile.display_name,
                           })
@@ -477,30 +323,17 @@ export function TonightScreen({ navigation }: { navigation: Nav }) {
                           height: 32,
                           borderRadius: radius.pill,
                           backgroundColor: accent,
-                          justifyContent: "center",
+                          justifyContent: 'center',
                         }}
                       >
-                        <Text style={{ ...type.meta, color: color.onAccent }}>
-                          {tx.explore.quick.message}
-                        </Text>
+                        <Text style={{ ...type.meta, color: color.onAccent }}>{tx.explore.quick.message}</Text>
                       </Pressable>
                     }
                   />
-                  <Text style={{ ...type.body, color: color.fgPrimary }}>
-                    {p.text}
-                  </Text>
+                  <Text style={{ ...type.body, color: color.fgPrimary }}>{p.text}</Text>
                   <Chips>
-                    <Chip
-                      label={`${time(p.window_start)}–${time(p.window_end)}`}
-                      on={false}
-                      onPress={() => {}}
-                    />
-                    <Chip
-                      label={tx.tonight.tags[p.tag]}
-                      on
-                      fill={accent}
-                      onPress={() => {}}
-                    />
+                    <Chip label={`${time(p.window_start)}–${time(p.window_end)}`} on={false} onPress={() => {}} />
+                    <Chip label={tx.tonight.tags[p.tag]} on fill={accent} onPress={() => {}} />
                   </Chips>
                 </View>
               ))
@@ -520,13 +353,7 @@ export function TonightScreen({ navigation }: { navigation: Nav }) {
               {tx.tonight.venues}
             </Text>
             {venues.slice(0, 5).map((v) => (
-              <ListRow
-                key={v.id}
-                testID={`venue-${v.name}`}
-                title={`${tx.venue.kinds[v.kind]} · ${v.name}`}
-                sub={`${distanceLabel(v.distance)} · ${tx.venue.here(v.here)}`}
-                onPress={() => navigation.navigate("Venue", { venue: v })}
-              />
+              <ListRow key={v.id} testID={`venue-${v.name}`} title={`${tx.venue.kinds[v.kind]} · ${v.name}`} sub={`${distanceLabel(v.distance)} · ${tx.venue.here(v.here)}`} onPress={() => navigation.navigate('Venue', { venue: v })} />
             ))}
           </View>
         ) : null}
@@ -534,33 +361,20 @@ export function TonightScreen({ navigation }: { navigation: Nav }) {
 
       <View
         style={{
-          position: "absolute",
+          position: 'absolute',
           left: space.l,
           right: space.l,
           bottom: insets.bottom + 76,
-          flexDirection: "row",
+          flexDirection: 'row',
           gap: space.s,
         }}
       >
         <View style={{ flex: 1 }}>
-          <Button
-            testID="tonight-post"
-            title={sport ? tx.sport.post : tx.tonight.post}
-            onPress={() =>
-              sport ? navigation.navigate("ActivityNew") : setSheet(true)
-            }
-            disabled={!me.verified}
-          />
+          <Button testID="tonight-post" title={sport ? tx.sport.post : tx.tonight.post} onPress={() => (sport ? navigation.navigate('ActivityNew') : setSheet(true))} disabled={!me.verified} />
         </View>
-        {mode === "hookup" ? (
+        {mode === 'hookup' ? (
           <View style={{ flex: 1 }}>
-            <Button
-              testID="tonight-host"
-              kind="secondary"
-              title={tx.tonight.host}
-              onPress={() => navigation.navigate("PartyNew")}
-              disabled={!me.verified}
-            />
+            <Button testID="tonight-host" kind="secondary" title={tx.tonight.host} onPress={() => navigation.navigate('PartyNew')} disabled={!me.verified} />
           </View>
         ) : null}
       </View>

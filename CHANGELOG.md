@@ -6,6 +6,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **B3 Social** (issue 37, full beta build), server:
+  - Tonight board (F-09): plans with time window, tag and audience; 10 km area widened to 25 km when sparse; 2 live plans per profile; expiry at 06:00 local.
+  - Parties (F-10): create (verified, not Safe Mode, 1 live, 3/day), list, invite codes, requests, transactional accept with seat count and auto-full, decline, remove, leave, co-host, status changes, ratings, reports (2 → hidden). Seat updates on socket topic `party:{id}`; push for requests, accepts and status.
+  - Activities and clubs (F-11): Sport-profile posts with RSVP and capacity, members, host removal; clubs with open or approval join, admin approve/remove/promote, events.
+  - Venues and check-in (F-12): nearby venues by mode, check-in within 1.5 km (verified, not Safe Mode), visible toggle and zone, 4 h auto check-out, who-is-here only for checked-in visible people, stats.
+  - Group chat context on key-package claims and messages: members of the same party, activity or club skip first-contact rules.
+  - DEV seeds: four fictional Zurich venues.
+- **B3 Social** (issue 37), app:
+  - Tonight tab (S-13): featured parties, my plans, time window chips, plan cards with Message, nearby venues, post-a-plan sheet, host-a-party.
+  - Party (S-14, S-15): host view with requests, guests, invite code, mark full / end / cancel, E2EE address sending; guest view with request, status, leave, rate, report.
+  - Sport mode: activity feed with sport filter, activity detail and post, clubs (create, join, admin approval), club and activity chats.
+  - Venue (S-17): check in, visible toggle, zone, who is here, check out.
+  - Encrypted group chats (MLS) for parties, activities and clubs: host-managed membership, sender names, "Parties & groups" inbox section.
 - **B2 Chat** (issue 37, full beta build), server:
   - MLS delivery service: per-device key packages (claim, last resort), ciphertext routing to (profile, device), pull and ack, 30-day sweep, franking tags, block → generic "not delivered", first-contact verification and 30/h new-contact limit.
   - E2EE media blobs (`/media`): presigned upload/download of ciphertext, owner delete, album items kept until deleted.

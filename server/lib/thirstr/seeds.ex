@@ -49,6 +49,7 @@ defmodule Thirstr.Seeds do
 
   def run(count \\ 5000) do
     seed_cities()
+    seed_venues()
 
     if Repo.query!("SELECT count(*) FROM profiles WHERE seeded").rows == [[0]] do
       :rand.seed(:exsss, {20_261_117, 7443, 5})
@@ -59,6 +60,29 @@ defmodule Thirstr.Seeds do
     end
 
     :ok
+  end
+
+  # F-12 DEV venues (testing.md): a few fictional places in Zurich so check-in can be tried.
+  @seed_venues [
+    {"Dampfbad Kreis 4", "sauna", 47.3769, 8.5417},
+    {"Bar Neon", "bar", 47.3745, 8.5300},
+    {"Club Lagerhaus", "club", 47.3890, 8.5170},
+    {"Iron Gym Letten", "gym", 47.3870, 8.5300}
+  ]
+
+  defp seed_venues do
+    Enum.each(@seed_venues, fn {name, kind, lat, lng} ->
+      Repo.query!(
+        """
+        INSERT INTO venues (id, name, kind, cell_r9, cell_r5, created_at)
+        SELECT gen_random_uuid(), $1::text, $2::text,
+               h3_lat_lng_to_cell(point($4::float8, $3::float8), 9)::bigint,
+               h3_lat_lng_to_cell(point($4::float8, $3::float8), 5)::bigint, now()
+        WHERE NOT EXISTS (SELECT 1 FROM venues WHERE name = $1)
+        """,
+        [name, kind, lat, lng]
+      )
+    end)
   end
 
   defp seed_cities do
