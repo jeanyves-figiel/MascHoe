@@ -27,10 +27,10 @@ Registrar + DNS: GoDaddy (owner account). Records (TTL 1 h):
 | `_acme-challenge.staging` | CNAME | `staging.thirstr.fun.pk8d8p6.flydns.net` |
 | `api` | A / AAAA | `66.241.125.131` / `2a09:8280:1::20c:7568:0` (`thirstr-api-prod`) |
 | `_acme-challenge.api` | CNAME | `api.thirstr.fun.29xzx8w.flydns.net` |
-| `@` (apex) | A / AAAA | same as `api` (`thirstr-api-prod`, marketing site W-01, #40) |
-| `_acme-challenge` | CNAME | from `addCertificate(thirstr.fun)` |
-| `www` | CNAME | `thirstr-api-prod.fly.dev` (Plug 301 → apex) |
-| `_acme-challenge.www` | CNAME | from `addCertificate(www.thirstr.fun)` |
+| `@` (apex) | A / AAAA | `66.241.125.131` / `2a09:8280:1::20c:7568:0` (`thirstr-api-prod`, marketing site W-01, #40; replaced GoDaddy parking) |
+| `_acme-challenge` | CNAME | Fly DNS-01 target from `addCertificate(thirstr.fun)` |
+| `www` | CNAME | `thirstr.fun` (same app; `Plugs.Site` 301 → apex) |
+| `_acme-challenge.www` | CNAME | Fly DNS-01 target from `addCertificate(www.thirstr.fun)` |
 
 Fly certificates (Let's Encrypt, auto-renew) were added with GraphQL `addCertificate(appId, hostname)`; check with `checkCertificate` or `flyctl certs show <host> -a <app>`. IPs come from `app { sharedIpAddress ipAddresses }`. New host: add cert → add the 3 records → wait for `clientStatus: Ready` → change `PHX_HOST`/`APP_URL`/`WEBAUTHN_*` in the toml.
 
