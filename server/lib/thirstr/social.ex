@@ -90,6 +90,8 @@ defmodule Thirstr.Social do
          tapped: tapped?(mine, t.id),
          tapped_me: tapped_me?(mine, t.id),
          vouches: Thirstr.Trust.vouch_count(t.id),
+         vouched: Thirstr.Trust.vouched?(viewer, t.id),
+         can_vouch: t.account_id != viewer.id and Thirstr.Trust.can_vouch?(viewer, t.id),
          badges: Thirstr.Trust.badges(t),
          linked_accounts: Thirstr.Trust.linked_accounts(t.id, audience),
          updated_at: t.updated_at,

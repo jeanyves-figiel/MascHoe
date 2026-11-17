@@ -266,7 +266,7 @@ defmodule Thirstr.Parties do
         reqs =
           Repo.query!(
             """
-            SELECT r.profile_id::text, r.state, r.created_at, 0
+            SELECT r.profile_id::text, r.state, r.created_at, vouch_count(r.profile_id)
             FROM party_requests r WHERE r.party_id = $1 AND r.state IN ('pending', 'accepted')
             ORDER BY r.created_at
             """,

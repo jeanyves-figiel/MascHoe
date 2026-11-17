@@ -21,6 +21,63 @@ defmodule ThirstrWeb.Router do
     plug ThirstrWeb.Plugs.RateLimit, bucket: "email", limit: 5, window: 3600
   end
 
+  # Admin console (admin-console.md): owner-only, cookie session, CSRF on every form.
+  pipeline :admin do
+    plug :accepts, ["html", "json"]
+
+    plug Plug.Session,
+      store: :cookie,
+      key: "_thirstr_admin",
+      signing_salt: "adm1n-c0ns0le",
+      encryption_salt: "adm1n-c0ns0le-enc",
+      same_site: "Strict",
+      http_only: true,
+      max_age: 8 * 3600
+
+    plug :fetch_session
+    plug :protect_from_forgery
+
+    plug :put_secure_browser_headers, %{
+      "content-security-policy" =>
+        "default-src 'self'; img-src 'self' https: http://localhost:9000; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+    }
+
+    plug :admin_enabled
+  end
+
+  pipeline :admin_auth do
+    plug :admin_required
+  end
+
+  defp admin_enabled(conn, opts), do: ThirstrWeb.AdminController.enabled(conn, opts)
+  defp admin_required(conn, opts), do: ThirstrWeb.AdminController.require_admin(conn, opts)
+
+  scope "/admin", ThirstrWeb do
+    pipe_through :admin
+    get "/login", AdminController, :login_page
+    post "/login/options", AdminController, :login_options
+    post "/login", AdminController, :login
+
+    if Application.compile_env(:thirstr, :dev_routes) do
+      get "/dev_login", AdminController, :dev_login
+    end
+  end
+
+  scope "/admin", ThirstrWeb do
+    pipe_through [:admin, :admin_auth]
+    post "/logout", AdminController, :logout
+    get "/", AdminController, :reports
+    get "/reports/:id", AdminController, :report
+    post "/reports/:id/action", AdminController, :report_action
+    get "/photos", AdminController, :photos
+    post "/photos/:id", AdminController, :photo_decision
+    get "/quarantine", AdminController, :quarantine
+    post "/accounts/:id/action", AdminController, :account_action
+    get "/appeals", AdminController, :appeals
+    post "/appeals/:id", AdminController, :appeal_decision
+    get "/audit", AdminController, :audit_log
+  end
+
   # iOS passkeys / universal links (I-03). Apple fetches this without auth.
   scope "/.well-known", ThirstrWeb do
     get "/apple-app-site-association", WellKnownController, :aasa
@@ -149,6 +206,14 @@ defmodule ThirstrWeb.Router do
       patch "/venues/:id/checkin", SceneController, :update_checkin
       post "/venues/checkout", SceneController, :checkout
       get "/venues/:id/here", SceneController, :here
+
+      # B4a: reports (F-15), notices & appeals (R-AD.9), vouches (F-18)
+      post "/reports", TrustController, :report
+      get "/me/notices", TrustController, :notices
+      post "/me/notices/seen", TrustController, :notices_seen
+      post "/me/notices/:id/appeal", TrustController, :appeal
+      post "/profiles/:id/vouch", TrustController, :vouch
+      delete "/profiles/:id/vouch", TrustController, :unvouch
     end
   end
 

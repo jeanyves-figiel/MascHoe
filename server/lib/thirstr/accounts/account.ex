@@ -7,7 +7,7 @@ defmodule Thirstr.Accounts.Account do
   @foreign_key_type :binary_id
   @timestamps_opts [type: :utc_datetime_usec]
 
-  @statuses ~w(active paused quarantined banned deleted)
+  @statuses ~w(active paused quarantined suspended banned deleted)
   @steps ~w(basics location photo verify done)
 
   schema "accounts" do

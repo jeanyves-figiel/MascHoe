@@ -8,10 +8,19 @@ defmodule ThirstrWeb.Plugs.Auth do
   def call(conn, opts) do
     with ["Bearer " <> token] <- get_req_header(conn, "authorization"),
          {:ok, account, device_id} <- Accounts.authenticate_access(token),
-         false <- account.status in ~w(banned deleted) do
+         false <- account.status in ~w(banned deleted),
+         :ok <- suspended_ok(conn, account) do
       touch_seen(account.id)
       conn |> assign(:account, account) |> assign(:device_id, device_id)
     else
+      {:suspended, conn} ->
+        conn
+        |> put_status(403)
+        |> Phoenix.Controller.json(%{
+          error: %{code: "suspended", message: "Your account is suspended. See Account status."}
+        })
+        |> halt()
+
       _ ->
         if opts[:optional] do
           conn
@@ -23,6 +32,24 @@ defmodule ThirstrWeb.Plugs.Auth do
         end
     end
   end
+
+  # Suspended accounts (R-15.14) can read, see notices, appeal, sign out and delete; nothing else.
+  @suspended_writes [
+    ~r{^/v1/me/notices},
+    ~r{^/v1/auth/logout},
+    ~r{^/v1/account$},
+    ~r{^/v1/mls/messages/ack$},
+    ~r{^/v1/me/push$}
+  ]
+  defp suspended_ok(%{method: m}, %{status: "suspended"} = _a) when m in ~w(GET HEAD), do: :ok
+
+  defp suspended_ok(conn, %{status: "suspended"}) do
+    if Enum.any?(@suspended_writes, &Regex.match?(&1, conn.request_path)),
+      do: :ok,
+      else: {:suspended, conn}
+  end
+
+  defp suspended_ok(_, _), do: :ok
 
   # Online dot (F-04): last activity, RAM only, 15 min.
   defp touch_seen(account_id) do
