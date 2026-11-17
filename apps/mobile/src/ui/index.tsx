@@ -102,7 +102,8 @@ export function Button({ title, onPress, kind = 'primary', disabled, busy, testI
 }
 
 export function Chip({ label, on, onPress, disabled, fill }: { label: string; on: boolean; onPress: () => void; disabled?: boolean; fill?: string }) {
-  const accent = fill ?? useAccent();
+  const ctx = useAccent();
+  const accent = fill ?? ctx;
   return (
     <Pressable
       accessibilityRole="checkbox"

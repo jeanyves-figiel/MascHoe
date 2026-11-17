@@ -38,6 +38,7 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
   const [showLocation, setShowLocation] = useState(false);
   const [quick, setQuick] = useState<Card | null>(null);
   const bbox = useRef<[number, number, number, number] | null>(null);
+  const [locTick, setLocTick] = useState(0);
 
   useEffect(() => {
     AsyncStorage.getItem(VIEW_KEY).then((v) => (v === 'grid' || v === 'map') && setView(v));
@@ -50,32 +51,39 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
 
   // Location refresh on open (R-05.8).
   useEffect(() => {
-    syncLocation(me)
-      .then((m) => m && setMe(m))
-      .catch(() => {});
-    const id = setInterval(() => syncLocation(me).then((m) => m && setMe(m)).catch(() => {}), 5 * 60_000);
+    const sync = () =>
+      syncLocation(me)
+        .then((m) => {
+          if (!m) return;
+          setMe(m);
+          setLocTick((t) => t + 1);
+        })
+        .catch(() => {});
+    sync();
+    const id = setInterval(sync, 5 * 60_000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me.location?.level]);
 
-  const reload = useCallback(async () => {
-    setErr(null);
-    try {
-      const [g, t] = await Promise.all([loadGrid(mode, filters), loadTray(mode, filters)]);
-      setItems(g.items);
-      setNext(g.next);
-      setFurtherFrom(g.further_from);
-      setTray(t.items);
-      if (bbox.current) setMapData(await loadMap(mode, filters, bbox.current));
-    } catch (e) {
-      setErr(e instanceof ApiError ? e.message : tx.common.error);
-    }
-  }, [mode, filters]);
+  const reload = useCallback(
+    () =>
+      Promise.all([loadGrid(mode, filters), loadTray(mode, filters), bbox.current ? loadMap(mode, filters, bbox.current) : Promise.resolve(null)]).then(
+        ([g, t, m]) => {
+          setErr(null);
+          setItems(g.items);
+          setNext(g.next);
+          setFurtherFrom(g.further_from);
+          setTray(t.items);
+          if (m) setMapData(m);
+        },
+        (e) => setErr(e instanceof ApiError ? e.message : tx.common.error),
+      ),
+    [mode, filters],
+  );
 
   useEffect(() => {
-    setItems(null);
     reload();
-  }, [reload, me.location?.level]);
+  }, [reload, me.location?.level, locTick]);
 
   const onRegion = useCallback(
     (b: [number, number, number, number]) => {

@@ -1,9 +1,12 @@
 import 'maplibre-gl/dist/maplibre-gl.css';
-import maplibregl from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
 import React, { useEffect, useRef } from 'react';
 import { View } from 'react-native';
 import { color } from '../theme/tokens';
 import { cellsGeoJSON, initial, MapProps, STYLE_URL } from './mapShared';
+
+// Worker copied by scripts/copy-maplibre-worker.js (Metro has no import.meta.url).
+maplibregl.setWorkerUrl('/maplibre/maplibre-gl-worker.mjs');
 
 // S-10 map on the web build (DEV tool). Same data, maplibre-gl.
 export function ExploreMap({ center, me, data, accent, onRegion, onSelect }: MapProps) {

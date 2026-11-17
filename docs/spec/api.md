@@ -47,30 +47,47 @@ Outside `/v1`: `GET /.well-known/apple-app-site-association` → `{webcredential
 | POST | /verification/redeem | {unblinded_token} → 204 (marks account verified) |
 
 ### Profiles (F-06)
-| GET | /me/profiles | own profiles |
-| POST | /me/profiles | create (max 3) |
-| PATCH | /me/profiles/{id} | fields, visibility_map |
-| DELETE | /me/profiles/{id} | |
-| POST | /me/profiles/{id}/photos | upload URL → {photo_id, put_url}; after upload → classifier → status via realtime |
-| PUT | /me/profiles/{id}/photos/order | [photo_id] |
-| GET | /profiles/{id} | viewer-filtered profile (visibility rules applied server-side for SV fields) |
-| POST | /profiles/{id}/tap | |
-| POST | /profiles/{id}/block | account-level |
-| POST | /profiles/{id}/report | {reason, franked_payload?} |
+| GET | /profile-options | {options:{field:[values]}, defaults:{field:{visibility, kinds}}, health:[…]} (field catalogue) |
+| GET | /me/profiles | {profiles:[MyProfile]} |
+| POST | /me/profiles | {kind: sport\|friends} → 201 MyProfile; 409 if it exists (Now profile is created at onboarding) |
+| PATCH | /me/profiles/{id} | {display_name?, fields?, visibility_map?} → MyProfile. Values whose visibility is `chats`/`only_me` are dropped (kept on device, R-06.6); health fields can't be `public`; bio/text checked for contact details and links (R-06.10) |
+| DELETE | /me/profiles/{id} | 204; the Now profile can't be deleted |
+| POST | /me/profiles/{id}/photos | {slot, content_type} → {photo_id, put_url} |
+| POST | /me/profiles/{id}/photos/{photo_id}/check | inline classifier → {photo, account} (status ok_main / ok_public / pending / rejected) |
+| DELETE | /me/profiles/{id}/photos/{photo_id} | 204; main photo can't be removed |
+| PUT | /me/profiles/{id}/photos/order | {order:[photo_id]} → MyProfile; first must have `main_ok` |
+| GET | /profiles/{id} | ProfileView, viewer-filtered (stranger: public; verified: public+verified). 404 when blocked/unavailable. 300 views/h |
+| POST | /profiles/{id}/tap | verified only; 100/day (50 for accounts < 7 days) → {mutual} |
+| POST | /profiles/{id}/block | account-level, silent |
+| POST · DELETE | /profiles/{id}/hide | hide from Explore |
+| GET | /me/blocks | {blocks:[{profile_id, display_name, at}]} · DELETE /me/blocks/{profile_id} |
+| GET | /taps | {taps:[{profile, at, seen, mutual, kind}]} (7 days) · POST /taps/seen |
+| POST | /profiles/{id}/report | {reason, franked_payload?} (B4) |
 
 ### Location (F-05)
-| PUT | /me/location | {level, cell_r9?, cell_r5?} (client computes cells; never lat/lng unless exact) |
-| PUT | /me/pin | {lat, lng, ttl_s, audience} → stored RAM-only with jitter |
-| DELETE | /me/pin | |
-| PATCH | /me/visibility | {incognito, hide_from_hidden} |
+| PUT | /me/location | {level, cell_r9? \| cell_r5? \| city_id?, safe_mode_override?} (client computes cells; never lat/lng). Account-wide: all profiles move together |
+| PUT | /me/pin | {lat, lng, ttl_s: 1800\|3600\|7200\|14400, audience: verified\|chats\|everyone, confirm: true, safe_mode_override?} → Me. RAM only, jittered 10–20 m. Verified only; Safe Mode needs override |
+| DELETE | /me/pin | → Me |
+| PATCH | /me/visibility | {incognito?, hide_from_hidden?} → Me (incognito verified-only) |
 
 ### Explore (F-04)
-| GET | /explore/grid | ?mode=hookup&filters=…&cursor= → [{profile_card, distance_bucket, cell_r9?, pin?, now?}] |
-| GET | /explore/map | ?mode&bbox_cells=[r7…] → {cells:[{cell, count, sample_cards}], pins:[…]} |
-| GET | /explore/tray | ?mode → active-now cards |
+Common query: `mode=hookup|friends|sport`, `age_min`, `age_max`, `distance_max` (m), `verified_only` (default true), `online_now`, `has_now`, `hide_creators` (default true), `new_members`, and comma lists for `position, hosting, tribes, build, looking_for, languages, sports, sport_level, schedule, sport_intent, orientation` (position/hosting apply only for verified viewers and only to values visible to them).
+
+| GET | /explore/grid | &cursor → {items:[Card], next, further_from, reason}. 60/page; sparse areas widen to 100 km with a "Further away" index |
+| GET | /explore/map | &bbox=w,s,e,n → {cells:[{cell, res, count}], pins:[Card], avatars:[Card]}. Unverified and Safe Mode viewers get counts only (r7 / r5) |
+| GET | /explore/tray | → {items:[Card]} up to 20 active (pin, Now, online) |
+
+Card: `{id, display_name, age, verified, photo, online, distance, now, exact, pin_expires_at, further, creator, intent, position, new, lat?, lng?}`; `distance` is `{kind: exact, m}` (pin and owner allows exact), `{kind: area, bucket}` (lt200 … 10k_plus; ≥ 1 km for unverified viewers) or `{kind: city, city}`.
+
+### Settings & Safe Mode (F-17, F-14)
+| GET · PATCH | /me/settings | server-enforced settings (hide_from_*, show_in_*, show_distance, online_visible, read_receipts, who_can_message, explicit_from_strangers, disappearing_default, push, quiet_hours) |
+| PUT | /me/safe_mode | {setting: auto\|on\|off, active: bool} → Me (country detection stays on device) |
+
+### Map tiles
+| GET | /tiles/style.json · /tiles/v/{z}/{x}/{y} · /tiles/fonts/{stack}/{range} | public; Pop dark style, tiles and glyphs proxied from `TILES_UPSTREAM` (OpenFreeMap) so clients never contact a third party |
 
 ### Tonight & Now (F-09)
-| PUT/DELETE | /me/now | {status, text, ttl_s} |
+| PUT/DELETE | /me/now | {status: now\|hosting\|can_travel\|door_open, text ≤ 80 (no links/contacts), ttl_s: 1–6 h} (verified only) |
 | GET/POST | /tonight | list / create plan |
 | DELETE | /tonight/{id} | |
 

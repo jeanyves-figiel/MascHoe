@@ -51,7 +51,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "jest",
-    "build:web": "expo export --platform web --output-dir dist"
+    "build:web": "node scripts/copy-maplibre-worker.js && expo export --platform web --output-dir dist"
   },
   "private": true,
   "jest": {

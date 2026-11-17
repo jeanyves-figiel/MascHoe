@@ -1,12 +1,21 @@
+import {
+  BricolageGrotesque_400Regular,
+  BricolageGrotesque_500Medium,
+  BricolageGrotesque_700Bold,
+  BricolageGrotesque_800ExtraBold,
+  useFonts,
+} from '@expo-google-fonts/bricolage-grotesque';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ActivityIndicator, Platform, View } from 'react-native';
 import { api, clearSession, hasSession, Me } from './src/api/client';
 import { verifyEmailToken } from './src/auth/oidc';
 import { screenFor, Screen as S } from './src/onboarding/flow';
 import { BasicsScreen, UnderageScreen } from './src/screens/Basics';
 import { CheckInboxScreen, CreateAccountScreen } from './src/screens/CreateAccount';
-import { ExploreScreen } from './src/screens/Explore';
+import { Main } from './src/app/Main';
+import { SessionProvider } from './src/app/session';
 import { LocationScreen } from './src/screens/Location';
 import { PhotoScreen } from './src/screens/Photo';
 import { VerifyScreen } from './src/screens/Verify';
@@ -17,6 +26,7 @@ export default function App() {
   const [me, setMe] = useState<Me | null>(null);
   const [screen, setScreen] = useState<S | 'loading'>('loading');
   const [mode, setMode] = useState<'signup' | 'login'>('signup');
+  const [fontsReady] = useFonts({ BricolageGrotesque_400Regular, BricolageGrotesque_500Medium, BricolageGrotesque_700Bold, BricolageGrotesque_800ExtraBold });
 
   const land = (m: Me) => {
     setMe(m);
@@ -75,13 +85,19 @@ export default function App() {
       body = <VerifyScreen onDone={land} />;
       break;
     default:
-      body = <ExploreScreen me={me!} onChange={land} onSignedOut={signedOut} />;
+      body = (
+        <SessionProvider me={me!} onSignedOut={signedOut}>
+          <Main />
+        </SessionProvider>
+      );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: color.bgBase }}>
-      <StatusBar style="light" />
-      {body}
-    </View>
+    <SafeAreaProvider>
+      <View style={{ flex: 1, backgroundColor: color.bgBase }}>
+        <StatusBar style="light" />
+        {fontsReady ? body : null}
+      </View>
+    </SafeAreaProvider>
   );
 }

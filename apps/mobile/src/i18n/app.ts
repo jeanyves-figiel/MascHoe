@@ -137,6 +137,9 @@ const en = {
     hours: (h: number) => `${h} h`,
     blocked: 'Blocked',
     unblock: 'Unblock',
+    taps: 'Taps',
+    noTaps: 'No taps yet',
+    noBlocks: 'Nobody blocked',
     paused: 'Paused: you are hidden everywhere.',
   },
   edit: {

@@ -6,6 +6,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **B1 Explore** (issue 37, full beta build), server:
+  - Profiles: field catalogue with per-field visibility (`Thirstr.Profiles.Fields`). Values set to My chats / Only me never reach the server, and health fields are never public. Also: completeness ring, Sport/Friends profiles, photo replace, reorder and remove, NudeNet-label classifier with a DEV stand-in, and bio checks for contact details and links.
+  - Explore: grid, map (H3 heat cells, pins and avatars by bbox) and the active-now tray. Includes all R-04.9 exclusions, per-mode filters, distance buckets, sparse-area widening, k-anonymity widening (every minute), and Safe Mode / unverified count-only maps.
+  - Location: account-wide levels Hidden, City, Area and Exact. Exact pins live in RAM only, with TTL, audience and 10–20 m jitter. Also: incognito, hide-from-hidden, a velocity anti-bot signal and a Safe Mode override.
+  - Social: profile view, taps (daily cap, mutual), blocks, hides and Now status.
+  - Settings: server-enforced settings and the Safe Mode report.
+  - Map tiles: `/v1/tiles` proxy with the Pop dark style.
+  - New tables: taps, blocks, profile_hides, contacts, moderation_actions and now_status.
+- **B1 Explore** (issue 37, full beta build), app:
+  - Pop design system: tokens, Bricolage Grotesque and the floating pill tab bar (Explore, Tonight, Chats, Me).
+  - Explore: map (MapLibre native, maplibre-gl on web) and grid, mode switch, filters sheet, location sheet (S-30), long-press quick actions.
+  - Profile view (S-20) with Tap, Message, Share, Hide, Report and Block.
+  - Me: profile switcher, completeness, preview-as, Now and incognito.
+  - Edit profile with photo editor and per-field visibility. Device-only values are stored locally.
+  - Settings with search, Safe Mode and account actions. Also: blocked list and taps list.
+- `docs/spec/beta-build-plan.md`: milestones B1–B4 and beta implementation choices.
 - iOS TestFlight pipeline (#31): `ios-testflight.yml` (EAS Build + auto-submit, app points at staging), `apps/mobile/eas.json`, `app.config.js` (passkey associated domain from API host), runbook `docs/runbooks/ios.md`.
 - Native sign-in on iOS: Sign in with Apple (no name/email scopes) and native passkeys (`react-native-passkey`). Google and email link hidden on native builds until configured (`EXPO_PUBLIC_AUTH_GOOGLE`, `EXPO_PUBLIC_AUTH_EMAIL`).
 - API: `GET /.well-known/apple-app-site-association` (`webcredentials`, from `APPLE_TEAM_ID`; 404 until set). Staging now sets the Team ID.
@@ -15,6 +31,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Release node name built from `FLY_IMAGE_REF`; a digest-pinned image made it invalid and the app crash-looped on staging. Node is now `<app>@<private IPv6>`.
 
 ### Changed
+- api.md: profiles, location, explore (bbox `w,s,e,n` replaces `bbox_cells`), settings, taps and tiles endpoints. data-model.md: B1 columns, tables and Valkey keys.
+- Web build copies the maplibre-gl worker (`scripts/copy-maplibre-worker.js`). DEV compose uses `npm run build:web`.
+- Old single-screen Explore placeholder removed.
 - api.md: account & onboarding endpoints, logout, delete confirmation, session shape, install header.
 - data-model.md: passkeys, refresh_tokens, cities tables; account birthdate/onboarding fields; H3 cells stored as bigint.
 - ops.md: Phoenix app layout, Fly hostnames until a domain exists (host is env config only), org `personal` for beta, workflow details.
