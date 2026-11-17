@@ -2,6 +2,7 @@
 
 ## Trigger
 - R-14.1 Country from device cell r5 → bundled ILGA criminalization list (offline, updated with app). Also IP country at Welcome.
+- R-14.1a List rule (owner, issue 49, 2026-11-17): ILGA World legal data plus countries with active persecution without a law (e.g. EG, IQ, RU); whole country even where only a province criminalises (ID). Countries with "LGBT propaganda" laws only are not listed (users there can set Always on). Updates after launch: one public file `GET /v1/safe-mode/countries`, identical for every phone and cached; the app checks it at most daily and may only add countries to its bundled list, never remove (removals ship in an app release), so a tampered server can only switch protection on. Changes go through a GitHub PR with sources, approved by the owner.
 - R-14.2 Setting: Auto (default) / Always on / Off. Turning Off in a listed country needs a second explicit warning.
 
 ## Protections when on
@@ -16,7 +17,7 @@
 | Duress PIN | Offered at activation |
 | Parties/venues | Creation and check-in disabled |
 | Entrapment warnings | Banner on chats with accounts < 30 d, unverified, or pushing to meet quickly (heuristic: meet request within 5 messages) |
-| Resources | Offline list of local NGOs/hotlines per country |
+| Resources | International NGOs only in beta (Rainbow Railroad, ILGA World, Front Line Defenders); local groups need vetting first (fake help lines are an entrapment method) |
 | Onboarding | F-02 R-02.10 variant |
 
 ## Rules

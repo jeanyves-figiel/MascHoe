@@ -10,7 +10,7 @@ import { areaCell } from '../geo/cells';
 import { tx } from '../i18n/app';
 import { color, space, type } from '../theme/tokens';
 import { Button, ListRow, Sheet } from '../ui';
-import { CRIMINALIZING } from './criminalizing';
+import { isSafeModeCountry, refreshSafeModeList } from './criminalizing';
 
 const PREV = 'thirstr.safe.prevLevel';
 
@@ -43,9 +43,10 @@ export function SafeModeAuto({ navigate }: { navigate: (s: string) => void }) {
 
   const check = useCallback(async () => {
     if (me.safe_mode !== 'auto') return;
+    await refreshSafeModeList();
     const c = await country();
     if (!c) return;
-    const active = CRIMINALIZING.has(c);
+    const active = isSafeModeCountry(c);
     if (active === !!me.safe_mode_active) return;
     if (active && me.location?.level) await AsyncStorage.setItem(PREV, me.location.level).catch(() => {});
     const next = await api<Me>('PUT', '/me/safe_mode', { setting: 'auto', active }).catch(() => null);

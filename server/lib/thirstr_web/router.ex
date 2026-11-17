@@ -114,6 +114,7 @@ defmodule ThirstrWeb.Router do
     get "/health", PublicController, :health
     get "/welcome", PublicController, :welcome
     get "/cities", PublicController, :cities
+    get "/safe-mode/countries", PublicController, :safe_mode_countries
 
     # Map tiles proxied so the upstream never sees users (beta-build-plan.md)
     get "/tiles/style.json", TileController, :style
