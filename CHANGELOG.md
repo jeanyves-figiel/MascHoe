@@ -9,6 +9,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Concept §6.2: exact pins visible to hidden/incognito viewers too (no give-to-get); pin owner's audience setting is the only filter.
 
 ### Added
+- Concept: share posts from X, Bluesky, OnlyFans, JustFor.Fans to members (share sheet, device-side E2EE preview, blurred explicit, verified linked accounts, anti-bot guardrails).
 - `docs/concept/profile-and-settings.md`: own-profile fields with per-field visibility (Public / Verified / My chats / Only me), up to 3 profiles, Preview-as, full settings tree. Mockups: Me + Settings boards.
 - Concept §6.2: Area default ~500 m (H3 res 8, k-anonymity fallback to res 7); give-to-get rule for exact pins; viewing rules for grid/map.
 - Mockups canvas: 7 new v1 screens (map-first home, Tonight board, party hosting, Activities, venue check-in, profile switcher + private notes, verification).

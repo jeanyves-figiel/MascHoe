@@ -118,6 +118,22 @@ Cross-app pain points (user reviews):
 - Read receipts + typing: free, user-toggled, symmetrical.
 - Chat sort: "replied / unreplied / starred"; mute; snooze.
 
+### Share from X, Bluesky, OnlyFans, JustFor.Fans (owner request 2026-11-17)
+Goal: send a member a post (e.g. a clip showing what you're like in bed) straight from those platforms.
+
+How:
+- **Share-sheet target**: in X/Bluesky/OF/JFF app or browser → Share → MascHoe → pick member(s). Also paste link in chat.
+- **Preview built on the sender's phone** (OpenGraph/oEmbed), sent E2EE inside the message. Server never fetches the URL, so it never learns what was shared.
+- Explicit previews **blurred by default**, receiver taps → opens in the source app/browser. Explicit media never rendered inside our app's public surfaces (store rules); inside E2EE chat it follows the receiver's "explicit media" setting.
+- **Linked accounts on profile** (optional, visibility per field, default My chats): X, Bluesky, OnlyFans, JustFor.Fans, Instagram.
+  - **Ownership check** so nobody can claim someone else's account: Bluesky = handle/DID proof; X = OAuth; OF/JFF/others = one-time code placed in their bio. Shows "linked ✓".
+- No API dependency: OF and JFF have no public API; X API is paid; Bluesky (AT Protocol) is open. Link + device-side preview works for all, no partnership needed.
+
+Guardrails (keeps §9.1 anti-bot intact):
+- Links allowed in a chat **once the other person has replied** (first-message link block stays).
+- Promo/mass sending caught by the same send-rate + duplicate-message signals; Creator profile type for accounts that mainly promote.
+- Sharing content that isn't yours or shows someone who didn't consent → one-tap report, removal + ban.
+
 ### Health (local-only)
 - PrEP/test reminders stored on device only.
 - Profile health fields (status, PrEP, U=U) visible **only to matched/chosen users**, never to grid.
