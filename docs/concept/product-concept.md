@@ -132,6 +132,7 @@ Cross-app pain points (user reviews):
 - **Block = total**: blocked user can't see you even via new account on same device (device attestation hash, not ID).
 
 ### Control
+- Full field list, per-field visibility and settings tree: [profile-and-settings.md](profile-and-settings.md).
 - Visibility per field (public / matches / chosen).
 - Incognito: browse without appearing (free).
 - Pause profile vs. delete.
