@@ -41,6 +41,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Expo web client on staging/release image (`SERVE_WEB_CLIENT`, web build stage): the web shows the marketing site, the app is native only. DEV keeps the Expo web build at https://localhost:7443 as a developer tool. Phoenix default `favicon.ico`/`robots.txt` removed.
 
 ### Changed
+- iOS TestFlight builds now run on a GitHub macOS runner (expo prebuild + xcodebuild, automatic signing with the App Store Connect API key, upload via exportArchive) instead of Expo's EAS cloud: no queue, no Expo account. Removed `apps/mobile/eas.json` and the EAS credentials script; `EXPO_TOKEN` / `ASC_APP_ID` secrets no longer used.
 - Push payload: generic visible alert ("Thirstr" / "New activity") instead of a silent `content-available` wake, which iOS does not reliably deliver. Still content-free (api.md › Push payloads); mock push asserts the new shape.
 - Design: **Pop** is the only theme (#38). design-system.md: ink base `#17142E`, mode colours coral/violet/lime, teal for trust/location/privacy, sunflower for personal items, Bricolage Grotesque, new radius scale, logo/wordmark spec (`thirstr` with coral `r` + three dots), Pop component rules. Light theme removed (F-17 theme setting dropped). Concept doc colours/fonts updated.
 
