@@ -162,7 +162,7 @@ Guardrails (keeps §9.1 anti-bot intact):
 | Data | Stored server-side? |
 |---|---|
 | Precise GPS | **Only if user opts into Exact** (§6.2): RAM-only, TTL-bound, no history, no logs, never backed up |
-| Location (default) | H3 cell (res ~8, ~0.7 km², ~500 m; res 7 when sparse) + timestamp; overwritten, no history |
+| Location (default) | H3 cell (res ~9, ~0.1 km², ~200 m; res 8/7 when sparse) + timestamp; overwritten, no history |
 | Phone number / email | Optional. Account = keypair. Recovery via recovery phrase or optional email hash |
 | Real name, DOB | No. Age = boolean "18+ verified" credential |
 | Messages / media | Ciphertext only, deleted after delivery (or TTL 30 d undelivered) |
@@ -177,17 +177,19 @@ Precision is the user's call. Four levels, switchable anytime (mockup: Location 
 
 | Level | Others see | Server stores | Default |
 |---|---|---|---|
-| Hidden | Nothing (browse only) | Cell for own grid query, not indexed | |
+| Hidden | Nothing (browse only). **Verified users only** | Cell for own grid query, not indexed | |
 | City | City name | City-level cell (res ~5) | Safe Mode |
-| Area | Distance bucket ("< 500 m", "500 m–1 km", "1–2 km"...), avatar placed inside its zone on map (not at real point) | Cell res ~8 (~500 m) in cities; auto-coarsens to res 7 when cell has < k users | **Yes** |
+| Area | Distance bucket ("< 200 m", "200–500 m", "500 m–1 km", "1–2 km"...), avatar placed inside its zone on map (not at real point) | Cell res ~9 (~200 m) in cities; auto-coarsens to res 8/7 when cell has < k users | **Yes** |
 | Exact | Pin on map + distance in metres | Exact point, RAM-only, TTL | Opt-in only |
 
 What you see = what each nearby person chose, not your own setting. Your setting only controls how others see you.
 
 Viewing rules:
-- **Exact pins visible to any viewer the pin owner allows** (owner decision 2026-11-17), incl. Hidden/incognito viewers; no give-to-get. Pin owner's audience setting (verified only by default / my chats / everyone) is the only filter.
+- **Exact pins visible to any viewer the pin owner allows** (owner decision 2026-11-17), incl. Hidden/incognito viewers unless the owner turns on "Hide me from hidden users"; no give-to-get. Filters: pin owner's audience setting (verified only by default / my chats / everyone) + that toggle.
 - Grid sort: exact users by metres, then area users by cell distance, randomized within cell.
-- **k-anonymity**: a cell is only shown at res 8 if it holds ≥ k active users (e.g. k = 5); else merged up to res 7.
+- **k-anonymity**: a cell is only shown at res 9 (~200 m) if it holds ≥ k active users (e.g. k = 5); else merged up to res 8 (~500 m) or 7.
+- **Hide me from hidden users** (owner decision 2026-11-17): toggle; when on, viewers in Hidden mode or incognito don't see you in grid, map, exact pins, Tonight or venues. Off by default.
+- Hidden mode and incognito require verification (owner decision 2026-11-17): no anonymous lurking by unverified accounts.
 
 Exact opt-in rules:
 - Explicit action each time; one-screen warning ("anyone you allow sees your exact spot").

@@ -31,7 +31,7 @@ One question per screen, big thumb-zone buttons, progress bar, everything skippa
 | 0 | **Welcome** | Live, blurred map of real activity nearby ("128 guys active within 2 km") + 3 promises (no bots · no ads · you control location). CTA "Get started" / "I have an account". | 3 s |
 | 1 | **Create account** | Passkey one tap. Apple / Google / email as secondary. 18+ confirmation checkbox inline. | 5 s |
 | 2 | **Basics** | Name · birthday (age only shown) · "I am" (man / trans man / non-binary / other) · "Here for" (Hookup, Tonight, Chat, Friends, Sport; multi-select, Hookup pre-selected). | 20 s |
-| 3 | **Location** | Explainer then OS permission. Pick precision (Area 500 m default; Exact / City / Hidden). | 8 s |
+| 3 | **Location** | Explainer then OS permission. Pick precision (Area 200 m default; Exact / City; Hidden unlocks after verification). | 8 s |
 | 4 | **Main photo** | Camera or library; live AI check → "Looks good" or "Needs to be less explicit for your main photo". Add 4 more later. | 15 s |
 | 5 | **Verify** | 30 s on-device liveness. **"Later" allowed** → browse-only until done (can look, can't appear or message first). Banner reminds. | 30 s |
 | 6 | **Land on Explore** | Map with your zone pulsing; 1 coach mark ("Tap a pin or swipe the cards"). Push permission asked later, on first incoming message, not now. | — |

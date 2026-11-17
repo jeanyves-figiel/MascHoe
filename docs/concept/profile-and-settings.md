@@ -88,9 +88,10 @@ Quick toggles row: Location level · Incognito · Online status · Do not distur
 ## 3. Settings
 
 ### Visibility & location
-- Location level: Hidden · City · Area (~500 m, default) · Exact (opt-in, expiry, audience). See concept §6.2.
+- Location level: Hidden (verified only) · City · Area (~200 m, default) · Exact (opt-in, expiry, audience). See concept §6.2.
+- **Hide me from hidden users**: on/off (default off). Hidden/incognito viewers can't see you anywhere.
 - Exact defaults: expiry (30 m/1 h/3 h/until leave) · audience (verified / my chats / everyone).
-- Incognito (browse without appearing).
+- Incognito (browse without appearing; verified users only).
 - Show in: grid · map · Tonight · Activities · venues (each toggle).
 - Show distance: yes / range only / no.
 - Online status & last seen: show / hide (symmetrical: hide = you don't see others').
