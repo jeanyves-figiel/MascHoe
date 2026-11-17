@@ -80,7 +80,8 @@ defmodule ThirstrWeb.Plugs.Site do
 
   # Path segments come from Plug's parsed path_info and are rejected by safe?/1 if
   # they could leave the site directory (`..`, hidden files, separators, NUL).
-  # sobelow_skip ["Traversal.SendFile"]
+  # Content type comes from the extension of a file in the site build (fixed set).
+  # sobelow_skip ["Traversal.SendFile", "XSS.ContentType"]
   defp send_site_file(conn, status, path) do
     type = MIME.from_path(path)
 
