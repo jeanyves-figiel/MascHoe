@@ -192,15 +192,17 @@ defmodule Thirstr.Tonight do
   end
 
   def delete(ctx, id) do
-    with {:ok, _} <- Ecto.UUID.cast(id) do
-      Repo.query!(
-        "DELETE FROM tonight_plans WHERE id = $1 AND profile_id IN (SELECT id FROM profiles WHERE account_id = $2)",
-        [Nearby.dump(id), Nearby.dump(ctx.account.id)]
-      )
+    case Ecto.UUID.cast(id) do
+      {:ok, _} ->
+        Repo.query!(
+          "DELETE FROM tonight_plans WHERE id = $1 AND profile_id IN (SELECT id FROM profiles WHERE account_id = $2)",
+          [Nearby.dump(id), Nearby.dump(ctx.account.id)]
+        )
 
-      :ok
-    else
-      _ -> {:error, :not_found}
+        :ok
+
+      _ ->
+        {:error, :not_found}
     end
   end
 
