@@ -1,0 +1,100 @@
+# DEV stack: https://localhost:7443 (ops.md › Environments). `docker compose up`
+name: thirstr
+
+x-api-env: &api-env
+  MIX_ENV: dev
+  DATABASE_URL: ecto://postgres:postgres@db:5432/thirstr_dev
+  VALKEY_URL: redis://valkey:6379/0
+  APP_URL: https://localhost:7443
+  WEBAUTHN_ORIGIN: https://localhost:7443
+  WEBAUTHN_RP_ID: localhost
+  S3_ENDPOINT: http://s3:9000
+  S3_PUBLIC_ENDPOINT: https://localhost:7444
+  S3_ACCESS_KEY: thirstr
+  S3_SECRET_KEY: thirstr-dev-secret
+  S3_BUCKET: thirstr-public
+  SMTP_HOST: mailpit
+  SMTP_PORT: "1025"
+  WELCOME_DEFAULT_CITY: Zurich
+
+services:
+  caddy:
+    image: caddy:2.8-alpine
+    ports: ["7443:7443", "7444:7444"]
+    volumes:
+      - ./infra/dev/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./apps/mobile/dist:/srv/web:ro
+      - caddy-data:/data
+    depends_on:
+      api: { condition: service_healthy }
+      web: { condition: service_completed_successfully }
+
+  api:
+    build: { context: ./server, dockerfile: Dockerfile.dev }
+    environment: *api-env
+    working_dir: /app
+    volumes:
+      - ./server:/app
+    command: sh -c "mix deps.get && mix compile && mix ecto.create --quiet && mix ecto.migrate && mix run priv/repo/seeds.exs && mix phx.server"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/4000 && printf \"GET /v1/health HTTP/1.0\\r\\n\\r\\n\" >&3 && grep -q 200 <&3'"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+      start_period: 20s
+    depends_on:
+      db: { condition: service_healthy }
+      valkey: { condition: service_started }
+      s3: { condition: service_started }
+      mailpit: { condition: service_started }
+
+  # Expo web build of apps/mobile, served by Caddy at /
+  web:
+    image: node:22-bookworm-slim
+    working_dir: /app
+    environment: { EXPO_OFFLINE: "1", EXPO_PUBLIC_ENV: dev, CI: "1" }
+    volumes: ["./apps/mobile:/app"]
+    command: sh -c "[ -d node_modules ] || npm ci; npx expo export --platform web --output-dir dist"
+
+  db:
+    build: ./infra/postgres
+    environment: { POSTGRES_PASSWORD: postgres }
+    volumes: [db-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      retries: 30
+
+  # RAM only: exact pins, challenges, rate limits (ADR-0001). No persistence by design.
+  valkey:
+    image: valkey/valkey:8-alpine
+    command: ["valkey-server", "--save", "", "--appendonly", "no"]
+
+  # S3-compatible object storage. MinIO no longer ships community images; SeaweedFS is Apache-2.0.
+  s3:
+    image: chrislusf/seaweedfs:3.80
+    command: server -dir=/data -s3 -s3.port=9000 -s3.config=/etc/seaweed/s3.json -master.volumeSizeLimitMB=256
+    volumes:
+      - s3-data:/data
+      - ./infra/dev/s3.json:/etc/seaweed/s3.json:ro
+
+  mailpit:
+    image: axllent/mailpit:v1.20
+    environment: { MP_WEBROOT: mail }
+
+  # APNs/FCM stand-in; checks payloads are content-free (api.md › Push payloads)
+  mock-push:
+    image: node:22-bookworm-slim
+    command: ["node", "/srv/server.js"]
+    volumes: ["./infra/mock-push/server.js:/srv/server.js:ro"]
+
+  # Protomaps vector tiles (ADR-0001); drop *.pmtiles into infra/tiles
+  tiles:
+    image: protomaps/go-pmtiles:v1.22.1
+    command: ["serve", "/data", "--port=8080", "--cors=*"]
+    volumes: ["./infra/tiles:/data:ro"]
+
+volumes:
+  db-data:
+  s3-data:
+  caddy-data:

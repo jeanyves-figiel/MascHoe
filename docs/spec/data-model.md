@@ -18,9 +18,22 @@ Principle: store the minimum; anything audience-restricted is E2EE or coarse-fla
 | safe_mode | enum(auto, on, off) | |
 | settings | jsonb | non-sensitive settings (F-17) |
 | plus_until | timestamptz null | Later |
+| birthdate | date | R-02.3 age gate + profile age; never returned by the API |
+| age_confirmed_at | timestamptz | R-01.12 checkbox |
+| onboarding_step | enum(basics, location, photo, verify, done) | F-02 resume |
+| paused_at | timestamptz null | R-01.9 |
+
+### passkeys
+| id · account_id · credential_id bytea (unique) · cose_key bytea (public key) · sign_count |
+
+### refresh_tokens
+| id · account_id · device_id · token_hash bytea (HMAC) · expires_at · used_at (rotation) |
+
+### cities (public reference data for S-04b / Welcome)
+| id · name · country · lat · lng · cell_r5 |
 
 ### devices
-| id uuid · account_id · platform enum(ios, android) · attestation_ok bool · push_token_enc bytea (encrypted at rest) · mls_client_id bytea · last_seen_day date |
+| id uuid · account_id · platform enum(ios, android, web) · attestation_ok bool · push_token_enc bytea (encrypted at rest) · mls_client_id bytea · last_seen_day date |
 
 ### profiles
 | Column | Type | Notes |
@@ -28,7 +41,7 @@ Principle: store the minimum; anything audience-restricted is E2EE or coarse-fla
 | id | uuid | public handle id (random, unlinkable across profiles) |
 | account_id | uuid | **never exposed in API** |
 | kind | enum(now, sport, friends) | |
-| display_name, age_bracket, gender, pronouns, orientation, languages[] | SV | Public fields |
+| display_name, age, gender (+ gender_other), here_for[], pronouns, orientation, languages[] | SV | Public fields (age stored as int, refreshed from birthdate) |
 | bio, prompt_q, prompt_a | SV | |
 | body (height_cm, weight_kg, build, hair, beard), tribes[] | SV | |
 | looking_for[] | SV | |
@@ -47,7 +60,7 @@ Audience-restricted values (health, socials, limits, boundaries card) are **not*
 | id · profile_id · slot (0–4) · storage_key · status enum(pending, ok_main, ok_public, rejected) · classifier_score jsonb · created_at |
 
 ### location_cells (one row per visible profile, overwritten)
-| profile_id pk · level enum(city, area, exact) · cell_r9 h3 · cell_r8 h3 · cell_r7 h3 · cell_r5 h3 · updated_at · hide_from_hidden bool |
+| profile_id pk · level enum(city, area, exact) · cell_r9 · cell_r8 · cell_r7 · cell_r5 (bigint = `h3index::bigint`; City stores r5 only) · updated_at · hide_from_hidden bool |
 Exact coordinates are **not** here (Valkey).
 
 ### now_status

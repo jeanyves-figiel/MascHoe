@@ -1,0 +1,64 @@
+# ops.md › Trunk model step 3: squash-merge to main → build signed image → deploy staging by digest → smoke.
+name: Deploy staging
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # cosign keyless signing
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+env:
+  IMAGE: registry.fly.io/thirstr-api-staging
+  FLY_API_TOKEN: ${{ secrets.FLY_TOKEN }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: staging
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - run: flyctl auth docker
+      - uses: docker/setup-buildx-action@v3
+      - id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: server/Dockerfile
+          push: true
+          tags: ${{ env.IMAGE }}:${{ github.sha }}
+          build-args: RELEASE_SHA=${{ github.sha }}
+          provenance: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ env.IMAGE }}@${{ steps.push.outputs.digest }}
+          artifact-name: sbom-${{ github.sha }}.spdx.json
+      - uses: sigstore/cosign-installer@v3
+      - name: Sign image (keyless)
+        run: cosign sign --yes "${IMAGE}@${{ steps.push.outputs.digest }}"
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: https://thirstr-api-staging.fly.dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Deploy by digest
+        run: flyctl deploy --config infra/fly/api-staging.toml --app thirstr-api-staging --image "${IMAGE}@${{ needs.build.outputs.digest }}" --wait-timeout 300
+      - name: Smoke
+        run: ./scripts/smoke.sh https://thirstr-api-staging.fly.dev "${{ github.sha }}"

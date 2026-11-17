@@ -37,9 +37,12 @@ Status: **accepted** (owner picked Elixir / Phoenix, 2026-11-17) · Closes #1.
 ### Environments
 | Env | Where | Deploy |
 |---|---|---|
-| DEV | `localhost:7443` via `docker compose` (Phoenix, Postgres, Valkey, MinIO, mock push) | local |
+| DEV | `localhost:7443` via `docker compose` (Caddy, Phoenix, Postgres+h3, Valkey, SeaweedFS S3, Mailpit, mock push, tiles) | local |
 | Staging | Fly.io EU | auto on squash-merge to `main` |
 | Prod | Fly.io EU | manual "Promote to production" workflow, same image, owner OK per change |
+
+## Amendments
+- 2026-11-17: DEV object storage is **SeaweedFS** (S3 API, Apache-2.0): MinIO stopped publishing community Docker images. Staging/prod use Tigris via Fly (bucket per env).
 
 ## Consequences
 - Elixir hiring pool smaller than Go/Node; mitigated by small backend surface.

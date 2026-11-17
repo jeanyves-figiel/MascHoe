@@ -1,0 +1,39 @@
+# ops.md › nightly: dependency/security sweep. Abuse harnesses (trilateration, scraping,
+# quarantine, Safe Mode leaks) are added here as their features land (tracked in GitHub).
+name: Nightly
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: "27.1.2"
+          elixir-version: "1.17.3"
+      - name: mix deps.audit
+        working-directory: server
+        run: mix deps.get && mix deps.audit
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+      - name: cargo audit
+        working-directory: core
+        run: cargo audit
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: npm audit (runtime deps)
+        working-directory: apps/mobile
+        run: npm ci && npm audit --omit=dev --audit-level=high
+      - name: Staging smoke
+        run: ./scripts/smoke.sh https://thirstr-api-staging.fly.dev

@@ -1,0 +1,69 @@
+# ops.md › Trunk model step 5: manual "Promote to production". Same image digest as staging,
+# live on staging ≥ 30 min with green smoke, then owner approval (environment `production`).
+name: Promote to production
+
+on:
+  workflow_dispatch:
+    inputs:
+      digest:
+        description: "Image digest (sha256:…) currently on staging. Empty = current staging image."
+        required: false
+      reason:
+        description: "What this change is (shown in the run)"
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: promote-prod
+  cancel-in-progress: false
+
+env:
+  FLY_API_TOKEN: ${{ secrets.FLY_TOKEN }}
+  REPO: registry.fly.io/thirstr-api-staging
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    environment: staging
+    outputs:
+      digest: ${{ steps.check.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: check
+        name: Digest is live on staging ≥ 30 min
+        run: |
+          live=$(./scripts/fly-live-image.sh thirstr-api-staging)
+          digest=$(echo "$live" | jq -r .digest); since=$(echo "$live" | jq -r .since)
+          want="${{ inputs.digest }}"; want="${want:-$digest}"
+          [[ "$want" == "$digest" ]] || { echo "::error::$want is not the image live on staging ($digest)"; exit 1; }
+          age=$(( $(date +%s) - since ))
+          [[ $age -ge 1800 ]] || { echo "::error::staging rollout only ${age}s old; wait until 30 min"; exit 1; }
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          echo "Promoting $digest (live on staging ${age}s): ${{ inputs.reason }}"
+      - name: Staging smoke green
+        run: ./scripts/smoke.sh https://thirstr-api-staging.fly.dev
+
+  deploy:
+    needs: verify
+    runs-on: ubuntu-latest
+    environment:
+      name: production # required reviewer: owner (D-14)
+      url: https://thirstr-api-prod.fly.dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - id: prev
+        name: Remember current prod image for rollback
+        run: echo "image=$(./scripts/fly-live-image.sh thirstr-api-prod 2>/dev/null | jq -r '.image // empty')" >> "$GITHUB_OUTPUT"
+      - name: Deploy same image to prod
+        run: flyctl deploy --config infra/fly/api-prod.toml --app thirstr-api-prod --image "${REPO}@${{ needs.verify.outputs.digest }}" --wait-timeout 300
+      - name: Smoke
+        id: smoke
+        run: ./scripts/smoke.sh https://thirstr-api-prod.fly.dev
+      - name: Auto-rollback
+        if: failure() && steps.prev.outputs.image != ''
+        run: |
+          flyctl deploy --config infra/fly/api-prod.toml --app thirstr-api-prod --image "${{ steps.prev.outputs.image }}" --wait-timeout 300
+          ./scripts/smoke.sh https://thirstr-api-prod.fly.dev
