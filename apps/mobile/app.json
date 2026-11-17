@@ -25,6 +25,7 @@
       "package": "app.thirstr",
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-icon-foreground.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png",
         "backgroundColor": "#17142E"
       }
     },
