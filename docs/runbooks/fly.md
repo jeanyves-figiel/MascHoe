@@ -4,7 +4,7 @@ Created 2026-11-17 in Fly org `personal`, region `fra` (EU only, enforced by `sc
 
 | App | Role | Notes |
 |---|---|---|
-| `thirstr-api-staging` / `thirstr-api-prod` | Phoenix API (`infra/fly/api-<env>.toml`) | public IPv6 + shared IPv4; deployed by digest only; staging serves the web client to testers |
+| `thirstr-api-staging` / `thirstr-api-prod` | Phoenix API (`infra/fly/api-<env>.toml`) | public IPv6 + shared IPv4; deployed by digest only; serves the marketing site (W-01) on non-API paths, no web client |
 | `thirstr-db-staging` / `thirstr-db-prod` | Postgres 16 + h3 machine, encrypted volume (1 GB / 3 GB) | image `registry.fly.io/thirstr-db-<env>:pg16-h3`, built by `infra-images.yml`; reachable at `thirstr-db-<env>.internal:5432` (6PN only) |
 | `thirstr-valkey-staging` / `thirstr-valkey-prod` | Valkey, RAM only (`--save "" --appendonly no`), password auth | no volume by design (ADR-0001) |
 | Tigris buckets `thirstr-public-staging` / `thirstr-public-prod` | public photos (private bucket, presigned URLs) | created as Fly add-ons, primary region `fra` |
@@ -27,6 +27,10 @@ Registrar + DNS: GoDaddy (owner account). Records (TTL 1 h):
 | `_acme-challenge.staging` | CNAME | `staging.thirstr.fun.pk8d8p6.flydns.net` |
 | `api` | A / AAAA | `66.241.125.131` / `2a09:8280:1::20c:7568:0` (`thirstr-api-prod`) |
 | `_acme-challenge.api` | CNAME | `api.thirstr.fun.29xzx8w.flydns.net` |
+| `@` (apex) | A / AAAA | same as `api` (`thirstr-api-prod`, marketing site W-01, #40) |
+| `_acme-challenge` | CNAME | from `addCertificate(thirstr.fun)` |
+| `www` | CNAME | `thirstr-api-prod.fly.dev` (Plug 301 → apex) |
+| `_acme-challenge.www` | CNAME | from `addCertificate(www.thirstr.fun)` |
 
 Fly certificates (Let's Encrypt, auto-renew) were added with GraphQL `addCertificate(appId, hostname)`; check with `checkCertificate` or `flyctl certs show <host> -a <app>`. IPs come from `app { sharedIpAddress ipAddresses }`. New host: add cert → add the 3 records → wait for `clientStatus: Ready` → change `PHX_HOST`/`APP_URL`/`WEBAUTHN_*` in the toml.
 

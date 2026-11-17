@@ -1,4 +1,4 @@
-# DEV stack: https://localhost:7443 (ops.md › Environments). `docker compose up`
+# DEV stack: https://localhost:7443 app (Expo web), https://localhost:7446 marketing site (ops.md › Environments). `docker compose up`
 name: thirstr
 
 x-api-env: &api-env
@@ -20,7 +20,7 @@ x-api-env: &api-env
 services:
   caddy:
     image: caddy:2.8-alpine
-    ports: ["7443:7443", "7444:7444"]
+    ports: ["7443:7443", "7444:7444", "7446:7446"]
     volumes:
       - ./infra/dev/Caddyfile:/etc/caddy/Caddyfile:ro
       - ./apps/mobile/dist:/srv/web:ro
@@ -28,6 +28,7 @@ services:
     depends_on:
       api: { condition: service_healthy }
       web: { condition: service_completed_successfully }
+      site: { condition: service_completed_successfully }
 
   api:
     build: { context: ./server, dockerfile: Dockerfile.dev }
@@ -48,7 +49,13 @@ services:
       s3: { condition: service_started }
       mailpit: { condition: service_started }
 
-  # Expo web build of apps/mobile, served by Caddy at /
+  # Marketing site (W-01) built into server/priv/static/site, served by Phoenix (Caddy :7446)
+  site:
+    image: node:22-bookworm-slim
+    volumes: ["./web/site:/site:ro", "./server/priv/static/site:/out"]
+    command: node /site/build.mjs /out
+
+  # Expo web build of apps/mobile, served by Caddy at / (DEV developer tool only, W-01 R-W.5)
   web:
     image: node:22-bookworm-slim
     working_dir: /app

@@ -15,7 +15,6 @@ kill_signal = "SIGTERM"
   WEBAUTHN_RP_ID = "staging.thirstr.fun"
   PORT = "4000"
   ECTO_IPV6 = "true"
-  SERVE_WEB_CLIENT = "true"
   WELCOME_DEFAULT_CITY = "Zurich"
   S3_REGION = "auto"
   # Apple Team ID (public, not a secret): enables /.well-known/apple-app-site-association

@@ -24,6 +24,7 @@ Status: draft v0.1 · 2026-11-17 · Source of truth before any code. Product rat
 | — | [CI/CD, environments & operations](ops.md) |
 | — | [Test strategy](testing.md) |
 | — | [Admin & moderation console](admin-console.md) |
+| W-01 | [Public website (marketing site)](website.md) |
 | — | [Privacy-preserving metrics](metrics.md) |
 | F-01 | [Auth & account](features/F01-auth.md) |
 | F-02 | [Onboarding](features/F02-onboarding.md) |

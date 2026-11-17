@@ -1,16 +1,6 @@
 defmodule ThirstrWeb.Endpoint do
   use Phoenix.Endpoint, otp_app: :thirstr
 
-  # Serve at "/" the static files from "priv/static" directory.
-  #
-  # You should set gzip to true if you are running phx.digest
-  # when deploying your static files in production.
-  plug Plug.Static,
-    at: "/",
-    from: :thirstr,
-    gzip: false,
-    only: ThirstrWeb.static_paths()
-
   # Code reloading can be explicitly enabled under the
   # :code_reloader configuration of your endpoint.
   if code_reloading? do
@@ -28,6 +18,6 @@ defmodule ThirstrWeb.Endpoint do
     json_decoder: Phoenix.json_library()
 
   plug Plug.Head
-  plug ThirstrWeb.Plugs.WebClient
+  plug ThirstrWeb.Plugs.Site
   plug ThirstrWeb.Router
 end

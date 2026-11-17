@@ -15,7 +15,8 @@ kill_signal = "SIGTERM"
   WEBAUTHN_RP_ID = "api.thirstr.fun"
   PORT = "4000"
   ECTO_IPV6 = "true"
-  SERVE_WEB_CLIENT = "false"
+  # W-01 canonical marketing host (www redirects here; other hosts get noindex).
+  SITE_HOST = "thirstr.fun"
   WELCOME_DEFAULT_CITY = "Zurich"
   S3_REGION = "auto"
 

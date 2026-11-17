@@ -95,6 +95,8 @@ jobs:
         run: npm run build:web
         env:
           EXPO_OFFLINE: "1"
+      - name: Marketing site build (W-01)
+        run: node ../../web/site/build.mjs
 
   image:
     runs-on: ubuntu-latest
