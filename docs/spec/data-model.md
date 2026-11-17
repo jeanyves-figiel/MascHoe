@@ -102,6 +102,11 @@ Address/door code: E2EE message to accepted guests, never in DB.
 ### reports (id, reporter_account, target_profile, reason, franked_payload CT null, state, created_at)
 ### moderation_actions (id, target_account, action, reason, actor, created_at, appeal_state)
 ### linked_accounts (profile_id, platform enum(x, bluesky, onlyfans, jff, instagram), handle, proof_method, verified_at, visibility)
+### mls_key_packages (id bigserial, profile_id, device_id, key_package bytea, last_resort bool, created_at) — single-use; ≤ 200 per (profile, device); one last-resort per (profile, device)
+### mls_messages (id bigserial, to_profile_id, to_device_id, from_profile_id, group_id bytea, kind welcome|commit|app, key_package_id, ciphertext bytea, created_at) — deleted on ack, swept after 30 d
+### franking_tags (message_id, tag bytea, created_at) — R-07.11 commitments, swept with messages
+### media_blobs (id uuid, account_id, storage_key, size, expires_at, created_at) — E2EE ciphertext only; owner can delete
+### devices.push_token / push_platform — APNs/FCM token per device (content-free pushes)
 ### trusted_contacts — **not stored server-side** beyond relay tokens (F-13).
 
 ## Valkey (RAM-only, no persistence)
@@ -117,6 +122,7 @@ Address/door code: E2EE message to accepted guests, never in DB.
 | `rl:{account}:{action}` | counters | window |
 | `checkin:{token}` | due_at, contact relay tokens | until due + 15 min |
 | `ip:{hash}` | abuse counters | 24 h |
+| `pushq:{account}` | push throttle (1 per 20 s) | 20 s |
 
 ## Object storage
 - `public/{photo_id}.avif` — public photos (plaintext, CDN, signed URL 1 h).
@@ -124,6 +130,8 @@ Address/door code: E2EE message to accepted guests, never in DB.
 
 ## Device-only (SQLCipher)
 Chats, private notes & tags, trusted contacts list, health reminders, received media, albums keys, MLS state, recovery phrase (never stored, shown once).
+
+Beta store: one encrypted key-value table (`expo-sqlite` + SQLCipher, key in Keychain). Keys: `convs`, `msgs:{conv}`, `grp:{group}` (MLS state), `g2c:{group}`, `kp:{sha256}` (private key packages), `kp:lastresort:{profile}`, `albums`, `grant:{conv}:{album}`, `note:{profile}`, `quick:custom`. Wiped on sign-out and account delete.
 
 ## Retention
 | Data | Retention |

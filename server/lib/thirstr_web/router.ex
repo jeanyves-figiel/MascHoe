@@ -106,6 +106,18 @@ defmodule ThirstrWeb.Router do
       get "/me/settings", ExploreController, :settings
       patch "/me/settings", ExploreController, :update_settings
       put "/me/safe_mode", ExploreController, :safe_mode
+
+      # Messaging (F-07, F-08, F-16): MLS delivery service, E2EE blobs, push token
+      post "/mls/keypackages", ChatController, :upload_key_packages
+      get "/mls/keypackages", ChatController, :key_package_counts
+      post "/mls/keypackages/claim", ChatController, :claim_key_packages
+      post "/mls/messages", ChatController, :send_messages
+      get "/mls/messages", ChatController, :pull
+      post "/mls/messages/ack", ChatController, :ack
+      post "/media/upload", ChatController, :create_blob
+      get "/media/:id", ChatController, :blob
+      delete "/media/:id", ChatController, :delete_blob
+      put "/me/push", ChatController, :push_token
     end
   end
 

@@ -10,6 +10,7 @@ import { availableFor, fieldType, GROUPS, maxLen, optionKey } from '../profile/f
 import { color, modeColor, radius, space, type } from '../theme/tokens';
 import { Banner, Button, Chip, Chips, ErrorText, Field, Loading, Section, Toggle } from '../ui';
 import { getLocal, setLocal } from './localFields';
+import { resharePrivate } from '../chat/engine';
 import { PhotoEditor } from './PhotoEditor';
 
 type Nav = { goBack: () => void };
@@ -55,6 +56,7 @@ export function EditProfileScreen({ route, navigation }: { route: { params: { id
     for (const k of Object.keys(local)) server[k] = null;
     try {
       await setLocal(p.id, local);
+      resharePrivate(p.id).catch(() => {});
       await api('PATCH', `/me/profiles/${p.id}`, { display_name: name.trim(), fields: server, visibility_map: vis });
       await refresh();
       navigation.goBack();

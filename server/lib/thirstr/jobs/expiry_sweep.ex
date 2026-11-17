@@ -15,6 +15,8 @@ defmodule Thirstr.Jobs.ExpirySweep do
 
     # taps expire after 7 days (data-model.md)
     Thirstr.Repo.query!("DELETE FROM taps WHERE created_at < now() - interval '7 days'")
+    # ciphertext queue 30 d, franking tags 90 d, expired media blobs (R-07.12, R-08.10)
+    Thirstr.Chat.sweep()
     :ok
   end
 end

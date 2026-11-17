@@ -108,12 +108,22 @@ Card: `{id, display_name, age, verified, photo, online, distance, now, exact, pi
 | GET | /venues/{id}/here | visible checked-in only, caller must be checked in |
 
 ### Messaging (F-07, F-08) — MLS Delivery Service
-| POST | /mls/keypackages | upload key packages |
-| GET | /mls/keypackages/{profile_id} | fetch one (consumed) |
-| POST | /mls/messages | {group_id, ciphertext, recipients_tokens, franking_tag} |
-| GET | /mls/messages?since= | fallback pull |
-| POST | /media/upload | → {blob_id, put_url} ciphertext |
-| GET | /media/{blob_id} | signed GET |
+One MLS identity per (own profile, device): credential identity = `{"p": profile_id, "d": device_id}`. The server routes by (profile, device) and stores ciphertext only (AC-07.1).
+
+| Method | Path | Body → response |
+|---|---|---|
+| GET | /mls/keypackages | → {counts: {profile_id: {count, last_resort}}, device_id} for this device |
+| POST | /mls/keypackages | {profile_id, key_packages: [b64] (≤ 200 stored per device), last_resort?: b64 (replaces previous)} → {counts, device_id} |
+| POST | /mls/keypackages/claim | {from_profile_id, to_profile_id} → {key_packages: [{id, device_id, key_package}]}, one per recipient device, single-use (last-resort reused). First contact needs caller verified unless replying (R-07.2); recipient without packages → 409 `unavailable` |
+| POST | /mls/messages | {from_profile_id, group_id: b64, franking_tag?: b64, envelopes: [{to_profile_id, to_device_id, kind: welcome\|commit\|app, key_package_id?, ciphertext: b64 ≤ 256 KB}] ≤ 200} → {delivered: [profile_id], undelivered: [profile_id]}. Blocked recipients land in `undelivered` (generic "Not delivered", no block reveal). New-contact limit 30/h. Emits `message.new` (no content) + push |
+| GET | /mls/messages?after= | → {messages: [{id, to_profile_id, from_profile_id, group_id, kind, key_package_id, ciphertext, at}]} for this device, ≤ 200 |
+| POST | /mls/messages/ack | {ids} → deletes them (R-07.12); unacked swept after 30 d |
+| POST | /media/upload | {size ≤ 210 MB, ttl_s?, album?: bool} → 201 {blob_id, put_url}; ciphertext only (AES-256-GCM on device). Chat media ≤ 30 d; album items until deleted |
+| GET | /media/{blob_id} | → {url} signed GET (1 h) |
+| DELETE | /media/{blob_id} | owner only; album revoke and item delete |
+| PUT | /me/push | {token, platform: ios\|android} → 204 (device push token) |
+
+Welcome wire (client convention): `sha256(recipient key package) ‖ MLS Welcome`, so the receiver finds its private key package without trial decryption. Plaintext inside MLS app messages is JSON `{v: 1, id, at, fk, t, …}` with `t` from R-07.4 plus `read`, `disappearing`, `screenshot`. `fk` is the franking key; `franking_tag = HMAC-SHA256(fk, plaintext)` goes to the server (R-07.11).
 
 ### Safety (F-13)
 | POST | /checkin | {due_at, contact_relay_tokens[]} → {checkin_token} |
@@ -127,7 +137,7 @@ Card: `{id, display_name, age, verified, photo, online, distance, now, exact, pi
 | POST | /profiles/{id}/vouch | |
 
 ## Realtime (Phoenix Channels, WSS)
-Connect: `wss://rt.<domain>/socket?token=…`.
+Connect: `wss://<api host>/socket/websocket?token=<access token>&vsn=2.0.0`, then join `user:me` (beta: one private topic per account; the server maps it).
 
 | Topic | Events (server → client) | Client → server |
 |---|---|---|
@@ -139,4 +149,6 @@ Connect: `wss://rt.<domain>/socket?token=…`.
 Rate limits (beta defaults, per account): messages to new contacts 30/h (unverified: 0), taps 100/day, location updates 1/30 s, pin set 6/h, party create 3/day, report 20/day.
 
 ## Push payloads
-`{ "aps": { "content-available": 1 }, "t": "<opaque>" }` — app wakes, fetches, renders locally per notification settings (F-16). Never names, text or images.
+Beta (no notification service extension yet): a **visible, generic** alert, identical for every event type:
+`{ "aps": { "alert": { "title": "Thirstr", "body": "New activity" }, "sound": "default", "mutable-content": 1 }, "t": "<opaque>" }`.
+Safe Mode: title "Reminder", body "You have a reminder". Never names, text, images or event type. iOS does not reliably deliver silent `content-available` pushes to a closed app, so a pure silent wake would lose messages. The app fetches and renders the rest when opened. Preview levels Name only / Full (R-16.3) arrive with the notification service extension (`mutable-content` is already set). Throttle: 1 push per account per 20 s; type toggles and quiet hours applied server-side.

@@ -11,8 +11,3 @@ defmodule Thirstr.Notify do
     :ok
   end
 end
-
-defmodule Thirstr.Push do
-  @moduledoc "Content-free wake-up pushes (F-16). Real APNs delivery lands with chat (B2)."
-  def maybe_wake(_account_id, _event), do: :ok
-end

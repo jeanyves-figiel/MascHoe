@@ -9,6 +9,8 @@ import { color, radius, space, type } from '../theme/tokens';
 import { Badge, Banner, Button, ErrorState, Loading, Photo, Sheet, useAccent, VerifiedTick } from '../ui';
 import { getLocal } from '../me/localFields';
 import { FieldList } from './FieldList';
+import { PrivateNote } from './PrivateNote';
+import { getConvs } from '../chat/engine';
 
 type Nav = { navigate: (s: string, p?: object) => void; goBack: () => void };
 type Params = { id: string; preview?: 'stranger' | 'verified' | 'chats' };
@@ -144,7 +146,8 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
             {p.vouches > 0 ? <Badge label={tx.profile.vouches(p.vouches)} fill={color.friends} /> : null}
           </View>
           {p.tapped && p.tapped_me ? <Banner tone="personal" text={tx.profile.mutual} /> : null}
-          <FieldList fields={p.fields} accent={accent} />
+          <FieldList fields={{ ...p.fields, ...(getConvs().find((c) => c.peer === p.id)?.peerFields ?? {}) }} accent={accent} />
+          {!p.self && !preview ? <PrivateNote profileId={p.id} /> : null}
         </View>
       </ScrollView>
 

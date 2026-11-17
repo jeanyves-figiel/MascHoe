@@ -1,0 +1,107 @@
+// F-08 R-08.4 private albums. Items are encrypted on the device, one random key per item.
+// Grant = send the item keys E2EE (album.grant). Revoke = album.revoke + rotate every item to a new
+// key and blob, then delete the old blobs, so a revoked device has nothing left to fetch (AC-08.2).
+import { gcm } from '@noble/ciphers/aes.js';
+import * as ImagePicker from 'expo-image-picker';
+import { api } from '../api/client';
+import { fromB64, hex, rand } from './bytes';
+import * as E from './engine';
+import { kv } from './kv';
+import { readBytes, uploadEncrypted } from './media';
+
+export type Share = { cid: string; until?: number };
+export type Album = { id: string; name: string; items: E.AlbumItem[]; shares: Share[] };
+
+const emit = new Set<() => void>();
+export const onAlbums = (fn: () => void) => {
+  emit.add(fn);
+  return () => {
+    emit.delete(fn);
+  };
+};
+
+export const listAlbums = async () => (await kv.get<Album[]>('albums')) ?? [];
+async function saveAll(list: Album[]) {
+  await kv.set('albums', list);
+  emit.forEach((f) => f());
+}
+async function update(id: string, fn: (a: Album) => Album | null) {
+  const list = await listAlbums();
+  const next = list.map((a) => (a.id === id ? fn(a) : a)).filter(Boolean) as Album[];
+  await saveAll(next);
+  return next.find((a) => a.id === id) ?? null;
+}
+
+export async function createAlbum(name: string) {
+  const a: Album = { id: hex(rand(8)), name: name.trim().slice(0, 40) || 'Album', items: [], shares: [] };
+  await saveAll([...(await listAlbums()), a]);
+  return a;
+}
+
+const live = (s: Share) => !s.until || s.until > Date.now();
+
+async function regrant(a: Album) {
+  for (const s of a.shares.filter(live)) {
+    await E.send(s.cid, { t: 'album.grant', album: a.id, name: a.name, items: a.items, until: s.until }, { silent: true }).catch(() => {});
+  }
+}
+
+/** Adds photos/videos from the library (no limits in private albums). */
+export async function addItems(id: string) {
+  const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.85, exif: false, allowsMultipleSelection: true, selectionLimit: 20 });
+  if (r.canceled) return;
+  const added: E.AlbumItem[] = [];
+  for (const asset of r.assets) {
+    const ref = await uploadEncrypted(await readBytes(asset.uri), { album: true });
+    added.push({ ...ref, mime: asset.mimeType ?? 'image/jpeg' });
+  }
+  const a = await update(id, (x) => ({ ...x, items: [...x.items, ...added] }));
+  if (a) await regrant(a);
+}
+
+export async function removeItem(id: string, blob: string) {
+  await api('DELETE', `/media/${blob}`).catch(() => {});
+  const a = await update(id, (x) => ({ ...x, items: x.items.filter((i) => i.blob !== blob) }));
+  if (a) await regrant(a);
+}
+
+export async function grant(id: string, cid: string, untilS: number | null) {
+  const until = untilS ? Date.now() + untilS * 1000 : undefined;
+  const a = await update(id, (x) => ({ ...x, shares: [...x.shares.filter((s) => s.cid !== cid), { cid, until }] }));
+  if (a) await E.send(cid, { t: 'album.grant', album: a.id, name: a.name, items: a.items, until });
+}
+
+async function rotate(a: Album): Promise<Album> {
+  const items: E.AlbumItem[] = [];
+  for (const it of a.items) {
+    const { url } = await api<{ url: string }>('GET', `/media/${it.blob}`);
+    const plain = gcm(fromB64(it.key), fromB64(it.iv)).decrypt(new Uint8Array(await (await fetch(url)).arrayBuffer()));
+    items.push({ ...(await uploadEncrypted(plain, { album: true })), mime: it.mime });
+    await api('DELETE', `/media/${it.blob}`).catch(() => {});
+  }
+  return { ...a, items };
+}
+
+export async function revoke(id: string, cid: string) {
+  const cur = (await listAlbums()).find((a) => a.id === id);
+  if (!cur) return;
+  await E.send(cid, { t: 'album.revoke', album: id }).catch(() => {});
+  const rotated = await rotate({ ...cur, shares: cur.shares.filter((s) => s.cid !== cid) });
+  await update(id, () => rotated);
+  await regrant(rotated);
+}
+
+export async function deleteAlbum(id: string) {
+  const a = (await listAlbums()).find((x) => x.id === id);
+  if (!a) return;
+  for (const s of a.shares) await E.send(s.cid, { t: 'album.revoke', album: id }, { silent: true }).catch(() => {});
+  for (const it of a.items) await api('DELETE', `/media/${it.blob}`).catch(() => {});
+  await saveAll((await listAlbums()).filter((x) => x.id !== id));
+}
+
+/** A grant received in a conversation, if still valid. */
+export async function receivedGrant(cid: string, album: string) {
+  const g = await kv.get<Extract<E.Payload, { t: 'album.grant' }>>(`grant:${cid}:${album}`);
+  if (!g || (g.until && g.until < Date.now())) return null;
+  return g;
+}
