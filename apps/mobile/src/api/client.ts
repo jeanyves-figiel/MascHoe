@@ -17,7 +17,7 @@ const secure = {
 };
 
 export type Me = {
-  status: 'active' | 'paused' | 'quarantined' | 'banned' | 'deleted';
+  status: 'active' | 'paused' | 'quarantined' | 'suspended' | 'banned' | 'deleted';
   verified: boolean;
   verified_since?: string | null;
   onboarding_step: 'basics' | 'location' | 'photo' | 'verify' | 'done';

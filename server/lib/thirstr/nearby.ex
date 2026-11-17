@@ -89,7 +89,7 @@ defmodule Thirstr.Nearby do
              p.fields->>'sport_intent', a.id::text
       FROM profiles p JOIN accounts a ON a.id = p.account_id
       LEFT JOIN photos ph ON ph.id = p.photo_ids[1]
-      WHERE p.id = ANY($1) AND a.status = 'active'
+      WHERE p.id = ANY($1) AND (a.status = 'active' OR a.id = $2)
         AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.account_from = $2 AND b.account_to = a.id)
                                                  OR (b.account_from = a.id AND b.account_to = $2))
       """,

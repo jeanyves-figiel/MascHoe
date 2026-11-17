@@ -56,12 +56,13 @@ defmodule Thirstr.Auth.Passkeys do
 
   def verify_registration(_), do: {:error, :validation}
 
-  def authentication_options do
+  @doc "`origin` overrides the app origin (admin console on the API host, same RP id)."
+  def authentication_options(origin \\ nil) do
     cfg = cfg()
 
     challenge =
       Wax.new_authentication_challenge(
-        origin: cfg[:origin],
+        origin: origin || cfg[:origin],
         rp_id: cfg[:rp_id],
         user_verification: "preferred",
         timeout: @ttl

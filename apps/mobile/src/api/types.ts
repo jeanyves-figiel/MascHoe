@@ -65,7 +65,9 @@ export type ProfileView = {
   tapped: boolean;
   tapped_me: boolean;
   vouches: number;
-  badges: { kind: string; since?: string; years?: number }[];
+  vouched?: boolean;
+  can_vouch?: boolean;
+  badges: { kind: string; since?: string; years?: number; up_pct?: number; total?: number }[];
   linked_accounts: { platform: string; handle: string }[];
   self: boolean;
 };

@@ -49,6 +49,8 @@ config :thirstr,
        team ->
          Enum.map(String.split(env.("IOS_BUNDLE_IDS", "app.thirstr"), ","), &"#{team}.#{&1}")
      end),
+  # Admin console (admin-console.md, R-AD.12): owner account ids; empty = console off (404).
+  admin_account_ids: String.split(System.get_env("ADMIN_ACCOUNT_IDS") || "", ",", trim: true),
   webauthn: [
     origin: env.("WEBAUTHN_ORIGIN", app_url),
     rp_id: env.("WEBAUTHN_RP_ID", URI.parse(app_url).host),

@@ -14,7 +14,7 @@ Principle: store the minimum; anything audience-restricted is E2EE or coarse-fla
 | email_hash | bytea null | magic link / recovery only |
 | verified_at | timestamptz null | set by F-03 |
 | verification_epoch | int | bumps on re-verify |
-| status | enum(active, paused, quarantined, banned, deleted) | |
+| status | enum(active, paused, quarantined, suspended, banned, deleted) | quarantined = shadow (shown to the account as active); suspended = read-only until the suspend action's ends_at |
 | safe_mode | enum(auto, on, off) | |
 | settings | jsonb | non-sensitive settings (F-17) |
 | plus_until | timestamptz null | Later |
@@ -99,9 +99,10 @@ Address/door code: E2EE message to accepted guests, never in DB.
 ### profile_hides (account_id, profile_id) — hidden from the viewer's Explore
 ### contacts (profile_a, profile_b, a_sent, b_sent) — who has messaged whom (pin audience "my chats", who-can-message)
 ### blocks (account_from, account_to) — account-level: blocks all profiles both ways
-### vouches (from_account, to_profile, created_at, weight) — capped, decays (F-18)
-### reports (id, reporter_account, target_profile, reason, franked_payload CT null, state, created_at)
-### moderation_actions (id, target_account, action, reason, actor, created_at, appeal_state)
+### vouches (from_account, to_profile, created_at; unique pair) — weight computed by SQL `vouch_count(profile)`: 1 for 6 months, linear to 0 at 12, reciprocal pairs × 0.5, max 20 (F-18)
+### reports (id, reporter_account, target_account, target_profile, reason, context, note (500), franked jsonb {messages: [{t, text, at}]} (franking-verified only), severity 1–6, state enum(open, actioned, dismissed), action, created_at, resolved_at; one open report per reporter × target × reason)
+### moderation_actions (id, target_account, action enum(quarantine, warn, remove_photo, hide_field, suspend, ban, release), reason, actor, created_at, ends_at (suspend), report_id, appeal_state enum(open, upheld, overturned), appeal_text, seen)
+### admin_audit (id bigserial, actor, action, object_hash (sha256 prefix of the object id), reason, at) — append-only (DB rules drop UPDATE/DELETE), R-AD.4
 ### linked_accounts (profile_id, platform enum(x, bluesky, onlyfans, jff, instagram), handle, proof_method, verified_at, visibility)
 ### mls_key_packages (id bigserial, profile_id, device_id, key_package bytea, last_resort bool, created_at) — single-use; ≤ 200 per (profile, device); one last-resort per (profile, device)
 ### mls_messages (id bigserial, to_profile_id, to_device_id, from_profile_id, group_id bytea, kind welcome|commit|app, key_package_id, ciphertext bytea, created_at) — deleted on ack, swept after 30 d

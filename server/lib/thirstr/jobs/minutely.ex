@@ -13,6 +13,7 @@ defmodule Thirstr.Jobs.Minutely do
     Thirstr.Tonight.sweep()
     Thirstr.Activities.sweep()
     Thirstr.Venues.sweep()
+    Thirstr.Moderation.sweep()
     :ok
   end
 end

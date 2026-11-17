@@ -8,12 +8,12 @@ defmodule ThirstrWeb.Plugs.Site do
     * anything else → `404.html` with status 404
     * hosts other than `:site_host` get `X-Robots-Tag: noindex`
 
-  API paths (`/v1`, `/socket`, `/.well-known`) and other methods pass through.
+  API paths (`/v1`, `/socket`, `/.well-known`, `/admin`) and other methods pass through.
   """
   @behaviour Plug
   import Plug.Conn
 
-  @api ~w(v1 socket .well-known)
+  @api ~w(v1 socket .well-known admin)
   @csp "default-src 'none'; style-src 'self'; font-src 'self'; img-src 'self' data:; " <>
          "base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 

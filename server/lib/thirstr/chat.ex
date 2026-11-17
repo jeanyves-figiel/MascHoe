@@ -194,6 +194,9 @@ defmodule Thirstr.Chat do
     {:error, _} = e -> e
   end
 
+  # AC-15.1 shadow quarantine: the sender sees a normal 200, nothing is stored or delivered.
+  defp deliver(%Account{status: "quarantined"}, _d, _f, _t, _g, _e, _n, _p), do: :ok
+
   defp deliver(a, _device_id, from, to, group, envs, now, params) do
     case Social.target(a, to) do
       {:ok, t} ->

@@ -8,7 +8,8 @@ defmodule ThirstrWeb.MeJSON do
     main = Enum.find(profiles, &(&1.kind == "now"))
 
     %{
-      status: a.status,
+      # Shadow quarantine is never revealed to the account (R-15.6).
+      status: if(a.status == "quarantined", do: "active", else: a.status),
       verified: Account.verified?(a),
       verified_since: a.verified_at && Calendar.strftime(a.verified_at, "%Y-%m"),
       onboarding_step: a.onboarding_step,

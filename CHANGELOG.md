@@ -6,6 +6,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **B4a Trust & safety: moderation** (issue 37), server:
+  - Reports (S-50, R-15.9) with franked messages: a reported message is kept only if its franking key opens a tag stored at delivery, so reports can't be forged; only kind, text and time are kept.
+  - Community quarantine (R-15.7: 3 verified spam/scam reports in 24 h) and beta auto-hide (R-15.13: 2 severe reports). Shadow quarantine is invisible to the account: its sends return 200 and reach nobody (AC-15.1).
+  - Enforcement: warn, remove photo, suspend 1–30 days (read-only, auto-lift), ban, release. Notices with rule and one appeal each (R-15.14, R-AD.9).
+  - Vouches (F-18): verified, account ≥ 30 days, ≥ 10 messages each way, 5 per 30 days, decay over 12 months, reciprocal pairs discounted, anonymous count on profiles and party requests. Host rating badge.
+  - Admin console at `/admin` (owner passkey, `ADMIN_ACCOUNT_IDS`): report queue with SLA timers, report detail with franked messages and blurred photos, photo review, quarantine, appeals, append-only audit log.
+- **B4a** app: Report screen (reasons, note, pick messages to attach, block), Account status with appeals and a suspension banner, Vouch / withdraw on profiles, host rating badge.
 - **B3 Social** (issue 37, full beta build), server:
   - Tonight board (F-09): plans with time window, tag and audience; 10 km area widened to 25 km when sparse; 2 live plans per profile; expiry at 06:00 local.
   - Parties (F-10): create (verified, not Safe Mode, 1 live, 3/day), list, invite codes, requests, transactional accept with seat count and auto-full, decline, remove, leave, co-host, status changes, ratings, reports (2 → hidden). Seat updates on socket topic `party:{id}`; push for requests, accepts and status.
