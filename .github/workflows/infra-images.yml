@@ -1,0 +1,29 @@
+# Builds the Postgres 16 + h3 image used by the Fly DB machines (thirstr-db-<env>).
+name: Infra images
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["infra/postgres/**"]
+
+permissions:
+  contents: read
+
+env:
+  FLY_API_TOKEN: ${{ secrets.FLY_TOKEN }}
+
+jobs:
+  postgres:
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - run: flyctl auth docker
+      - run: |
+          docker build -t thirstr-postgres:16 infra/postgres
+          for env in staging prod; do
+            docker tag thirstr-postgres:16 registry.fly.io/thirstr-db-$env:pg16-h3
+            docker push registry.fly.io/thirstr-db-$env:pg16-h3
+          done

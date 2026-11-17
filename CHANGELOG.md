@@ -6,6 +6,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Changed
+- api.md: account & onboarding endpoints, logout, delete confirmation, session shape, install header.
+- data-model.md: passkeys, refresh_tokens, cities tables; account birthdate/onboarding fields; H3 cells stored as bigint.
+- ops.md: Phoenix app layout, Fly hostnames until a domain exists (host is env config only), org `personal` for beta, workflow details.
+- ADR-0001 amendment: DEV object storage SeaweedFS (MinIO community images discontinued).
 - ops.md: Fly deploy token variable is `FLY_TOKEN`.
 - Hosting (D-03): Fly.io EU regions for beta (was Hetzner); ops.md infra, workflows and ADR-0001 updated; CLOUD Act risk noted in threat model; review before public launch.
 - App renamed **Thirstr** (was working name MascHoe) across concept and spec docs; D-01 updated with domain targets and trademark-clearance task.
@@ -15,6 +19,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Concept §6.2: exact pins visible to hidden/incognito viewers too (no give-to-get); pin owner's audience setting is the only filter.
 
 ### Added
+- Monorepo bootstrap (#20; follow-ups #24–#27): `server/` Phoenix API, `apps/mobile/` Expo app (iOS/Android/web), `core/` Rust crate (H3 cells, same output as server h3-pg), `infra/`, `design/tokens.json`.
+- DEV stack `docker compose up` on https://localhost:7443: Caddy TLS, Phoenix, Postgres 16 + h3, Valkey (RAM only), SeaweedFS S3, Mailpit, mock push (content-free payload check), Protomaps tile server; 5 000 seeded fake profiles in Zurich/Berlin/Paris.
+- F-01 Auth: passkey register/login (WebAuthn, attestation none, random user handle), Sign in with Apple/Google (ID token verified, only peppered subject hash stored; DEV issuer for localhost), email magic link (15 min, single use, always 202, hashed address), 15 min access + 30 d rotating refresh with theft revocation, max 5 devices, log out (this device / everywhere), pause/resume, delete (type DELETE, rows gone immediately, objects purged by job).
+- F-02 Onboarding S-01…S-06: Welcome live blurred counts (R-02.2 rounding), Create account (passkey first, 18+ checkbox), Basics (name, birthday, I am, Here for; under-18 deletes account and flags install 30 d), Location (Area default, Hidden only after verify, cells computed on device, city picker fallback), Main photo (presigned upload, inline classifier result, 4 optional slots), Verify → Later = browse-only with banner; server-side resume at last step. Strings en/fr/de.
+- CI/CD: `ci.yml` (mix format/credo/sobelow/deps.audit/tests, cargo fmt/clippy/test/audit, tsc/eslint/jest/web build, image build, EU-region check, ChangeLog check, gitleaks), `deploy-staging.yml` (build, SBOM, cosign, deploy by digest, smoke), `promote-prod.yml` (staging ≥ 30 min + smoke, owner approval, same digest, auto-rollback), `nightly.yml`, `infra-images.yml`; PR template.
+- Fly.io EU infra: `thirstr-{api,db,valkey}-{staging,prod}` in `fra`, Tigris buckets, secrets; runbook `docs/runbooks/fly.md`.
 - `docs/spec/`: pre-build technical docs — threat model & security plan, CI/CD/environments/ops (monorepo, DEV/staging/prod, trunk model, workflows, SLOs, DR), test strategy (AC traceability, abuse/privacy tests, beta release criteria), design system (tokens, copy, i18n, a11y), admin & moderation console, privacy-preserving metrics.
 - `docs/spec/`: beta specification — ADR-0001 stack (Elixir/Phoenix, Postgres+h3, Valkey, OpenMLS, React Native + Rust core, MapLibre; accepted), glossary, data model, API & realtime contract, screen inventory, feature specs F-01…F-18, integration specs I-01…I-03.
 - `docs/concept/onboarding-and-design.md`: login options (passkey default, Apple/Google/email, no phone), 6-step onboarding < 60 s, progressive profiling, design system (mode colours, type, nav), design audit. Mockups: onboarding row (Welcome, Sign up, Basics, Location, Photo, Verify).

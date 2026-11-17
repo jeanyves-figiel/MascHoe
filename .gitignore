@@ -1,0 +1,5 @@
+
+# local compose overrides
+docker-compose.override.yml
+infra/tiles/*.pmtiles
+.DS_Store

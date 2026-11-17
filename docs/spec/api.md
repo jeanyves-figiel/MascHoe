@@ -16,12 +16,28 @@ Errors: `{ "error": { "code": "rate_limited", "message": "...", "retry_after": 3
 | POST | /auth/oidc | {provider: apple\|google, id_token} → tokens |
 | POST | /auth/email/link | {email} → 202 (always) |
 | POST | /auth/email/verify | {token} → tokens |
-| POST | /auth/refresh | {refresh} → tokens |
+| POST | /auth/refresh | {refresh} → tokens (rotated; re-use of a spent token revokes the device) |
+| POST | /auth/logout · /auth/logout_all | → 204 (this device · every device, R-01.5) |
 | POST | /auth/device/link/start | → {qr_payload, expires} (old device) |
 | POST | /auth/device/link/complete | {qr_payload, new_device_pubkey} → tokens |
-| DELETE | /account | → 202; hard delete ≤ 24 h |
+| DELETE | /account | {confirm: "DELETE"} → 202; rows deleted immediately, objects purged by job ≤ 24 h |
 | POST | /account/pause · /account/resume | |
 | GET | /account/export | → 202; E2EE archive link pushed when ready |
+
+Sign-up calls (passkey register, OIDC, email verify) carry `age_confirmed: true` (R-01.12) and `platform`. Every request carries `x-thirstr-install` (random per install, hashed server-side) used only for the R-02.3 under-age flag. Session response: `{access_token, refresh_token, expires_in, account: Me}`.
+
+### Account & onboarding (F-01, F-02)
+| Method | Path | Body → Response |
+|---|---|---|
+| GET | /me | → Me `{status, verified, onboarding_step, safe_mode, profile, location}` (no ids of the account, no birthdate) |
+| POST | /account/pause · /account/resume | → Me |
+| PUT | /me/basics | {display_name, birthdate, gender, gender_other?, here_for[]} → Me; under 18 → 403 `underage`, account deleted, install flagged 30 d |
+| POST | /me/onboarding/verify_later | → Me (step `verify` → `done`, browse-only) |
+| GET | /welcome | → {city, center, count, cells:[{cell r7, count}]} (no auth, approximate IP city, R-02.2) |
+| GET | /cities?q= | → {cities:[{id, name, country, cell_r5}]} (S-04b picker) |
+| POST | /me/profiles/{id}/photos/{photo_id}/check | → {photo:{id, slot, status, reject_reason, url}, account: Me} (inline classifier result, R-02.7) |
+
+`PUT /me/location` (F-05) accepts `{level: area|exact, cell_r9}` or `{level: city, city_id | cell_r5}`; `hidden` requires verification. Onboarding step order: `basics → location → photo → verify → done`.
 
 ### Verification (F-03)
 | POST | /verification/challenge | → {nonce, challenge_seq} |

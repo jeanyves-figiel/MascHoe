@@ -1,0 +1,8 @@
+**/node_modules
+**/_build
+**/deps
+**/dist
+**/.expo
+core/target
+.git
+docs

@@ -1,0 +1,48 @@
+defmodule ThirstrWeb.FallbackController do
+  @moduledoc "Maps context errors to the api.md error envelope."
+  use ThirstrWeb, :controller
+
+  def call(conn, {:error, reason}), do: error(conn, reason)
+
+  def error(conn, :unauthorized), do: send_error(conn, 401, "unauthorized", "Sign in again")
+  def error(conn, :forbidden), do: send_error(conn, 403, "forbidden", "Not allowed")
+  def error(conn, {:forbidden, msg}), do: send_error(conn, 403, "forbidden", msg)
+  def error(conn, :not_found), do: send_error(conn, 404, "not_found", "Not found")
+  def error(conn, :conflict), do: send_error(conn, 409, "conflict", "Already exists")
+  def error(conn, {:conflict, msg}), do: send_error(conn, 409, "conflict", msg)
+
+  def error(conn, :too_many_devices),
+    do:
+      send_error(
+        conn,
+        409,
+        "conflict",
+        "You can use Thirstr on up to 5 devices. Remove one in Account & data."
+      )
+
+  def error(conn, :age_confirmation_required),
+    do:
+      send_error(conn, 422, "validation", "Confirm you are 18 or older", %{
+        age_confirmed: ["must be accepted"]
+      })
+
+  def error(conn, :underage), do: send_error(conn, 403, "underage", "You need to be 18+")
+  def error(conn, :underage_blocked), do: send_error(conn, 403, "underage", "You need to be 18+")
+  def error(conn, :basics_required), do: send_error(conn, 409, "conflict", "Finish Basics first")
+
+  def error(conn, {:validation, fields}),
+    do: send_error(conn, 422, "validation", "Check the highlighted fields", fields)
+
+  def error(conn, :validation), do: send_error(conn, 422, "validation", "Invalid request")
+
+  def error(conn, %Ecto.Changeset{} = cs),
+    do: error(conn, {:validation, Thirstr.Onboarding.errors(cs)})
+
+  def error(conn, _), do: send_error(conn, 500, "internal", "Something went wrong")
+
+  defp send_error(conn, status, code, message, fields \\ nil) do
+    body = %{code: code, message: message}
+    body = if fields, do: Map.put(body, :fields, fields), else: body
+    conn |> put_status(status) |> json(%{error: body})
+  end
+end
