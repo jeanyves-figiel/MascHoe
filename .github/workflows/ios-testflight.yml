@@ -15,7 +15,7 @@ permissions:
 
 concurrency:
   group: ios-testflight
-  cancel-in-progress: true
+  cancel-in-progress: false  # finish the running build; newer pushes queue and only the latest waiting one runs
 
 env:
   EXPO_PUBLIC_API_URL: https://staging.thirstr.fun
