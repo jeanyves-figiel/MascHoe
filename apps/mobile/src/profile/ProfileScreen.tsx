@@ -144,6 +144,11 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
             {p.tapped_me ? <Badge label={tx.profile.tappedYou} fill={color.personal} /> : null}
             {p.verified_since ? <Badge label={tx.profile.verifiedSince(new Date(p.verified_since).toLocaleDateString())} fill={color.trust} /> : null}
             {p.vouches > 0 ? <Badge label={tx.profile.vouches(p.vouches)} fill={color.friends} /> : null}
+            {p.badges
+              .filter((b) => b.kind === 'host_rating')
+              .map((b) => (
+                <Badge key={b.kind} label={tx.profile.hostRating(b.up_pct ?? 0, b.total ?? 0)} fill={color.hookup} />
+              ))}
           </View>
           {p.tapped && p.tapped_me ? <Banner tone="personal" text={tx.profile.mutual} /> : null}
           <FieldList fields={{ ...p.fields, ...(getConvs().find((c) => c.peer === p.id)?.peerFields ?? {}) }} accent={accent} />
@@ -216,6 +221,9 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
             {[
               { label: tx.profile.share, on: () => Share.share({ message: `https://thirstr.fun/p/${p.id}` }).catch(() => {}) },
               { label: tx.profile.hide, on: () => act(() => api('POST', `/profiles/${p.id}/hide`), () => { setMenu(false); navigation.goBack(); }) },
+              ...(p.vouched || p.can_vouch
+                ? [{ label: p.vouched ? tx.profile.unvouch : tx.profile.vouch, on: () => act(() => api(p.vouched ? 'DELETE' : 'POST', `/profiles/${p.id}/vouch`), () => { setMenu(false); load(); }) }]
+                : []),
               { label: tx.profile.report, on: () => { setMenu(false); navigation.navigate('Report', { profileId: p.id }); } },
               { label: tx.profile.block, on: () => setConfirmBlock(true), danger: true },
             ].map((r) => (

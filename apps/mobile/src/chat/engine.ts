@@ -62,6 +62,8 @@ export type Msg = {
   fk?: string;
   /** Group chats: sender profile id. */
   by?: string;
+  /** Received messages: exact plaintext (b64) so a report can open the franking commitment (R-07.11). */
+  raw?: string;
 };
 
 export type Conv = {
@@ -318,10 +320,10 @@ async function handle(m: Incoming) {
   const w = JSON.parse(fromUtf8(plain)) as Wire;
   const cid = (await kv.get<string>('g2c:' + gid)) ?? convId(m.to_profile_id, m.from_profile_id);
   if (!convs[cid]) await ensureConv(m.to_profile_id, m.from_profile_id);
-  await receive(cid, w, Date.parse(m.at) || w.at, m.from_profile_id);
+  await receive(cid, w, Date.parse(m.at) || w.at, m.from_profile_id, toB64(plain));
 }
 
-async function receive(cid: string, w: Wire, at: number, from?: string) {
+async function receive(cid: string, w: Wire, at: number, from?: string, raw?: string) {
   const c = convs[cid];
   if (!c) return;
   const list = await messages(cid);
@@ -361,6 +363,7 @@ async function receive(cid: string, w: Wire, at: number, from?: string) {
     at,
     p,
     fk: w.fk,
+    raw,
     by: c.ctx ? from : undefined,
   });
   c.theyWrote = true;

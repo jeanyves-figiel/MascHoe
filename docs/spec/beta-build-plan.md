@@ -32,8 +32,11 @@ Every F-01…F-18 / I-01…I-03 rule in beta scope ships before the closed beta 
 | Party vouches (R-10.4) | vouch count on requests | Shows 0 until vouches ship with B4 trust & safety | |
 | Venue geofence | OS geofencing auto check-out | 4 h auto check-out on the server; leaving the geofence is handled by the app when location updates arrive | No background location in beta. |
 | Club logo | club image | Not in beta (name + sport only) | |
+| Admin console | separate LiveView app behind VPN, FIDO2 | `/admin` server-rendered pages in the API app (no LiveView dependency, no JS except the passkey login). Owner passkey login; owners listed in `ADMIN_ACCOUNT_IDS` (empty → 404). Cookie session 8 h, idle 30 min, CSRF on every form, CSP. Screens A-01 reports, A-02 detail, A-03 photo review, A-04 quarantine, A-05 appeals, A-10 audit. A-06 verification appeals, A-07 venues, A-08 legal, A-09 config: not in beta (owner edits via DB/runbook) | VPN + separate app before public beta. |
+| Reports (R-15.7) | reporter score | Any verified reporter counts; one open report per reporter × target × reason | Reporter score once there is volume. |
+| Ban appeal | in-app | Banned accounts are signed out and can't sign in; ban appeals by email to the support address on the website in beta. Suspensions and warnings appeal in-app | |
+| Badges | Replies fast | Not in beta (needs reply-time data we don't keep). Verified, member since, vouches, host rating ship | |
 | Private notes sync | E2EE sync across own devices | Device-only in beta (one device per account) | Sync with device linking (B4). |
-| Admin console | separate LiveView app behind VPN, FIDO2 | `/admin` LiveView in the API app, owner-only passkey login (R-AD.12), not linked anywhere, `ADMIN_ENABLED` env | VPN + separate app before public beta. |
 | Trusted-contact page | separate web page | `GET /t/{token}` static page from API; key in URL fragment, decrypts in browser | |
 | Live location / panic power-button | OS hooks | in-app SOS only (long-press); power-button gesture not available to third-party iOS apps | |
 

@@ -25,11 +25,12 @@ import { PartyScreen } from '../scene/PartyScreen';
 import { resyncHostGroups } from '../scene/groupSync';
 import { ActivityNewScreen, ActivityScreen, ClubNewScreen, ClubScreen } from '../scene/SportScreens';
 import { TonightScreen } from '../scene/TonightScreen';
+import { NoticesScreen } from '../trust/NoticesScreen';
+import { ReportScreen } from '../trust/ReportScreen';
 import { VenueScreen } from '../scene/VenueScreens';
 import { color, modeColor, radius, space, type } from '../theme/tokens';
 import { ModeContext } from '../ui';
 import { useSession } from './session';
-import { Soon } from './Soon';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -132,7 +133,8 @@ export function Main() {
           <Stack.Screen name="Club" component={ClubScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="ClubNew" component={ClubNewScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="Venue" component={VenueScreen as React.ComponentType} options={sub} />
-          <Stack.Screen name="Report" component={Soon} options={sub} />
+          <Stack.Screen name="Report" component={ReportScreen as React.ComponentType} options={sub} />
+          <Stack.Screen name="Notices" component={NoticesScreen} options={sub} />
         </Stack.Navigator>
         <PushPrompt />
       </NavigationContainer>

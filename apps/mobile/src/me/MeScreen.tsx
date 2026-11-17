@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, ApiError } from '../api/client';
@@ -8,6 +8,7 @@ import { LocationSheet } from '../explore/LocationSheet';
 import { tx } from '../i18n/app';
 import { color, modeColor, radius, space, type } from '../theme/tokens';
 import { Banner, Button, ErrorText, ListRow, Photo, Section, Segmented, Toggle, VerifiedTick, Wordmark } from '../ui';
+import type { Notice } from '../trust/NoticesScreen';
 import { NowSheet } from './NowSheet';
 
 type Nav = { navigate: (s: string, p?: object) => void };
@@ -26,6 +27,12 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
   const [err, setErr] = useState<string | null>(null);
   const p: MyProfile | undefined = profiles.find((x) => x.kind === kind);
   const accent = modeColor[kindMode[kind]];
+  const [notices, setNotices] = useState<Notice[]>([]);
+  useEffect(() => {
+    api<{ notices: Notice[] }>('GET', '/me/notices').then((r) => setNotices(r.notices), () => {});
+  }, []);
+  // Newest suspension notice while the account is suspended (the server lifts it when it ends).
+  const suspended = me.status === 'suspended' ? notices.find((n) => n.action === 'suspend' && n.ends_at) : undefined;
 
   const run = async (fn: () => Promise<unknown>) => {
     setBusy(true);
@@ -97,6 +104,11 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
           </View>
         )}
 
+        {suspended ? (
+          <Banner tone="danger" text={tx.notices.suspended(new Date(suspended.ends_at!).toLocaleDateString())} onPress={() => navigation.navigate('Notices')} />
+        ) : notices.some((n) => !n.seen) ? (
+          <Banner tone="warn" text={tx.notices.banner} onPress={() => navigation.navigate('Notices')} />
+        ) : null}
         {!me.verified ? <Banner text={tx.explore.verifyBanner} onPress={() => navigation.navigate('Verify')} /> : null}
 
         <Section>
@@ -115,6 +127,7 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
           <ListRow title={tx.me.taps} onPress={() => navigation.navigate('Taps')} />
           <ListRow testID="me-albums" title={tx.albums.menu} onPress={() => navigation.navigate('Albums')} />
           <ListRow testID="me-settings" title={tx.me.settings} onPress={() => navigation.navigate('Settings')} />
+          <ListRow testID="me-notices" title={tx.notices.title} onPress={() => navigation.navigate('Notices')} />
           {p && p.kind !== 'now' ? <ListRow title={tx.me.deleteProfile} danger onPress={() => run(() => api('DELETE', `/me/profiles/${p.id}`))} /> : null}
         </Section>
         <ErrorText text={err} />

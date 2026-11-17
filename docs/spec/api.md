@@ -140,6 +140,13 @@ One MLS identity per (own profile, device): credential identity = `{"p": profile
 
 Welcome wire (client convention): `sha256(recipient key package) ‖ MLS Welcome`, so the receiver finds its private key package without trial decryption. Plaintext inside MLS app messages is JSON `{v: 1, id, at, fk, t, …}` with `t` from R-07.4 plus `read`, `disappearing`, `screenshot`. `fk` is the franking key; `franking_tag = HMAC-SHA256(fk, plaintext)` goes to the server (R-07.11).
 
+### Reports, notices, appeals (F-15, R-AD.9)
+| POST | /reports | {profile_id, reason: spam_bot\|scam\|underage\|harassment\|non_consensual\|hate\|impersonation\|other, context: profile\|chat\|photo\|party, note? ≤ 500, messages?: [{plain: b64 exact plaintext, fk: b64}] ≤ 20} → 201 {attached}. A message is kept only if `HMAC-SHA256(fk, plain)` equals a franking tag stored at delivery from that profile to one of the reporter's profiles (R-07.11); only `t`, `text`, `at` are stored. ≥ 3 verified spam/scam reporters in 24 h or ≥ 2 severe (underage, non_consensual, scam) → shadow quarantine pending review (R-15.7, R-15.13) |
+| GET | /me/notices | → {notices: [{id, action: warn\|remove_photo\|hide_field\|suspend\|ban, reason, at, ends_at, appeal: null\|open\|upheld\|overturned, seen}]}. Quarantine is never listed (R-15.6) |
+| POST | /me/notices/seen | → 204 |
+| POST | /me/notices/{id}/appeal | {text ≤ 1000} → 204; one appeal per action (409 after) |
+Suspended accounts (`status: suspended`) can read, see notices, appeal, ack messages, sign out and delete; every other write → 403 `suspended`. Quarantined accounts see `status: active`; their sends return 200 and reach nobody (AC-15.1).
+
 ### Safety (F-13)
 | POST | /checkin | {due_at, contact_relay_tokens[]} → {checkin_token} |
 | POST | /checkin/{token}/ok | |
@@ -149,7 +156,7 @@ Welcome wire (client convention): `sha256(recipient key package) ‖ MLS Welcome
 ### Social (I-01, I-02, F-18)
 | POST | /me/linked-accounts | {platform, handle} → {proof_method, code?} |
 | POST | /me/linked-accounts/{id}/verify | |
-| POST | /profiles/{id}/vouch | |
+| POST · DELETE | /profiles/{id}/vouch | vouch / withdraw. Verified, account ≥ 30 d (403, AC-18.1), ≥ 10 messages each way with that profile, ≤ 5 per 30 d. Profile view adds `vouches` (weighted, anonymous), `vouched`, `can_vouch` |
 
 ## Realtime (Phoenix Channels, WSS)
 Connect: `wss://<api host>/socket/websocket?token=<access token>&vsn=2.0.0`, then join `user:me` (beta: one private topic per account; the server maps it).
