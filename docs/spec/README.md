@@ -18,6 +18,12 @@ Status: draft v0.1 · 2026-11-17 · Source of truth before any code. Product rat
 | — | [Data model](data-model.md) |
 | — | [API & realtime contract](api.md) |
 | — | [Screen inventory](screens.md) |
+| — | [Design system: tokens, copy, i18n, a11y](design-system.md) |
+| — | [Threat model & security plan](security.md) |
+| — | [CI/CD, environments & operations](ops.md) |
+| — | [Test strategy](testing.md) |
+| — | [Admin & moderation console](admin-console.md) |
+| — | [Privacy-preserving metrics](metrics.md) |
 | F-01 | [Auth & account](features/F01-auth.md) |
 | F-02 | [Onboarding](features/F02-onboarding.md) |
 | F-03 | [Verification](features/F03-verification.md) |
