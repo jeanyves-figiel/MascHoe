@@ -5,6 +5,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+- Design: **Pop** is the only theme (#38). design-system.md: ink base `#17142E`, mode colours coral/violet/lime, teal for trust/location/privacy, sunflower for personal items, Bricolage Grotesque, new radius scale, logo/wordmark spec (`thirstr` with coral `r` + three dots), Pop component rules. Light theme removed (F-17 theme setting dropped). Concept doc colours/fonts updated.
+
 ### Added
 - Domain `thirstr.fun` (#34): staging at `https://staging.thirstr.fun`, prod at `https://api.thirstr.fun` (Fly certs + GoDaddy DNS). Staging toml, EAS staging API URL (passkey associated domain), workflow smoke URLs and docs (D-01, ops.md, api.md, runbooks) switched from `*.fly.dev`. Prod host takes effect on the next promotion. Staging passkeys must be re-enrolled (RP ID changed).
 - iOS TestFlight pipeline (#31): `ios-testflight.yml` (EAS Build + auto-submit, app points at staging), `apps/mobile/eas.json`, `app.config.js` (passkey associated domain from API host), runbook `docs/runbooks/ios.md`.
