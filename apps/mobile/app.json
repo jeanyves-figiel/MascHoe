@@ -68,6 +68,18 @@
       [
         "expo-notifications",
         {}
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Thirstr uses Face ID to unlock the app and confirm you're OK during a check-in."
+        }
+      ],
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "Thirstr uses motion only for shake-to-erase, when you turn it on."
+        }
       ]
     ],
     "runtimeVersion": {

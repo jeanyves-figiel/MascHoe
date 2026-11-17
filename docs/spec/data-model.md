@@ -112,6 +112,9 @@ Address/door code: E2EE message to accepted guests, never in DB.
 ### media_blobs (id uuid, account_id, storage_key, size, expires_at, created_at) — E2EE ciphertext only; owner can delete
 ### devices.push_token / push_platform — APNs/FCM token per device (content-free pushes)
 ### trusted_contacts — **not stored server-side** beyond relay tokens (F-13).
+### safety_relays (id uuid, account_id, rid_hash bytea unique, intro bytea, accepted_at, push jsonb {endpoint, keys}, created_at) — one per trusted contact; rid and key device-only
+### safety_msgs (id bigserial, relay_id, checkin_id null, kind notice|alert|panic|ok|loc, ciphertext bytea, release_at null (held) \| time, created_at) — deleted on contact ack or 24 h after release (R-13.10)
+### checkins (id uuid, account_id unique, token_hash, due_at, extensions, due_pushed bool, created_at) — deleted on OK/panic; alerts released at due + 15 min
 
 ## Valkey (RAM-only, no persistence)
 | Key | Value | TTL |
@@ -124,7 +127,6 @@ Address/door code: E2EE message to accepted guests, never in DB.
 | `sig:{signal}:{account}` | anti-bot signal counters (velocity, tap bursts) | window |
 | `presence:{cell_r8}` | Phoenix Presence | live |
 | `rl:{account}:{action}` | counters | window |
-| `checkin:{token}` | due_at, contact relay tokens | until due + 15 min |
 | `ip:{hash}` | abuse counters | 24 h |
 | `pushq:{account}` | push throttle (1 per 20 s) | 20 s |
 

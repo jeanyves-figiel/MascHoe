@@ -6,6 +6,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **B4c Safety** (F-13, issue 37): trusted contacts (up to 3, invite link shared from the phone; contacts need no app and see a web page at `/c/` that decrypts in the browser), meet check-in from a chat or Me › Safety (notice now, alert with last location, his profile and last 20 messages if you don't confirm by due + 15 min, +30 min up to 3 times), SOS hold with "call 112/911/999?", empty Web Push to contacts, app lock (6-digit PIN, Face ID, lock after 0/1/5/15 min), duress PIN (empty decoy or erase), shake + hold to erase this phone's data. Server keeps ciphertext only; suspended accounts can still use safety.
 - **B4b Verification** (F-03, issue 37): server challenge (nonce + 3 random liveness steps, single use), blind-signed credential (Chaum RSA-FDH 3072, SHA-384; server never sees the token), redeem with spent-token check, 3 fails → 24 h cooldown, 12-month expiry. App: iPhone selfie check with an on-device Apple Vision module (`modules/thirstr-face`, frames deleted after measuring), camera permission text, blind/unblind in the app.
 - **B4a Trust & safety: moderation** (issue 37), server:
   - Reports (S-50, R-15.9) with franked messages: a reported message is kept only if its franking key opens a tag stored at delivery, so reports can't be forged; only kind, text and time are kept.

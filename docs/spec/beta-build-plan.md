@@ -38,7 +38,11 @@ Every F-01…F-18 / I-01…I-03 rule in beta scope ships before the closed beta 
 | Ban appeal | in-app | Banned accounts are signed out and can't sign in; ban appeals by email to the support address on the website in beta. Suspensions and warnings appeal in-app | |
 | Badges | Replies fast | Not in beta (needs reply-time data we don't keep). Verified, member since, vouches, host rating ship | |
 | Private notes sync | E2EE sync across own devices | Device-only in beta (one device per account) | Sync with device linking (B4). |
-| Trusted-contact page | separate web page | `GET /t/{token}` static page from API; key in URL fragment, decrypts in browser | |
+| Trusted-contact page | separate web page | `/c/` static page on the site host (`web/site/c`), key in URL fragment, decrypts in browser; relay API `/v1/relay/{rid}` (no account, 60/min/IP) | |
+| Contact alerts | SMS/WhatsApp gateway | Empty-payload **Web Push** (VAPID) to the contact page; on iPhone the contact adds the page to the Home Screen. No SMS in beta | SMS gateway if contacts miss alerts |
+| Check-in timer | Valkey `checkin:{token}` | Postgres `checkins` + held `safety_msgs`, swept every minute (a Valkey restart must never drop an alert) | |
+| Alert location with app killed | captured at alert time | Location from the app's last 5-min refresh (iOS can't run a killed app at an exact time) | Background location task if needed |
+| Panic trigger | power button 3 s | In-app SOS hold (2 s) only; iOS gives apps no power-button access | |
 | Live location / panic power-button | OS hooks | in-app SOS only (long-press); power-button gesture not available to third-party iOS apps | |
 
 ## Classifier mapping (R-15.10, NudeNet labels)

@@ -14,6 +14,7 @@ defmodule Thirstr.Jobs.Minutely do
     Thirstr.Activities.sweep()
     Thirstr.Venues.sweep()
     Thirstr.Moderation.sweep()
+    Thirstr.Safety.sweep()
     :ok
   end
 end

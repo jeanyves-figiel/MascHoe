@@ -276,6 +276,16 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
 
       <Sheet visible={menu} onClose={() => setMenu(false)} title={conv.name} closeLabel={tx.common.close}>
         {!conv.gone && !group ? <ListRow title={tx.chat.viewProfile} onPress={() => { setMenu(false); navigation.navigate('Profile', { id: conv.peer }); }} /> : null}
+        {!conv.gone && !group ? (
+          <ListRow
+            testID="chat-checkin"
+            title={tx.safety.checkin}
+            onPress={() => {
+              setMenu(false);
+              navigation.navigate('CheckinStart', { cid: conv.id });
+            }}
+          />
+        ) : null}
         <View style={{ gap: space.s }}>
           <Text style={{ ...type.meta, color: color.fgSecondary }}>{tx.chat.disappearing}</Text>
           <Segmented

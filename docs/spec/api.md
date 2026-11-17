@@ -149,10 +149,25 @@ Welcome wire (client convention): `sha256(recipient key package) ‖ MLS Welcome
 Suspended accounts (`status: suspended`) can read, see notices, appeal, ack messages, sign out and delete; every other write → 403 `suspended`. Quarantined accounts see `status: active`; their sends return 200 and reach nobody (AC-15.1).
 
 ### Safety (F-13)
-| POST | /checkin | {due_at, contact_relay_tokens[]} → {checkin_token} |
-| POST | /checkin/{token}/ok | |
-| POST | /checkin/{token}/panic | |
-| POST | /trusted/invite | → {invite_link} (contact accepts via web page; relay token) |
+Envelopes are opaque b64 ciphertext ≤ 64 KB (F-13 › Beta implementation). `relay` = relay id (uuid) of one of the caller's accepted relays.
+| POST | /trusted/invite | {intro} → 201 {id, rid}. ≤ 3 accepted + 2 pending (409 `contacts_full`) |
+| GET | /trusted | → {contacts: [{id, accepted, push, created_at}]} |
+| DELETE | /trusted/{id} | → 204 (relay + mailbox gone) |
+| POST | /checkin | {due_at (15 min–12 h ahead), notices: [{relay, ciphertext}], alerts: [{relay, ciphertext}]} → 201 {token, due_at}. One active check-in per account (409 `checkin_active`); no accepted relay → 422 |
+| PUT | /checkin/{token}/alerts | {alerts, live?: [{relay, ciphertext}]} → 204 (replaces held alerts; `live` delivered now) |
+| POST | /checkin/{token}/extend | {alerts} → 200 {due_at} (+30 min, max 3, 409 `max_extensions`) |
+| POST | /checkin/{token}/ok | {oks?: [{relay, ciphertext}]} → 204 (check-in + held alerts deleted, R-13.10) |
+| POST | /checkin/{token}/panic | {alerts} → 204 (released now, check-in closed) |
+| POST | /checkin/panic | {alerts} → 204 (released now; no check-in needed) |
+| GET | /checkin | → {checkin: null \| {token, due_at, extensions}} |
+
+Contact side (no account; `rid` from the link fragment; 60 req/min per IP):
+| GET | /relay/{rid} | → {accepted, intro, vapid_key} (404 when removed) |
+| POST | /relay/{rid}/accept | {push?: {endpoint, keys}} → 204 |
+| PUT | /relay/{rid}/push | {push} → 204 |
+| GET | /relay/{rid}/messages | → {messages: [{id, ciphertext, at}]} (released only) |
+| POST | /relay/{rid}/ack | {ids} → 204 (deleted) |
+| DELETE | /relay/{rid} | → 204 (opt out, R-13.3) |
 
 ### Social (I-01, I-02, F-18)
 | POST | /me/linked-accounts | {platform, handle} → {proof_method, code?} |
