@@ -3,6 +3,9 @@
 export const color = {
   bgBase: '#17142E',
   bgMap: '#1B1836',
+  mapRoad: '#282449',
+  mapRoadMinor: '#221E40',
+  mapWater: '#1F3A5C',
   bgRaised: '#262248',
   bgOverlay: '#2E2A55',
   bgInverse: '#FFFFFF',

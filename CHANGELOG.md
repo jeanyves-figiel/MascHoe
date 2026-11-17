@@ -5,6 +5,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+- **Onboarding v2** (F-02, issue 54): new sign-up and onboarding in the Pop design, from the approved clickable mockup. Welcome with live glow, count and promises; sign-up with Apple first and an 18+ consent line instead of a checkbox; one question per screen (name, birthday wheel showing your age, I am with auto-advance, Here for colour tiles); location with a live map preview; main photo frame with inline check; verification payoff screen; new "You're in" screen with your profile card. 7-step progress bar, back within steps, haptics, entry motion (Reduce Motion respected). en/fr/de.
+
 ### Fixed
 - **Birthday entry on iPhone** (issue 52): the sign-up birthday field used the number pad, which has no "-" key, so no valid date could be typed. Digits are now kept and the dashes inserted automatically.
 

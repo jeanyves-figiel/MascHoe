@@ -1,5 +1,5 @@
 import { describe, expect, test } from '@jest/globals';
-import { ageOn, basicsValid, displayCount, maskBirthday, parseBirthday, screenFor } from '../src/onboarding/flow';
+import { ageOn, basicsValid, daysIn, displayCount, isoBirthday, maskBirthday, nameValid, parseBirthday, screenFor } from '../src/onboarding/flow';
 import { areaCell } from '../src/geo/cells';
 
 const me = (step: any) => ({ status: 'active', verified: false, onboarding_step: step, safe_mode: 'auto', profile: null, location: null }) as any;
@@ -34,6 +34,20 @@ describe('F-02 flow', () => {
     expect(maskBirthday('1997-06-1')).toBe('1997-06-1');
     expect(maskBirthday('199706145')).toBe('1997-06-14');
     expect(parseBirthday(maskBirthday('19970614'))).not.toBeNull();
+  });
+
+  test('birthday wheel parts → ISO, day clamped to month length (S-03b)', () => {
+    expect(isoBirthday(1997, 5, 14)).toBe('1997-06-14');
+    expect(isoBirthday(2001, 1, 31)).toBe('2001-02-28');
+    expect(isoBirthday(2000, 1, 31)).toBe('2000-02-29');
+    expect(daysIn(2024, 1)).toBe(29);
+    expect(parseBirthday(isoBirthday(1990, 11, 31))).not.toBeNull();
+  });
+
+  test('name 1–30 chars after trim (S-03a)', () => {
+    expect(nameValid('Max')).toBe(true);
+    expect(nameValid('  ')).toBe(false);
+    expect(nameValid('x'.repeat(31))).toBe(false);
   });
 
   test('basics validation mirrors server (R-02.4, R-02.5)', () => {

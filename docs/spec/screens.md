@@ -8,12 +8,16 @@ Tab bar (4): **Explore** S-10 · **Tonight** S-13 · **Chats** S-40 · **Me** S-
 ## Onboarding & auth
 | ID | Screen [board] | Spec | Key elements | Interactions | Special states |
 |---|---|---|---|---|---|
-| S-01 | Welcome [Welcome] | F-02 | live blurred map, headline count, 3 promises, Get started, I have an account | tap CTA → S-02; login → passkey sheet | count < 10 → "Guys are joining near you" |
-| S-02 | Create account [SignUp] | F-01 | passkey CTA, Apple/Google/Email, 18+ checkbox | passkey sheet; checkbox required | email path → S-02b "Check your inbox" |
-| S-03 | Basics [Basics] | F-02 | name, birthday, I am, Here for | chips toggle; Continue enabled when valid | under 18 → block screen S-03b |
-| S-04 | Location setup [LocSetup] | F-05 | mini map preview, 4 options, Allow location | option changes preview; CTA → OS prompt | denied → city picker S-04b |
-| S-05 | Main photo [Photo] | F-02, F-15 | photo frame, AI check result, 4 slots | camera/library; retake | rejected → reason + tips |
-| S-06 | Verify [Verify] | F-03 | face oval, challenge text, progress ring, privacy bullets, Later | auto-advance challenges | fail → retry/cooldown S-06b |
+| S-01 | Welcome [v2 Main] | F-02 | wordmark 52 pt, drifting blurred activity blobs, "Live around {area}" chip, headline count, 3 promises with teal icons, Get started, I already have an account | CTA → S-02 | count < 10 → "Guys are joining near you" |
+| S-02 | Sign up [v2 Sign up] | F-01 | wordmark, "Let's get you in.", Apple / passkey / Google / email link, 18+ consent line | method → auth sheet | login copy "Welcome back."; email path → S-02b "Check your inbox" |
+| S-03a | Name [v2 Name] | F-02 | question headline, big input, n/30 | Continue when 1–30 chars | — |
+| S-03b | Birthday [v2 Birthday] | F-02 | 3-column wheel, age chip | snap + haptic | under 18 → S-03x block |
+| S-03c | I am [v2 I am] | F-02 | 4 pill options, free-text for Something else | auto-advance | — |
+| S-03d | Here for [v2 Here for] | F-02 | 5 colour tiles | multi-select; Continue saves basics | none selected → CTA disabled |
+| S-04 | Location setup [v2 Location] | F-05 | live map preview, 4 options, privacy footer, Allow location | option changes preview; CTA → OS prompt | denied → city picker S-04b |
+| S-05 | Main photo [v2 Main photo] | F-02, F-15 | 4:5 frame, 4 extra slots, status line | camera/library; scan while checking | rejected → reason + tips |
+| S-06 | Verify [v2 Get verified] | F-03 | payoff intro, face oval, ring, prompt, pips, Later | auto-advance challenges | fail → retry/cooldown S-06b |
+| S-07 | You're in [v2 You're in] | F-02 | profile card preview, See who's around | → S-10 | — |
 
 ## Explore
 | S-10 | Explore map [Home] | F-04 | mode switch, filters, location pill, map, pins, tray | see F-04 table | Safe Mode: counts only |
