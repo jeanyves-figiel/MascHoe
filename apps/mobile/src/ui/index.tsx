@@ -14,6 +14,8 @@ import {
   ViewStyle,
 } from 'react-native';
 import { color, Mode, modeColor, radius, space, tileFor, touch, type } from '../theme/tokens';
+import { Icon } from './icons';
+export { Icon } from './icons';
 
 // Current mode recolours accent surfaces (R-04.1, design-system.md › Pop).
 export const ModeContext = createContext<Mode>('hookup');
@@ -240,8 +242,8 @@ export function Badge({ label, fill, small }: { label: string; fill: string; sma
 
 export function VerifiedTick({ size = 14 }: { size?: number }) {
   return (
-    <View accessibilityLabel="Verified" style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: color.trust, alignItems: 'center', justifyContent: 'center' }}>
-      <Text style={{ color: color.onAccent, fontSize: size * 0.7, lineHeight: size, fontWeight: '900' }}>✓</Text>
+    <View accessible accessibilityRole="image" accessibilityLabel="Verified" style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: color.trust, alignItems: 'center', justifyContent: 'center' }}>
+      <Icon.Check size={size * 0.62} w={3.6} />
     </View>
   );
 }
@@ -287,6 +289,17 @@ export function Photo({ uri, id, style, label }: { uri: string | null | undefine
   );
 }
 
+/** Bottom scrim over photos (App v2): stepped ink bands, transparent → ~90 %, no gradient dependency. */
+export function Scrim({ height = '60%', max = 0.9, steps = 10 }: { height?: ViewStyle['height']; max?: number; steps?: number }) {
+  return (
+    <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height }}>
+      {Array.from({ length: steps }, (_, i) => (
+        <View key={i} style={{ flex: 1, backgroundColor: color.bgBase, opacity: (max * (i + 1)) / steps }} />
+      ))}
+    </View>
+  );
+}
+
 /** Bottom sheet (S-12, S-30, …). */
 export function Sheet({ visible, onClose, title, children, closeLabel = 'Close' }: { visible: boolean; onClose: () => void; title: string; children: React.ReactNode; closeLabel?: string }) {
   return (
@@ -298,7 +311,7 @@ export function Sheet({ visible, onClose, title, children, closeLabel = 'Close' 
             {title}
           </Text>
           <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel={closeLabel} style={s.close}>
-            <Text style={s.body}>✕</Text>
+            <Icon.Close />
           </Pressable>
         </View>
         <ScrollView contentContainerStyle={{ gap: space.l, paddingBottom: space.huge }} keyboardShouldPersistTaps="handled">
@@ -337,7 +350,7 @@ export const s = StyleSheet.create({
   label: { ...type.meta, color: color.fgSecondary, marginBottom: space.xs },
   sectionTitle: { ...type.caption, color: color.fgSecondary, textTransform: 'uppercase', letterSpacing: 0.6, marginLeft: space.xs },
   hint: { ...type.meta, color: color.fgMuted },
-  btn: { minHeight: touch + 8, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', paddingHorizontal: space.xl },
+  btn: { minHeight: 56, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', paddingHorizontal: space.xl },
   btnSmall: { minHeight: touch, paddingHorizontal: space.l },
   primary: {},
   trust: {},
@@ -346,7 +359,7 @@ export const s = StyleSheet.create({
   danger: { backgroundColor: 'transparent', borderWidth: 1, borderColor: color.danger },
   off: { opacity: 0.4 },
   pressed: { opacity: 0.8 },
-  btnText: { ...type.headline, color: color.fgPrimary },
+  btnText: { ...type.headline, fontSize: 17, color: color.fgPrimary },
   btnTextSmall: { ...type.meta, fontFamily: type.headline.fontFamily },
   btnTextOnFill: { color: color.onAccent },
   btnTextDanger: { color: color.danger },
@@ -354,7 +367,7 @@ export const s = StyleSheet.create({
   chipText: { ...type.meta, color: color.fgPrimary },
   chipTextOn: { color: color.onAccent, fontFamily: type.headline.fontFamily },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.s },
-  segmented: { flexDirection: 'row', padding: 3, gap: 3, borderRadius: radius.pill, backgroundColor: color.bgRaised, borderWidth: 1, borderColor: color.line },
+  segmented: { flexDirection: 'row', padding: 3, gap: 3, borderRadius: radius.pill, backgroundColor: color.bgRaised },
   segBtn: { minHeight: 38, paddingHorizontal: space.m, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
   segText: { ...type.meta, fontFamily: type.headline.fontFamily, color: color.fgPrimary },
   field: { gap: space.xxs },

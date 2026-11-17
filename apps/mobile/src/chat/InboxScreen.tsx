@@ -5,7 +5,8 @@ import { api } from '../api/client';
 import type { Tap } from '../api/types';
 import { tx } from '../i18n/app';
 import { color, radius, space, type } from '../theme/tokens';
-import { EmptyState, ListRow, Photo, Sheet, useAccent, VerifiedTick } from '../ui';
+import { EmptyState, Icon, ListRow, Photo, Segmented, Sheet, VerifiedTick } from '../ui';
+import { v2 } from '../i18n/v2';
 import { Conv, deleteConv, getConvs, setConv } from './engine';
 import { useTopics } from './hooks';
 
@@ -24,10 +25,10 @@ export function InboxScreen({ navigation }: { navigation: Nav }) {
   useTopics('convs');
   const tapsTick = useTopics('taps');
   const insets = useSafeAreaInsets();
-  const accent = useAccent();
   const [taps, setTaps] = useState<number | null>(null);
   const [menu, setMenu] = useState<Conv | null>(null);
   const [showArchived, setShowArchived] = useState(false);
+  const [filt, setFilt] = useState<'all' | 'unread' | 'new'>('all');
 
   useEffect(() => {
     api<{ taps: Tap[] }>('GET', '/taps')
@@ -36,12 +37,12 @@ export function InboxScreen({ navigation }: { navigation: Nav }) {
   }, [tapsTick]);
 
   const all = getConvs().filter((c) => c.last || c.groups.length);
-  const live = all.filter((c) => !!c.archived === showArchived);
+  const live = all.filter((c) => !!c.archived === showArchived && (filt !== 'unread' || !!c.unread));
   const starred = (a: Conv, b: Conv) => Number(!!b.starred) - Number(!!a.starred);
   const groups = live.filter((c) => !!c.ctx).sort(starred);
   const fresh = live.filter((c) => !c.ctx && c.theyWrote && !c.iWrote).sort(starred);
   const chats = live.filter((c) => !c.ctx && !(c.theyWrote && !c.iWrote)).sort(starred);
-  const sections = [
+  const sections = filt === 'new' ? (fresh.length ? [{ title: tx.chat.new, data: fresh }] : []) : [
     ...(fresh.length ? [{ title: tx.chat.new, data: fresh }] : []),
     ...(groups.length ? [{ title: tx.chat.parties, data: groups }] : []),
     ...(chats.length ? [{ title: showArchived ? tx.chat.archived : tx.chat.chats, data: chats }] : []),
@@ -50,23 +51,35 @@ export function InboxScreen({ navigation }: { navigation: Nav }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: color.bgBase, paddingTop: insets.top + space.s }}>
-      <Text accessibilityRole="header" style={{ ...type.display, color: color.fgPrimary, paddingHorizontal: space.l, marginBottom: space.s }}>
+      <Text accessibilityRole="header" style={{ ...type.display, fontSize: 34, lineHeight: 38, color: color.fgPrimary, paddingHorizontal: space.l, marginBottom: space.m }}>
         {tx.chat.title}
       </Text>
+      <View style={{ paddingHorizontal: space.l, marginBottom: space.m, alignSelf: 'flex-start' }}>
+        <Segmented
+          label={tx.chat.title}
+          value={filt}
+          onChange={setFilt}
+          options={[
+            { value: 'all', label: v2.inbox.all },
+            { value: 'unread', label: v2.inbox.unread },
+            { value: 'new', label: tx.chat.new },
+          ]}
+        />
+      </View>
       <Pressable
         testID="inbox-taps"
         accessibilityRole="button"
         onPress={() => navigation.navigate('Taps')}
-        style={{ marginHorizontal: space.l, marginBottom: space.s, padding: space.m, borderRadius: radius.md, backgroundColor: color.bgRaised, flexDirection: 'row', alignItems: 'center', gap: space.m }}
+        style={({ pressed }) => [{ marginHorizontal: space.l, marginBottom: space.s, padding: space.m, borderRadius: radius.tray, backgroundColor: color.bgRaised, flexDirection: 'row', alignItems: 'center', gap: space.m }, pressed && { opacity: 0.85 }]}
       >
-        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: color.personal, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ ...type.headline, color: color.onAccent }}>✦</Text>
+        <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: color.personal, alignItems: 'center', justifyContent: 'center' }}>
+          <Icon.Star size={22} c={color.onAccent} fill={color.onAccent} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={{ ...type.headline, color: color.fgPrimary }}>{tx.chat.taps}</Text>
           <Text style={{ ...type.meta, color: color.fgSecondary }}>{tx.chat.tapsNew(taps ?? 0)}</Text>
         </View>
-        {taps ? <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: accent }} /> : null}
+        {taps ? <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: color.hookup }} /> : null}
       </Pressable>
       {all.length === 0 ? (
         <EmptyState title={tx.chat.empty} body={tx.chat.emptyBody} />
@@ -92,20 +105,20 @@ export function InboxScreen({ navigation }: { navigation: Nav }) {
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                   <Text numberOfLines={1} style={{ ...type.headline, color: color.fgPrimary, flexShrink: 1 }}>
-                    {c.starred ? '★ ' : ''}
                     {c.gone ? tx.chat.gone : c.name}
                   </Text>
-                  {c.verified ? <VerifiedTick size={13} /> : null}
-                  {c.muted ? <Text style={{ ...type.meta, color: color.fgMuted }}> 🔕</Text> : null}
+                  {c.verified ? <VerifiedTick size={14} /> : null}
+                  {c.starred ? <Icon.Star size={13} c={color.personal} fill={color.personal} /> : null}
+                  {c.muted ? <Text style={{ ...type.caption, color: color.fgMuted }}>{v2.inbox.muted}</Text> : null}
                 </View>
-                <Text numberOfLines={1} style={{ ...type.meta, color: c.unread ? color.fgPrimary : color.fgSecondary }}>
+                <Text numberOfLines={1} style={{ ...type.body, fontSize: 14, color: c.unread ? color.fgPrimary : color.fgSecondary, fontFamily: c.unread ? type.headline.fontFamily : type.body.fontFamily }}>
                   {c.last}
                 </Text>
               </View>
               <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                <Text style={{ ...type.caption, color: color.fgMuted }}>{ago(c.lastAt)}</Text>
+                <Text style={{ ...type.meta, fontSize: 12, color: color.fgMuted }}>{ago(c.lastAt)}</Text>
                 {c.unread ? (
-                  <View style={{ minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 6, backgroundColor: c.muted ? color.fgMuted : accent, alignItems: 'center', justifyContent: 'center' }}>
+                  <View style={{ minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 6, backgroundColor: c.muted ? color.fgMuted : color.hookup, alignItems: 'center', justifyContent: 'center' }}>
                     <Text style={{ ...type.caption, color: color.onAccent }}>{c.unread}</Text>
                   </View>
                 ) : null}
@@ -113,13 +126,19 @@ export function InboxScreen({ navigation }: { navigation: Nav }) {
             </Pressable>
           )}
           ListFooterComponent={
-            archivedCount || showArchived ? (
+            <>
+            {archivedCount || showArchived ? (
               <Pressable accessibilityRole="button" onPress={() => setShowArchived(!showArchived)} style={{ padding: space.l }}>
                 <Text style={{ ...type.meta, color: color.fgSecondary, textAlign: 'center' }}>
                   {showArchived ? tx.chat.chats : `${tx.chat.archived} · ${archivedCount}`}
                 </Text>
               </Pressable>
-            ) : undefined
+            ) : null}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, padding: space.l }}>
+              <Icon.Lock />
+              <Text style={{ ...type.meta, fontSize: 12, fontFamily: type.headline.fontFamily, color: color.trust }}>{v2.inbox.e2ee}</Text>
+            </View>
+            </>
           }
         />
       )}

@@ -6,7 +6,7 @@ import { useOptions } from '../api/options';
 import { useSession } from '../app/session';
 import { distanceLabel, opt, tx } from '../i18n/app';
 import { color, radius, space, type } from '../theme/tokens';
-import { Banner, Button, Chip, Chips, EmptyState, ListRow, Loading, Photo, useAccent, VerifiedTick } from '../ui';
+import { Banner, Button, Chip, Chips, EmptyState, Icon, ListRow, Loading, Photo, useAccent, VerifiedTick } from '../ui';
 import { PlanSheet } from './PlanSheet';
 import type { Club, MyPlan, Party, Plan, Post, Venue } from './types';
 import { day, time } from './types';
@@ -50,18 +50,20 @@ export function PartyCard({ p, onPress }: { p: Party; onPress: () => void }) {
       onPress={onPress}
       style={{
         padding: space.l,
-        borderRadius: radius.md,
+        borderRadius: 22,
         backgroundColor: color.bgRaised,
         gap: space.s,
-        borderWidth: 1,
+        borderWidth: 2,
         borderColor: accent,
       }}
     >
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-        <Text style={{ ...type.caption, color: accent, textTransform: 'uppercase' }}>🎉 {tx.party.status[p.status]}</Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <View style={{ paddingHorizontal: 10, height: 24, borderRadius: radius.pill, backgroundColor: accent, justifyContent: 'center' }}>
+          <Text style={{ ...type.caption, color: color.onAccent, textTransform: 'uppercase' }}>{tx.party.status[p.status]}</Text>
+        </View>
         <Text style={{ ...type.caption, color: color.fgSecondary }}>{tx.party.seats(p.seats_taken, p.capacity)}</Text>
       </View>
-      <Text style={{ ...type.title, color: color.fgPrimary }}>{p.title}</Text>
+      <Text style={{ ...type.title, fontSize: 24, lineHeight: 28, color: color.fgPrimary }}>{p.title}</Text>
       <Text style={{ ...type.meta, color: color.fgSecondary }}>
         {day(p.starts_at)}–{time(p.ends_at)} · {distanceLabel(p.distance)} · {p.host.display_name}
       </Text>
@@ -148,6 +150,13 @@ export function TonightScreen({ navigation }: { navigation: Nav }) {
         <Text accessibilityRole="header" style={{ ...type.display, color: color.fgPrimary }}>
           {sport ? tx.tonight.sportTitle : tx.tonight.title}
         </Text>
+        {!sport ? (
+          <Chips>
+            {(['now2', 'now4', 'late'] as Win[]).map((w) => (
+              <Chip key={w} label={tx.tonight.window[w]} on={win === w} fill={accent} onPress={() => setWin(w)} />
+            ))}
+          </Chips>
+        ) : null}
         {noLoc ? <Banner tone="trust" text={tx.tonight.noLocation} /> : null}
         {!me.verified ? <Banner tone="warn" text={tx.tonight.verify} onPress={() => navigation.navigate('Verify')} /> : null}
         {err ? <Banner tone="danger" text={err} onPress={refresh} /> : null}
@@ -170,7 +179,7 @@ export function TonightScreen({ navigation }: { navigation: Nav }) {
               >
                 <Text style={{ ...type.headline, color: color.fgPrimary }}>{tx.sport.clubs}</Text>
                 <Pressable accessibilityRole="button" onPress={() => navigation.navigate('ClubNew')}>
-                  <Text style={{ ...type.meta, color: accent }}>＋ {tx.sport.newClub}</Text>
+                  <Text style={{ ...type.meta, color: accent }}>+ {tx.sport.newClub}</Text>
                 </Pressable>
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.s }}>
@@ -265,7 +274,9 @@ export function TonightScreen({ navigation }: { navigation: Nav }) {
                     key={m.id}
                     style={{
                       padding: space.m,
-                      borderRadius: radius.md,
+                      borderRadius: 18,
+                      borderWidth: 2,
+                      borderColor: accent,
                       backgroundColor: color.bgRaised,
                       flexDirection: 'row',
                       alignItems: 'center',
@@ -285,11 +296,6 @@ export function TonightScreen({ navigation }: { navigation: Nav }) {
                 ))}
               </View>
             ) : null}
-            <Chips>
-              {(['now2', 'now4', 'late'] as Win[]).map((w) => (
-                <Chip key={w} label={tx.tonight.window[w]} on={win === w} onPress={() => setWin(w)} />
-              ))}
-            </Chips>
             {plans === null ? (
               <Loading />
             ) : plans.length === 0 ? (
@@ -299,10 +305,10 @@ export function TonightScreen({ navigation }: { navigation: Nav }) {
                 <View
                   key={p.id}
                   style={{
-                    padding: space.m,
-                    borderRadius: radius.md,
+                    padding: space.l,
+                    borderRadius: 22,
                     backgroundColor: color.bgRaised,
-                    gap: space.s,
+                    gap: space.m,
                   }}
                 >
                   <Who
@@ -318,19 +324,21 @@ export function TonightScreen({ navigation }: { navigation: Nav }) {
                             name: p.profile.display_name,
                           })
                         }
+                        accessibilityLabel={tx.explore.quick.message}
                         style={{
-                          paddingHorizontal: space.m,
-                          height: 32,
-                          borderRadius: radius.pill,
+                          width: 44,
+                          height: 44,
+                          borderRadius: 22,
                           backgroundColor: accent,
+                          alignItems: 'center',
                           justifyContent: 'center',
                         }}
                       >
-                        <Text style={{ ...type.meta, color: color.onAccent }}>{tx.explore.quick.message}</Text>
+                        <Icon.Chat size={20} c={color.onAccent} />
                       </Pressable>
                     }
                   />
-                  <Text style={{ ...type.body, color: color.fgPrimary }}>{p.text}</Text>
+                  <Text style={{ ...type.body, fontSize: 17, lineHeight: 23, color: color.fgPrimary }}>{p.text}</Text>
                   <Chips>
                     <Chip label={`${time(p.window_start)}–${time(p.window_end)}`} on={false} onPress={() => {}} />
                     <Chip label={tx.tonight.tags[p.tag]} on fill={accent} onPress={() => {}} />
@@ -370,7 +378,7 @@ export function TonightScreen({ navigation }: { navigation: Nav }) {
         }}
       >
         <View style={{ flex: 1 }}>
-          <Button testID="tonight-post" title={sport ? tx.sport.post : tx.tonight.post} onPress={() => (sport ? navigation.navigate('ActivityNew') : setSheet(true))} disabled={!me.verified} />
+          <Button testID="tonight-post" title={sport ? tx.sport.post : tx.tonight.post} fill={color.fgPrimary} onPress={() => (sport ? navigation.navigate('ActivityNew') : setSheet(true))} disabled={!me.verified} />
         </View>
         {mode === 'hookup' ? (
           <View style={{ flex: 1 }}>

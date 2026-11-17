@@ -6,6 +6,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Changed
+- **App v2 main screens** (issue 58): map, grid, profile, chats, chat, Tonight and Me restyled to the approved App v2 mockup. New line icon set replaces emoji and text glyphs; pill tab bar with the active tab filled in the mode colour; map/grid icon toggle and location chip in the Explore header; photo cards with a soft scrim and online dot; profile photo pager with page bars, chips and a round Tap star; inbox filter (All, Unread, New) and E2EE footer; chat header with disappearing-timer chip, rounded bubbles and pill composer; Tonight window chips on top, party card and plan rows with a round message button, white Post button; Me completeness ring card. en/fr/de.
 - **Onboarding v2** (F-02, issue 54): new sign-up and onboarding in the Pop design, from the approved clickable mockup. Welcome with live glow, count and promises; sign-up with Apple first and an 18+ consent line instead of a checkbox; one question per screen (name, birthday wheel showing your age, I am with auto-advance, Here for colour tiles); location with a live map preview; main photo frame with inline check; verification payoff screen; new "You're in" screen with your profile card. 7-step progress bar, back within steps, haptics, entry motion (Reduce Motion respected). en/fr/de.
 
 ### Fixed

@@ -6,7 +6,7 @@ import { kindForMode } from '../api/types';
 import { useSession } from '../app/session';
 import { tx } from '../i18n/app';
 import { color, font, radius, space, type } from '../theme/tokens';
-import { Banner, Button, ListRow, Loading, Photo, Segmented, Sheet, Toggle, useAccent, VerifiedTick } from '../ui';
+import { Banner, Button, Icon, ListRow, Loading, Photo, Segmented, Sheet, Toggle, useAccent, VerifiedTick } from '../ui';
 import * as E from './engine';
 import { useTopics } from './hooks';
 import { MediaBubble, pickAndSendMedia, SendOpts } from './media';
@@ -141,10 +141,10 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: color.bgBase }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={{ paddingTop: insets.top + space.xs, paddingHorizontal: space.l, paddingBottom: space.s, flexDirection: 'row', alignItems: 'center', gap: space.m, borderBottomWidth: 1, borderColor: color.lineSubtle }}>
         <Pressable accessibilityRole="button" accessibilityLabel={tx.common.back} onPress={() => navigation.goBack()} hitSlop={12}>
-          <Text style={{ ...type.title, color: color.fgPrimary }}>‹</Text>
+          <Icon.Back />
         </Pressable>
         <Pressable style={{ flexDirection: 'row', alignItems: 'center', gap: space.s, flex: 1 }} accessibilityRole="button" onPress={() => !conv.gone && !group && navigation.navigate('Profile', { id: conv.peer })}>
-          <Photo uri={conv.photo} id={conv.peer || conv.id} label="" style={{ width: 40, height: 40, borderRadius: 20 }} />
+          <Photo uri={conv.photo} id={conv.peer || conv.id} label="" style={{ width: 42, height: 42, borderRadius: 21 }} />
           <View style={{ flex: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <Text numberOfLines={1} style={{ ...type.headline, color: color.fgPrimary, flexShrink: 1 }}>
@@ -152,11 +152,17 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
               </Text>
               {conv.verified ? <VerifiedTick size={13} /> : null}
             </View>
-            <Text style={{ ...type.meta, color: typing ? accent : color.fgMuted }}>{typing ? tx.chat.typing : conv.ttl !== 'never' ? `⏱ ${ttlLabel}` : ''}</Text>
+            {typing ? <Text style={{ ...type.meta, color: accent }}>{tx.chat.typing}</Text> : null}
           </View>
         </Pressable>
+        {conv.ttl !== 'never' ? (
+          <Pressable accessibilityRole="button" accessibilityLabel={tx.chat.disappearing} onPress={() => setMenu(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, height: 28, borderRadius: radius.pill, backgroundColor: color.personal }}>
+            <Icon.Timer />
+            <Text style={{ ...type.caption, color: color.onAccent }}>{ttlLabel}</Text>
+          </Pressable>
+        ) : null}
         <Pressable testID="chat-menu" accessibilityRole="button" accessibilityLabel="More" onPress={() => setMenu(true)} hitSlop={12}>
-          <Text style={{ ...type.title, color: color.fgPrimary }}>⋯</Text>
+          <Icon.More />
         </Pressable>
       </View>
 
@@ -166,7 +172,10 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
         keyExtractor={(x) => x.m.id}
         contentContainerStyle={{ padding: space.l, gap: space.xs }}
         ListFooterComponent={
-          <Text style={{ ...type.meta, color: color.trust, textAlign: 'center', marginBottom: space.l }}>🔒 {group ? tx.group.e2ee : tx.chat.e2ee}</Text>
+          <View style={{ alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: space.m, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: color.bgRaised, marginBottom: space.l }}>
+            <Icon.Lock />
+            <Text style={{ ...type.caption, color: color.trust }}>{group ? tx.group.e2ee : tx.chat.e2ee}</Text>
+          </View>
         }
         renderItem={({ item: { m, r } }) => {
           if (m.p.t === 'disappearing') {
@@ -189,10 +198,10 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
                 style={{
                   maxWidth: '80%',
                   paddingHorizontal: space.m,
-                  paddingVertical: space.s,
-                  borderRadius: radius.md,
-                  borderBottomRightRadius: mine ? 6 : radius.md,
-                  borderBottomLeftRadius: mine ? radius.md : 6,
+                  paddingVertical: 10,
+                  borderRadius: 20,
+                  borderBottomRightRadius: mine ? 6 : 20,
+                  borderBottomLeftRadius: mine ? 20 : 6,
                   backgroundColor: mine ? accent : color.bgRaised,
                   opacity: m.status === 'sending' ? 0.7 : 1,
                 }}
@@ -232,8 +241,8 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
           {!group ? (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: space.s, paddingHorizontal: space.l, paddingVertical: space.s }}>
               {[...tx.chat.quick, ...custom].map((q) => (
-                <Pressable key={q} accessibilityRole="button" onPress={() => send({ t: 'quick_reply', text: q })} style={{ paddingHorizontal: space.m, height: 34, justifyContent: 'center', borderRadius: radius.pill, borderWidth: 1, borderColor: color.line }}>
-                  <Text style={{ ...type.meta, color: color.fgPrimary }}>{q}</Text>
+                <Pressable key={q} accessibilityRole="button" onPress={() => send({ t: 'quick_reply', text: q })} style={{ paddingHorizontal: 14, height: 36, justifyContent: 'center', borderRadius: radius.pill, backgroundColor: color.bgRaised }}>
+                  <Text style={{ ...type.meta, color: color.fgPrimary, fontFamily: font.medium }}>{q}</Text>
                 </Pressable>
               ))}
             </ScrollView>
@@ -248,7 +257,7 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
                 onPress={() => setMediaSheet(true)}
                 style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: color.bgRaised, alignItems: 'center', justifyContent: 'center' }}
               >
-                <Text style={{ ...type.headline, color: color.fgPrimary }}>{busy ? '…' : '＋'}</Text>
+                {busy ? <Text style={{ ...type.headline, color: color.fgPrimary }}>…</Text> : <Icon.Plus />}
               </Pressable>
             ) : null}
             <TextInput
@@ -271,7 +280,7 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
                   submit();
                 }
               }}
-              style={{ flex: 1, minHeight: 44, maxHeight: 140, borderRadius: radius.md, backgroundColor: color.bgRaised, color: color.fgPrimary, paddingHorizontal: space.m, paddingTop: 12, paddingBottom: 12, fontFamily: font.regular, fontSize: 15 }}
+              style={{ flex: 1, minHeight: 44, maxHeight: 140, borderRadius: 22, outlineStyle: 'none' as never, backgroundColor: color.bgRaised, color: color.fgPrimary, paddingHorizontal: space.m, paddingTop: 12, paddingBottom: 12, fontFamily: font.regular, fontSize: 15 }}
             />
             <Pressable
               testID="chat-send"
@@ -281,7 +290,7 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
               disabled={!text.trim()}
               style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: text.trim() ? accent : color.bgRaised, alignItems: 'center', justifyContent: 'center' }}
             >
-              <Text style={{ ...type.headline, color: text.trim() ? color.onAccent : color.fgMuted }}>↑</Text>
+              <Icon.Send c={text.trim() ? color.onAccent : color.fgMuted} />
             </Pressable>
           </View>
         </>

@@ -82,6 +82,15 @@ Generated to TS (RN theme) by Style Dictionary in CI. Hard-coded colours/sizes i
 - Chat: own bubbles = mode colour of the conversation's origin mode (default Hookup), incoming = `bg.overlay`; E2EE line in `trust`; disappearing timer chip `personal`; shared exact-pin card `trust`.
 - Profile: interest/status chips use the palette fills; private note card is `personal` with ink text; "Ask to unlock" album button `mode.friends`.
 
+### App v2 rules (issue 58, mockup approved 2026-11-17)
+- Bottom nav: icon on every tab; label only on the active tab, which grows (flex 1.6) and fills with the mode colour; inactive icons `navInactive`. Chats badge = coral count with a white ring.
+- Explore header: wordmark 27 pt left; location chip (`bg.raised`, teal pin icon, level label) and round filter icon button right; second row = mode switch (left) + Map/Grid icon toggle (right, selected = white). On the map the header sits on an ink-to-transparent scrim.
+- Photo tiles and tray cards: bottom scrim from transparent to ink 85–90 %; name + age 800, distance `fg.secondary`; Now badge top-left in the person's mode colour; online dot = lime with ink ring; tray card outlined in mode colour when Now.
+- Tab-root titles are 34/38 800 (Tonight, Chats, Me); captions above in `fg.secondary` 13.
+- Profile actions: white round 44 pt buttons over photos; sticky bottom row = 58 pt round favourite + 58 pt coral Message pill.
+- Rows: 58 pt min height, 10 pt coloured dot, value right in `fg.secondary` (teal for location), chevron `fg.muted`.
+- Text glyphs are never icons: use `src/ui/icons.tsx`.
+
 ### Iconography
 - 24 px grid, 1.75 px stroke, rounded. Set lives in `/design/icons` (SVG → RN components).
 - Badges: verified (trust check), vouched (count), creator, host. Never colour-only: badge = icon + accessible label.

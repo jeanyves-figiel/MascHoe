@@ -2,6 +2,9 @@
 
 Mockups: [canvas](https://claude.ai/artifact/TErsb1tkyu5qWo8JQxD6VG) (board name in brackets). States column: every screen MUST implement loading (skeleton), empty, error (retry), offline (cached + chip) unless marked n/a.
 
+## App v2 visual standard (issue 58)
+Mockup (approved 2026-11-17): [app v2 canvas](https://claude.ai/artifact/3uHEiz4DBoGmuXPQfnyxif). Board names in brackets below now refer to that canvas where they say "v2". Every main screen follows design-system.md › App v2 rules: 34 pt display titles on tab roots, pill controls, icon + label nav, scrims on photos, no text glyphs as icons (☰, ✓, ✕ replaced by `src/ui/icons.tsx`).
+
 ## Navigation
 Tab bar (4): **Explore** S-10 · **Tonight** S-13 · **Chats** S-40 · **Me** S-60. Modal sheets slide up; profiles open as sheet over map, full screen elsewhere. Back = swipe/edge.
 
@@ -20,17 +23,17 @@ Tab bar (4): **Explore** S-10 · **Tonight** S-13 · **Chats** S-40 · **Me** S-
 | S-07 | You're in [v2 You're in] | F-02 | profile card preview, See who's around | → S-10 | — |
 
 ## Explore
-| S-10 | Explore map [Home] | F-04 | mode switch, filters, location pill, map, pins, tray | see F-04 table | Safe Mode: counts only |
-| S-11 | Explore grid [Main] | F-04 | same header, 3-col grid | scroll, long-press quick actions | sparse → "Further away" section |
+| S-10 | Explore map [v2 Prototype] | F-04 | wordmark, location chip (teal pin + level), filter icon button, mode switch, Map/Grid icon toggle, map, pins, tray ("N guys nearby") | see F-04 table | Safe Mode: counts only |
+| S-11 | Explore grid [v2 Explore · grid] | F-04 | same header, "N nearby" title, 3-col tiles (radius 18, bottom scrim, Now badge, online dot, verified tick) | scroll, long-press quick actions | sparse → "Further away" section |
 | S-12 | Filters sheet | F-04 R-04.8 | per-mode filter groups, reset, apply | apply closes + reloads | — |
-| S-20 | Profile (other) [Profile] | F-06 | photos, name, badges, status, tags, sections, private note, linked accounts, actions | swipe photos; Tap; Message; ⋯ menu | blocked/gone → generic "Not available" |
+| S-20 | Profile (other) [v2 Profile] | F-06 | full-bleed photo (520 pt) with pager bars, white round back + ⋯, name 34 pt + verified, chips (distance teal, Online, Now, vouches), about, tags, private note (sunflower card), album row (violet "Ask to unlock"), sticky favourite (sunflower when on) + Message (coral), sections, linked accounts | swipe photos; Tap; Message; ⋯ menu | blocked/gone → generic "Not available" |
 | S-21 | Profile ⋯ menu | F-06, F-15, F-18 | Block, Report, Hide, Vouch, Share profile | each confirms | — |
 
 ## Location
 | S-30 | Location sheet [Location] | F-05 | 4 levels, Exact TTL/audience, preview, hide-from-hidden toggle | radio, chips, toggle | unverified: Hidden/Exact disabled |
 
 ## Tonight & Now
-| S-13 | Tonight [Tonight] | F-09 | time slider, featured parties, plan cards, FAB | drag slider; tap card → S-20 | empty → "Be the first tonight" + FAB |
+| S-13 | Tonight [v2 Tonight] | F-09 | city · day caption, 34 pt title, time window chips, featured party card (art, spots badge, Request), plan rows (avatar ring in mode colour, Message), white "Post a plan" FAB | drag slider; tap card → S-20 | empty → "Be the first tonight" + FAB |
 | S-13b | Post plan sheet | F-09 R-09.9 | window, text, tag, audience | post | limit reached → message |
 | S-18 | Now sheet | F-09 | status options, text, TTL | set/end | — |
 
@@ -47,8 +50,8 @@ Tab bar (4): **Explore** S-10 · **Tonight** S-13 · **Chats** S-40 · **Me** S-
 | S-17 | Venue here-now [Venue] | F-12 | stats, here grid, visibility toggle, check out | tap profile; go invisible | not checked in → venue info + Check in |
 
 ## Chats & media
-| S-40 | Inbox | F-07 | Taps row, New, Chats, Parties & groups | swipe: archive/mute; long-press star | empty → "Say hi to someone nearby" |
-| S-41 | Chat [Chat] | F-07, F-08 | header, E2EE line, messages, quick replies, composer (album, location, attach) | send, react, long-press message menu (reply, report, delete for me) | blocked → "Not delivered" |
+| S-40 | Inbox [v2 Chats] | F-07 | 34 pt title, segmented All / Unread / Requests, Taps row, rows (56 pt avatar, online dot, bold preview + coral count when unread), Parties & groups, E2EE footer (teal) | swipe: archive/mute; long-press star | empty → "Say hi to someone nearby" |
+| S-41 | Chat [v2 Chat] | F-07, F-08 | header (back, avatar, name, distance · status, sunflower timer chip), E2EE pill (teal tint), bubbles (own = mode colour, incoming `bg.overlay`, 22 radius with 6 pt tail), typing, quick-reply chips, pill composer (+, field, coral send) | send, react, long-press message menu (reply, report, delete for me) | blocked → "Not delivered" |
 | S-42 | Albums | F-08 | album grid, shared-with | grant/revoke | — |
 | S-43 | Media viewer | F-08 | full-screen, view-once timer, blur overlay | tap to reveal; close | screenshot notice |
 | S-44 | Share target (extension) | I-01 | preview, recipients, message | send | not logged in → open app |
@@ -62,7 +65,7 @@ Tab bar (4): **Explore** S-10 · **Tonight** S-13 · **Chats** S-40 · **Me** S-
 | S-55 | App lock / decoy | F-13 | PIN pad | unlock / duress | — |
 
 ## Me & settings
-| S-60 | Me [Me] | F-06 | profile switcher, completeness, quick toggles, Preview as, field list | edit field → S-62 | — |
+| S-60 | Me [v2 Me] | F-06 | 34 pt title, profile switcher chips (mode colours), card with completeness ring + next step, Edit profile (white) / Preview, grouped rows with coloured dots and values, quick toggles, field list | edit field → S-62 | — |
 | S-61 | Settings [Settings] | F-17 | search, grouped rows | navigate | — |
 | S-62 | Edit field sheet | F-06 | value input, visibility selector | save | validation errors |
 | S-63 | Linked accounts | I-01 | list, add, proof steps | verify | proof failed |
