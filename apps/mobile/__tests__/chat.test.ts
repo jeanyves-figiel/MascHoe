@@ -1,6 +1,7 @@
 import { describe, expect, it, jest } from '@jest/globals';
 import { installSubtle } from '../src/crypto/subtleShim';
-import { concat, fromB64, fromUtf8, hex, toB64, utf8 } from '../src/chat/bytes';
+import { concat, fromB64, fromB64url, fromUtf8, hex, rand, toB64, toB64url, utf8 } from '../src/chat/bytes';
+import { blind, fdh, modPow } from '../src/trust/blind';
 import { firstMessageProblem } from '../src/chat/rules';
 
 jest.mock('../src/chat/kv', () => {
@@ -121,4 +122,58 @@ describe('MLS 1:1 on the pure-JS subtle shim (Hermes path)', () => {
     dev('bob');
     await expect(mls.open(g.groupId, m2.wire)).rejects.toBeTruthy();
   }, 30000);
+});
+
+describe('F-03 blind signature (RSA-FDH)', () => {
+  const big = (b: Uint8Array) => b.reduce((a, x) => (a << 8n) | BigInt(x), 0n);
+  const toBytes = (n: bigint, len: number) => Uint8Array.from(n.toString(16).padStart(len * 2, '0').match(/../g)!.map((h) => parseInt(h, 16)));
+  const isPrime = (n: bigint) => {
+    if (n % 2n === 0n) return false;
+    for (const a of [2n, 3n, 5n, 7n, 11n, 13n, 17n, 19n, 23n, 29n, 31n, 37n]) {
+      let d = n - 1n;
+      let s = 0;
+      while (d % 2n === 0n) {
+        d /= 2n;
+        s++;
+      }
+      let x: bigint = modPow(a, d, n);
+      if (x === 1n || x === n - 1n) continue;
+      let composite = true;
+      for (let i = 1; i < s; i++) {
+        x = (x * x) % n;
+        if (x === n - 1n) {
+          composite = false;
+          break;
+        }
+      }
+      if (composite) return false;
+    }
+    return true;
+  };
+  const nextPrime = (n: bigint) => {
+    let x = n | 1n;
+    while (!isPrime(x)) x += 2n;
+    return x;
+  };
+
+  it('blind → sign → unblind verifies (toy 512-bit key)', () => {
+    const P = nextPrime(big(rand(32)) | (1n << 255n));
+    const Q = nextPrime(big(rand(32)) | (1n << 255n));
+    const n = P * Q;
+    const e = 65537n;
+    const phi = (P - 1n) * (Q - 1n);
+    let [r0, r1, s0, s1] = [phi, e, 0n, 1n];
+    while (r1 !== 0n) {
+      const k = r0 / r1;
+      [r0, r1] = [r1, r0 - k * r1];
+      [s0, s1] = [s1, s0 - k * s1];
+    }
+    const d = ((s0 % phi) + phi) % phi;
+    const nb = toBytes(n, 64);
+    const token = rand(32);
+    const { blinded, unblind } = blind(token, { n: toB64url(nb), e: 65537 }, rand);
+    const signedBlind = modPow(big(fromB64url(blinded)), d, n);
+    const s = big(fromB64url(unblind(toB64url(toBytes(signedBlind, 64)))));
+    expect(modPow(s, e, n)).toBe(fdh(token, nb));
+  });
 });

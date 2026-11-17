@@ -208,6 +208,9 @@ defmodule ThirstrWeb.Router do
       get "/venues/:id/here", SceneController, :here
 
       # B4a: reports (F-15), notices & appeals (R-AD.9), vouches (F-18)
+      post "/verification/challenge", TrustController, :verify_challenge
+      post "/verification/attest", TrustController, :verify_issue
+      post "/verification/redeem", TrustController, :verify_redeem
       post "/reports", TrustController, :report
       get "/me/notices", TrustController, :notices
       post "/me/notices/seen", TrustController, :notices_seen
