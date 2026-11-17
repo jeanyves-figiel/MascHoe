@@ -7,7 +7,7 @@ import { Platform, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AlbumEditScreen, AlbumsScreen, AlbumViewScreen } from '../chat/AlbumScreens';
 import { ChatScreen } from '../chat/ChatScreen';
-import { unreadTotal } from '../chat/engine';
+import { on, unreadTotal } from '../chat/engine';
 import { useTopics } from '../chat/hooks';
 import { InboxScreen } from '../chat/InboxScreen';
 import { PushPrompt } from '../chat/PushPrompt';
@@ -20,6 +20,12 @@ import { SettingsScreen } from '../me/SettingsScreen';
 import { TapsScreen } from '../me/TapsScreen';
 import { ProfileScreen } from '../profile/ProfileScreen';
 import { VerifyScreen } from '../screens/Verify';
+import { PartyNewScreen } from '../scene/PartyNewScreen';
+import { PartyScreen } from '../scene/PartyScreen';
+import { resyncHostGroups } from '../scene/groupSync';
+import { ActivityNewScreen, ActivityScreen, ClubNewScreen, ClubScreen } from '../scene/SportScreens';
+import { TonightScreen } from '../scene/TonightScreen';
+import { VenueScreen } from '../scene/VenueScreens';
 import { color, modeColor, radius, space, type } from '../theme/tokens';
 import { ModeContext } from '../ui';
 import { useSession } from './session';
@@ -74,7 +80,7 @@ function Tabs() {
   return (
     <Tab.Navigator screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: color.bgBase } }} tabBar={(p) => <PillBar {...p} />}>
       <Tab.Screen name="Explore" component={ExploreScreen as React.ComponentType} />
-      <Tab.Screen name="Tonight" component={Soon} />
+      <Tab.Screen name="Tonight" component={TonightScreen as React.ComponentType} />
       <Tab.Screen name="Chats" component={InboxScreen as React.ComponentType} />
       <Tab.Screen name="Me" component={MeScreen as React.ComponentType} />
     </Tab.Navigator>
@@ -97,6 +103,13 @@ const sub = { headerShown: true, title: '', headerStyle: { backgroundColor: colo
 
 export function Main() {
   const { mode } = useSession();
+  // Hosts keep party / activity / club group chats in step with their member lists.
+  React.useEffect(() => {
+    resyncHostGroups().catch(() => {});
+    return on('scene', () => {
+      resyncHostGroups().catch(() => {});
+    });
+  }, []);
   return (
     <ModeContext.Provider value={mode}>
       <NavigationContainer theme={navTheme}>
@@ -112,6 +125,13 @@ export function Main() {
           <Stack.Screen name="Albums" component={AlbumsScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="AlbumEdit" component={AlbumEditScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="Album" component={AlbumViewScreen as React.ComponentType} options={sub} />
+          <Stack.Screen name="Party" component={PartyScreen as React.ComponentType} options={sub} />
+          <Stack.Screen name="PartyNew" component={PartyNewScreen as React.ComponentType} options={sub} />
+          <Stack.Screen name="Activity" component={ActivityScreen as React.ComponentType} options={sub} />
+          <Stack.Screen name="ActivityNew" component={ActivityNewScreen as React.ComponentType} options={sub} />
+          <Stack.Screen name="Club" component={ClubScreen as React.ComponentType} options={sub} />
+          <Stack.Screen name="ClubNew" component={ClubNewScreen as React.ComponentType} options={sub} />
+          <Stack.Screen name="Venue" component={VenueScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="Report" component={Soon} options={sub} />
         </Stack.Navigator>
         <PushPrompt />

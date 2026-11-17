@@ -12,9 +12,23 @@ import * as mls from './mls';
 import { getLocal } from '../me/localFields';
 
 export type Ttl = '24h' | '7d' | 'never';
-export const TTL_S: Record<Ttl, number | null> = { '24h': 86400, '7d': 7 * 86400, never: null };
+export const TTL_S: Record<Ttl, number | null> = {
+  '24h': 86400,
+  '7d': 7 * 86400,
+  never: null,
+};
 
-export type MediaRef = { blob: string; key: string; iv: string; mime: string; w?: number; h?: number; once?: boolean; exp?: number; save?: boolean };
+export type MediaRef = {
+  blob: string;
+  key: string;
+  iv: string;
+  mime: string;
+  w?: number;
+  h?: number;
+  once?: boolean;
+  exp?: number;
+  save?: boolean;
+};
 export type AlbumItem = { blob: string; key: string; iv: string; mime: string };
 
 /** Plaintext inside MLS application messages (R-07.4). */
@@ -25,7 +39,13 @@ export type Payload =
   | { t: 'read'; upTo: string }
   | { t: 'disappearing'; ttl: Ttl }
   | { t: 'reaction'; to: string; emoji: string }
-  | { t: 'album.grant'; album: string; name: string; items: AlbumItem[]; until?: number }
+  | {
+      t: 'album.grant';
+      album: string;
+      name: string;
+      items: AlbumItem[];
+      until?: number;
+    }
   | { t: 'album.revoke'; album: string }
   | { t: 'profile.private'; fields: Record<string, unknown> }
   | { t: 'location.share'; lat: number; lng: number; until: number }
@@ -40,6 +60,8 @@ export type Msg = {
   readAt?: number;
   opened?: boolean;
   fk?: string;
+  /** Group chats: sender profile id. */
+  by?: string;
 };
 
 export type Conv = {
@@ -63,9 +85,14 @@ export type Conv = {
   gone?: boolean;
   peerFields?: Record<string, unknown>;
   privSent?: string;
+  /** Group chats (party guest chat, activity, club): "party:<id>" etc. */
+  ctx?: string;
+  host?: boolean;
+  names?: Record<string, string>;
 };
 
-type Wire = Payload & { v: 1; id: string; at: number; fk: string };
+/** Group chats only (inside the E2EE payload): `n` sender display name, `g` group title. */
+type Wire = Payload & { v: 1; id: string; at: number; fk: string; n?: string; g?: string };
 
 // ------------------------------------------------------------------ tiny event bus
 
@@ -148,7 +175,10 @@ const KP_MIN = 15;
 
 async function ensureKeyPackages() {
   if (!me) return;
-  const r = await api<{ counts: Record<string, { count: number; last_resort: boolean }>; device_id: string }>('GET', '/mls/keypackages');
+  const r = await api<{
+    counts: Record<string, { count: number; last_resort: boolean }>;
+    device_id: string;
+  }>('GET', '/mls/keypackages');
   if (!r.device_id) throw new Error('no device id');
   device = r.device_id;
   for (const [profile, c] of Object.entries(r.counts)) {
@@ -162,7 +192,11 @@ async function ensureKeyPackages() {
       await kv.set('kp:lastresort:' + profile, lr.ref);
       lastResort = toB64(lr.wire);
     }
-    await api('POST', '/mls/keypackages', { profile_id: profile, key_packages: fresh, last_resort: lastResort });
+    await api('POST', '/mls/keypackages', {
+      profile_id: profile,
+      key_packages: fresh,
+      last_resort: lastResort,
+    });
   }
 }
 
@@ -189,6 +223,8 @@ function connect() {
     });
     ch.on('tap.new', () => emit('taps'));
     ch.on('tap.mutual', () => emit('taps'));
+    // B3: party / activity / club membership changed: hosts re-sync their group chats.
+    for (const ev of ['party.request', 'party.accepted', 'party.status', 'activity.join', 'club.request']) ch.on(ev, () => emit('scene'));
     ch.join().receive('ok', () => pull());
     chan = ch;
   });
@@ -217,7 +253,15 @@ export async function askPushPermission() {
 
 // ------------------------------------------------------------------ receive
 
-type Incoming = { id: number; to_profile_id: string; from_profile_id: string; group_id: string; kind: string; ciphertext: string; at: string };
+type Incoming = {
+  id: number;
+  to_profile_id: string;
+  from_profile_id: string;
+  group_id: string;
+  kind: string;
+  ciphertext: string;
+  at: string;
+};
 
 export function pull(): Promise<void> {
   if (pulling) {
@@ -257,11 +301,15 @@ async function handle(m: Incoming) {
   if (m.kind === 'welcome') {
     const j = await mls.join(wire);
     if (!j) return;
-    const c = await ensureConv(m.to_profile_id, m.from_profile_id);
+    const c = j.ctx ? await ensureGroupConv(j.ctx, m.to_profile_id) : await ensureConv(m.to_profile_id, m.from_profile_id);
     // Both sides may create a group at once: keep both, send on the lowest id (deterministic).
     if (!c.groups.includes(j.groupId)) c.groups = [...c.groups, j.groupId].sort();
     await kv.set('g2c:' + j.groupId, c.id);
     await saveConvs();
+    return;
+  }
+  if (m.kind === 'commit') {
+    await mls.open(gid, wire);
     return;
   }
   if (m.kind !== 'app') return;
@@ -270,18 +318,26 @@ async function handle(m: Incoming) {
   const w = JSON.parse(fromUtf8(plain)) as Wire;
   const cid = (await kv.get<string>('g2c:' + gid)) ?? convId(m.to_profile_id, m.from_profile_id);
   if (!convs[cid]) await ensureConv(m.to_profile_id, m.from_profile_id);
-  await receive(cid, w, Date.parse(m.at) || w.at);
+  await receive(cid, w, Date.parse(m.at) || w.at, m.from_profile_id);
 }
 
-async function receive(cid: string, w: Wire, at: number) {
+async function receive(cid: string, w: Wire, at: number, from?: string) {
   const c = convs[cid];
   if (!c) return;
   const list = await messages(cid);
   const p = stripWire(w);
+  if (c.ctx && from && w.n) c.names = { ...c.names, [from]: w.n.slice(0, 40) };
+  if (c.ctx && w.g && c.name === '…') c.name = w.g.slice(0, 60);
   switch (p.t) {
     case 'read': {
       const idx = list.findIndex((x) => x.id === p.upTo);
-      for (let i = 0; i <= idx; i++) if (list[i].from === 'me') list[i] = { ...list[i], status: 'read', readAt: list[i].readAt ?? Date.now() };
+      for (let i = 0; i <= idx; i++)
+        if (list[i].from === 'me')
+          list[i] = {
+            ...list[i],
+            status: 'read',
+            readAt: list[i].readAt ?? Date.now(),
+          };
       await putMessages(cid, list);
       return;
     }
@@ -299,7 +355,14 @@ async function receive(cid: string, w: Wire, at: number) {
       break;
   }
   if (list.some((x) => x.id === w.id)) return;
-  list.push({ id: w.id, from: 'them', at, p, fk: w.fk });
+  list.push({
+    id: w.id,
+    from: 'them',
+    at,
+    p,
+    fk: w.fk,
+    by: c.ctx ? from : undefined,
+  });
   c.theyWrote = true;
   if (p.t !== 'reaction') {
     c.lastAt = at;
@@ -314,7 +377,7 @@ async function receive(cid: string, w: Wire, at: number) {
 }
 
 const stripWire = (w: Wire): Payload => {
-  const { v: _v, id: _id, at: _at, fk: _fk, ...p } = w;
+  const { v: _v, id: _id, at: _at, fk: _fk, n: _n, g: _g, ...p } = w;
   return p as Payload;
 };
 
@@ -343,17 +406,159 @@ export function preview(p: Payload): string {
 async function ensureConv(mine: string, peer: string): Promise<Conv> {
   const id = convId(mine, peer);
   if (convs[id]) return convs[id];
-  const c: Conv = { id, me: mine, peer, groups: [], name: '…', photo: null, verified: false, lastAt: Date.now(), last: '', unread: 0, theyWrote: false, iWrote: false, ttl: (me?.settings?.disappearing_default as Ttl) ?? '7d' };
+  const c: Conv = {
+    id,
+    me: mine,
+    peer,
+    groups: [],
+    name: '…',
+    photo: null,
+    verified: false,
+    lastAt: Date.now(),
+    last: '',
+    unread: 0,
+    theyWrote: false,
+    iWrote: false,
+    ttl: (me?.settings?.disappearing_default as Ttl) ?? '7d',
+  };
   convs[id] = c;
   refreshPeer(c).catch(() => {});
   return c;
 }
 
+const groupConvId = (ctx: string, mine: string) => `${ctx}#${mine}`;
+
+async function ensureGroupConv(ctx: string, mine: string, title?: string): Promise<Conv> {
+  const id = groupConvId(ctx, mine);
+  if (!convs[id]) {
+    convs[id] = {
+      id,
+      me: mine,
+      peer: '',
+      ctx,
+      groups: [],
+      name: title ?? '…',
+      photo: null,
+      verified: false,
+      lastAt: Date.now(),
+      last: '',
+      unread: 0,
+      theyWrote: true,
+      iWrote: true,
+      ttl: 'never',
+      names: {},
+    };
+  }
+  if (title) convs[id].name = title;
+  await saveConvs();
+  return convs[id];
+}
+
+/** Opens a party / activity / club chat. */
+export async function openGroup(ctx: string, mine: string, title: string, host: boolean): Promise<Conv> {
+  const c = await ensureGroupConv(ctx, mine, title);
+  c.host = host;
+  await saveConvs();
+  return c;
+}
+
+/**
+ * Host only: makes the MLS group match the server's member list (profile ids + names).
+ * New members get a welcome, everyone else a commit; removed members are committed out.
+ */
+export async function syncGroup(cid: string, list: { id: string; name: string }[]) {
+  const c = convs[cid];
+  if (!c?.ctx || !c.host) return;
+  c.names = Object.fromEntries(list.map((x) => [x.id, x.name]));
+  const want = list.map((x) => x.id).filter((p) => p !== c.me);
+  if (!device) await ensureKeyPackages();
+  const claim = async (p: string) => {
+    try {
+      const r = await api<{
+        key_packages: { id: number; device_id: string; key_package: string }[];
+      }>('POST', '/mls/keypackages/claim', {
+        from_profile_id: c.me,
+        to_profile_id: p,
+        context: c.ctx,
+      });
+      return r.key_packages.map((k) => ({ ...k, profile: p }));
+    } catch {
+      return [];
+    }
+  };
+  const post = (gid: string, envelopes: object[]) =>
+    envelopes.length
+      ? api('POST', '/mls/messages', {
+          from_profile_id: c.me,
+          group_id: toB64(fromHex(gid)),
+          context: c.ctx,
+          envelopes,
+        })
+      : Promise.resolve();
+  if (!c.groups.length) {
+    const claimed = (await Promise.all(want.map(claim))).flat();
+    if (!claimed.length) {
+      await saveConvs();
+      return;
+    }
+    const g = await mls.createWith({ p: c.me, d: device! }, claimed, c.ctx);
+    await post(g.groupId, g.envelopes);
+    c.groups = [g.groupId];
+    await kv.set('g2c:' + g.groupId, c.id);
+    await saveConvs();
+    return;
+  }
+  const gid = c.groups[0];
+  const state = await mls.load(gid);
+  if (!state) return;
+  const inGroup = new Set(mls.members(state).map((m) => m.p));
+  const gone = [...inGroup].filter((p) => p !== c.me && !want.includes(p));
+  if (gone.length) {
+    const r = await mls.removeProfiles(gid, gone);
+    if (r)
+      await post(
+        gid,
+        r.to
+          .filter((m) => !(m.p === c.me && m.d === device))
+          .map((m) => ({
+            to_profile_id: m.p,
+            to_device_id: m.d,
+            kind: 'commit',
+            ciphertext: toB64(r.commit),
+          })),
+      );
+  }
+  const fresh = want.filter((p) => !inGroup.has(p));
+  if (fresh.length) {
+    const claimed = (await Promise.all(fresh.map(claim))).flat();
+    if (claimed.length) {
+      const r = await mls.addMembers(gid, claimed, c.ctx);
+      const commits = r.before
+        .filter((m) => !(m.p === c.me && m.d === device))
+        .map((m) => ({
+          to_profile_id: m.p,
+          to_device_id: m.d,
+          kind: 'commit',
+          ciphertext: toB64(r.commit),
+        }));
+      await post(gid, [...commits, ...r.welcomes]);
+    }
+  }
+  await saveConvs();
+}
+
 /** Peer name/photo for the inbox (fetched like any profile view; never stored server-side). */
 export async function refreshPeer(c: Conv) {
+  if (c.ctx) return;
   try {
     const v = await api<ProfileView>('GET', `/profiles/${c.peer}`);
-    Object.assign(c, { name: v.display_name, age: v.age, photo: v.photos[0] ?? null, verified: v.verified, gone: false });
+    Object.assign(c, {
+      name: v.display_name,
+      age: v.age,
+      photo: v.photos[0] ?? null,
+      verified: v.verified,
+      gone: false,
+    });
   } catch (e) {
     if (e instanceof ApiError && e.status === 404) c.gone = true;
   }
@@ -393,7 +598,9 @@ export { firstMessageProblem } from './rules';
 
 async function ensureGroup(c: Conv): Promise<string> {
   if (c.groups.length) return c.groups[0];
-  const claimed = await api<{ key_packages: { id: number; device_id: string; key_package: string }[] }>('POST', '/mls/keypackages/claim', {
+  const claimed = await api<{
+    key_packages: { id: number; device_id: string; key_package: string }[];
+  }>('POST', '/mls/keypackages/claim', {
     from_profile_id: c.me,
     to_profile_id: c.peer,
   });
@@ -402,7 +609,11 @@ async function ensureGroup(c: Conv): Promise<string> {
     { p: c.me, d: device! },
     claimed.key_packages.map((k) => ({ ...k, profile: c.peer })),
   );
-  await api('POST', '/mls/messages', { from_profile_id: c.me, group_id: toB64(g.gid), envelopes: g.envelopes });
+  await api('POST', '/mls/messages', {
+    from_profile_id: c.me,
+    group_id: toB64(g.gid),
+    envelopes: g.envelopes,
+  });
   c.groups = [g.groupId, ...c.groups].sort();
   await kv.set('g2c:' + g.groupId, c.id);
   await saveConvs();
@@ -416,7 +627,8 @@ export async function send(cid: string, p: Payload, opts: { silent?: boolean } =
   const id = hex(rand(12));
   const at = Date.now();
   const fk = rand(32);
-  const body: Wire = { ...(p as object), v: 1, id, at, fk: toB64(fk) } as Wire;
+  const n = c.ctx ? (me?.profiles ?? []).find((x) => x.id === c.me)?.display_name : undefined;
+  const body: Wire = { ...(p as object), v: 1, id, at, fk: toB64(fk), ...(c.ctx ? { n, g: c.name } : {}) } as Wire;
   const plain = utf8(JSON.stringify(body));
   // R-07.11 franking: commitment over the plaintext, opened only if the recipient reports.
   const tag = hmac(sha256, fk, plain);
@@ -433,15 +645,22 @@ export async function send(cid: string, p: Payload, opts: { silent?: boolean } =
     await saveConvs();
   }
   try {
+    if (c.ctx && !c.groups.length) throw new Error('group_pending');
     const gid = await ensureGroup(c);
     const sealed = await mls.seal(gid, plain);
     const envelopes = sealed.members
       .filter((m) => !(m.p === c.me && m.d === device))
-      .map((m) => ({ to_profile_id: m.p, to_device_id: m.d, kind: 'app', ciphertext: toB64(sealed.wire) }));
+      .map((m) => ({
+        to_profile_id: m.p,
+        to_device_id: m.d,
+        kind: 'app',
+        ciphertext: toB64(sealed.wire),
+      }));
     const r = await api<{ delivered: string[]; undelivered: string[] }>('POST', '/mls/messages', {
       from_profile_id: c.me,
       group_id: toB64(fromHex(gid)),
       franking_tag: toB64(tag),
+      context: c.ctx,
       envelopes,
     });
     if (msg) await setStatus(cid, id, r.undelivered.length ? 'failed' : 'sent');
@@ -502,7 +721,7 @@ export async function markRead(cid: string) {
 let lastTyping = 0;
 export function sendTyping(cid: string) {
   const c = convs[cid];
-  if (!c || !chan || me?.settings?.read_receipts === false || Date.now() - lastTyping < 3000) return;
+  if (!c || c.ctx || !chan || me?.settings?.read_receipts === false || Date.now() - lastTyping < 3000) return;
   lastTyping = Date.now();
   chan.push('typing', { from_profile_id: c.me, to_profile_id: c.peer });
 }
@@ -555,6 +774,7 @@ async function chatFields(profileId: string): Promise<Record<string, unknown>> {
 }
 
 async function sharePrivate(c: Conv) {
+  if (c.ctx) return; // never to group chats
   const fields = await chatFields(c.me);
   const sig = hex(sha256(utf8(JSON.stringify(fields))));
   if (c.privSent === sig || (!Object.keys(fields).length && !c.privSent)) return;

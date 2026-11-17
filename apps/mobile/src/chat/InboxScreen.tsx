@@ -38,10 +38,12 @@ export function InboxScreen({ navigation }: { navigation: Nav }) {
   const all = getConvs().filter((c) => c.last || c.groups.length);
   const live = all.filter((c) => !!c.archived === showArchived);
   const starred = (a: Conv, b: Conv) => Number(!!b.starred) - Number(!!a.starred);
-  const fresh = live.filter((c) => c.theyWrote && !c.iWrote).sort(starred);
-  const chats = live.filter((c) => !(c.theyWrote && !c.iWrote)).sort(starred);
+  const groups = live.filter((c) => !!c.ctx).sort(starred);
+  const fresh = live.filter((c) => !c.ctx && c.theyWrote && !c.iWrote).sort(starred);
+  const chats = live.filter((c) => !c.ctx && !(c.theyWrote && !c.iWrote)).sort(starred);
   const sections = [
     ...(fresh.length ? [{ title: tx.chat.new, data: fresh }] : []),
+    ...(groups.length ? [{ title: tx.chat.parties, data: groups }] : []),
     ...(chats.length ? [{ title: showArchived ? tx.chat.archived : tx.chat.chats, data: chats }] : []),
   ];
   const archivedCount = all.filter((c) => c.archived).length;

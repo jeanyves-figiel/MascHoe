@@ -123,6 +123,9 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
   };
 
   const ttlLabel = tx.chat.ttl[conv.ttl];
+  // Group chats (party / activity / club): no single peer, sender names from the E2EE payload.
+  const group = !!conv.ctx;
+  const who = (m: E.Msg) => (m.from === 'me' ? tx.chat.you : group ? (m.by && conv.names?.[m.by]) || '…' : conv.name);
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: color.bgBase }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -130,8 +133,8 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
         <Pressable accessibilityRole="button" accessibilityLabel={tx.common.back} onPress={() => navigation.goBack()} hitSlop={12}>
           <Text style={{ ...type.title, color: color.fgPrimary }}>‹</Text>
         </Pressable>
-        <Pressable style={{ flexDirection: 'row', alignItems: 'center', gap: space.s, flex: 1 }} accessibilityRole="button" onPress={() => !conv.gone && navigation.navigate('Profile', { id: conv.peer })}>
-          <Photo uri={conv.photo} id={conv.peer} label="" style={{ width: 40, height: 40, borderRadius: 20 }} />
+        <Pressable style={{ flexDirection: 'row', alignItems: 'center', gap: space.s, flex: 1 }} accessibilityRole="button" onPress={() => !conv.gone && !group && navigation.navigate('Profile', { id: conv.peer })}>
+          <Photo uri={conv.photo} id={conv.peer || conv.id} label="" style={{ width: 40, height: 40, borderRadius: 20 }} />
           <View style={{ flex: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <Text numberOfLines={1} style={{ ...type.headline, color: color.fgPrimary, flexShrink: 1 }}>
@@ -153,13 +156,13 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
         keyExtractor={(x) => x.m.id}
         contentContainerStyle={{ padding: space.l, gap: space.xs }}
         ListFooterComponent={
-          <Text style={{ ...type.meta, color: color.trust, textAlign: 'center', marginBottom: space.l }}>🔒 {tx.chat.e2ee}</Text>
+          <Text style={{ ...type.meta, color: color.trust, textAlign: 'center', marginBottom: space.l }}>🔒 {group ? tx.group.e2ee : tx.chat.e2ee}</Text>
         }
         renderItem={({ item: { m, r } }) => {
           if (m.p.t === 'disappearing') {
             return (
               <Text style={{ ...type.meta, color: color.fgMuted, textAlign: 'center', marginVertical: space.s }}>
-                {tx.chat.ttlChanged(m.from === 'me' ? tx.chat.you : conv.name, tx.chat.ttl[m.p.ttl])}
+                {tx.chat.ttlChanged(who(m), tx.chat.ttl[m.p.ttl])}
               </Text>
             );
           }
@@ -184,6 +187,7 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
                   opacity: m.status === 'sending' ? 0.7 : 1,
                 }}
               >
+                {group && !mine ? <Text style={{ ...type.caption, color: accent }}>{who(m)}</Text> : null}
                 <Bubble m={m} mine={mine} cid={cid} conv={conv} />
               </Pressable>
               {r.length ? <Text style={{ ...type.meta, marginTop: -4 }}>{r.join('')}</Text> : null}
@@ -197,6 +201,11 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
         }}
       />
 
+      {group && !conv.groups.length ? (
+        <View style={{ paddingHorizontal: space.l }}>
+          <Banner tone="trust" text={conv.host ? tx.group.sync : tx.group.pending} />
+        </View>
+      ) : null}
       {problem ? (
         <View style={{ paddingHorizontal: space.l }}>
           <Banner tone="warn" text={problem} onPress={() => (problem === tx.chat.unverified ? navigation.navigate('Verify') : setProblem(null))} />
@@ -205,13 +214,15 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
 
       {!conv.gone ? (
         <>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: space.s, paddingHorizontal: space.l, paddingVertical: space.s }}>
-            {[...tx.chat.quick, ...custom].map((q) => (
-              <Pressable key={q} accessibilityRole="button" onPress={() => send({ t: 'quick_reply', text: q })} style={{ paddingHorizontal: space.m, height: 34, justifyContent: 'center', borderRadius: radius.pill, borderWidth: 1, borderColor: color.line }}>
-                <Text style={{ ...type.meta, color: color.fgPrimary }}>{q}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
+          {!group ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: space.s, paddingHorizontal: space.l, paddingVertical: space.s }}>
+              {[...tx.chat.quick, ...custom].map((q) => (
+                <Pressable key={q} accessibilityRole="button" onPress={() => send({ t: 'quick_reply', text: q })} style={{ paddingHorizontal: space.m, height: 34, justifyContent: 'center', borderRadius: radius.pill, borderWidth: 1, borderColor: color.line }}>
+                  <Text style={{ ...type.meta, color: color.fgPrimary }}>{q}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          ) : null}
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space.s, paddingHorizontal: space.l, paddingBottom: insets.bottom + space.s }}>
             {conv.theyWrote ? (
               <Pressable
@@ -264,7 +275,7 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
       )}
 
       <Sheet visible={menu} onClose={() => setMenu(false)} title={conv.name} closeLabel={tx.common.close}>
-        {!conv.gone ? <ListRow title={tx.chat.viewProfile} onPress={() => { setMenu(false); navigation.navigate('Profile', { id: conv.peer }); }} /> : null}
+        {!conv.gone && !group ? <ListRow title={tx.chat.viewProfile} onPress={() => { setMenu(false); navigation.navigate('Profile', { id: conv.peer }); }} /> : null}
         <View style={{ gap: space.s }}>
           <Text style={{ ...type.meta, color: color.fgSecondary }}>{tx.chat.disappearing}</Text>
           <Segmented
@@ -278,27 +289,31 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
         </View>
         <View>
           <ListRow title={conv.muted ? tx.chat.unmute : tx.chat.mute} onPress={() => E.setConv(conv.id, { muted: !conv.muted })} />
-          <ListRow
-            title={tx.chat.report}
-            danger
-            onPress={() => {
-              setMenu(false);
-              navigation.navigate('Report', { profileId: conv.peer, cid: conv.id });
-            }}
-          />
-          <ListRow
-            title={tx.chat.block}
-            danger
-            onPress={() =>
-              api('POST', `/profiles/${conv.peer}/block`)
-                .then(() => E.setConv(conv.id, { archived: true }))
-                .then(() => {
+          {!group ? (
+            <>
+              <ListRow
+                title={tx.chat.report}
+                danger
+                onPress={() => {
                   setMenu(false);
-                  navigation.goBack();
-                })
-                .catch((e) => setProblem(errorText(e)))
-            }
-          />
+                  navigation.navigate('Report', { profileId: conv.peer, cid: conv.id });
+                }}
+              />
+              <ListRow
+                title={tx.chat.block}
+                danger
+                onPress={() =>
+                  api('POST', `/profiles/${conv.peer}/block`)
+                    .then(() => E.setConv(conv.id, { archived: true }))
+                    .then(() => {
+                      setMenu(false);
+                      navigation.goBack();
+                    })
+                    .catch((e) => setProblem(errorText(e)))
+                }
+              />
+            </>
+          ) : null}
           <ListRow
             title={tx.chat.deleteChat}
             danger
@@ -371,9 +386,9 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
                   title={tx.chat.report}
                   danger
                   onPress={() => {
-                    const id = msgMenu.id;
+                    const { id, by } = msgMenu;
                     setMsgMenu(null);
-                    navigation.navigate('Report', { profileId: conv.peer, cid: conv.id, messageIds: [id] });
+                    navigation.navigate('Report', { profileId: by ?? conv.peer, cid: conv.id, messageIds: [id] });
                   }}
                 />
               ) : null}

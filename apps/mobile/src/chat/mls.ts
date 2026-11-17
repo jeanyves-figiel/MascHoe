@@ -68,19 +68,76 @@ export async function load(groupId: string): Promise<ClientState | null> {
   return decoded ? ({ ...decoded, clientConfig: defaultClientConfig } as ClientState) : null;
 }
 
-/** Members (profile + device) from the ratchet tree. */
-export function members(s: ClientState): Member[] {
-  const out: Member[] = [];
-  for (const n of s.ratchetTree) {
-    if (n?.nodeType !== 'leaf') continue;
+/** Members (profile + device) from the ratchet tree, with their leaf index. */
+export function leaves(s: ClientState): (Member & { leaf: number })[] {
+  const out: (Member & { leaf: number })[] = [];
+  s.ratchetTree.forEach((n, i) => {
+    if (n?.nodeType !== 'leaf') return;
     try {
       const c = n.leaf.credential as { identity?: Uint8Array };
-      if (c.identity) out.push(JSON.parse(fromUtf8(c.identity)) as Member);
+      if (c.identity) out.push({ ...(JSON.parse(fromUtf8(c.identity)) as Member), leaf: i / 2 });
     } catch {
       // foreign credential: ignore
     }
-  }
+  });
   return out;
+}
+
+export const members = (s: ClientState): Member[] => leaves(s).map(({ p, d }) => ({ p, d }));
+
+// Group welcomes carry a small header so the receiver knows which party/activity/club chat it is:
+// sha256(key package) ‖ '{"ctx":"party:…"}\n' ‖ MLS Welcome. 1:1 welcomes have no header.
+const header = (ctx?: string) => (ctx ? utf8(JSON.stringify({ ctx }) + '\n') : new Uint8Array(0));
+
+function splitWelcome(rest: Uint8Array): { ctx?: string; body: Uint8Array } {
+  if (rest[0] !== 0x7b) return { body: rest };
+  const nl = rest.indexOf(0x0a);
+  try {
+    const h = JSON.parse(fromUtf8(rest.slice(0, nl))) as { ctx?: string };
+    return { ctx: h.ctx, body: rest.slice(nl + 1) };
+  } catch {
+    return { body: rest };
+  }
+}
+
+type Claimed = { id: number; device_id: string; key_package: string; profile: string };
+
+/** Adds claimed key packages to an existing group (host side). Returns commit + welcomes. */
+export async function addMembers(groupId: string, claimed: Claimed[], ctx?: string) {
+  const impl = await suite();
+  const state = await load(groupId);
+  if (!state) throw new Error('unknown group');
+  const before = members(state);
+  const kps = claimed.map((c) => ({ c, wire: fromB64(c.key_package) }));
+  const r = await createCommit(
+    { state, cipherSuite: impl },
+    { ratchetTreeExtension: true, extraProposals: kps.map((k) => ({ proposalType: 'add' as const, add: { keyPackage: decKp(k.wire) } })) },
+  );
+  await save(groupId, r.newState);
+  const welcome = encodeMlsMessage({ welcome: r.welcome!, wireformat: 'mls_welcome', version: 'mls10' } as never);
+  const welcomes: Envelope[] = kps.map((k) => ({
+    to_profile_id: k.c.profile,
+    to_device_id: k.c.device_id,
+    kind: 'welcome',
+    key_package_id: k.c.id,
+    ciphertext: toB64(concat(sha256(k.wire), header(ctx), welcome)),
+  }));
+  return { commit: encodeMlsMessage(r.commit as never), before, welcomes };
+}
+
+/** Removes every leaf of the given profiles (host side). Returns the commit and who must get it. */
+export async function removeProfiles(groupId: string, profiles: string[]) {
+  const impl = await suite();
+  const state = await load(groupId);
+  if (!state) throw new Error('unknown group');
+  const gone = leaves(state).filter((l) => profiles.includes(l.p));
+  if (!gone.length) return null;
+  const r = await createCommit(
+    { state, cipherSuite: impl },
+    { ratchetTreeExtension: true, extraProposals: gone.map((l) => ({ proposalType: 'remove' as const, remove: { removed: l.leaf } })) },
+  );
+  await save(groupId, r.newState);
+  return { commit: encodeMlsMessage(r.commit as never), to: members(r.newState) };
 }
 
 export type Envelope = { to_profile_id: string; to_device_id: string; kind: 'welcome' | 'commit' | 'app'; key_package_id?: number; ciphertext: string };
@@ -90,7 +147,7 @@ export type Envelope = { to_profile_id: string; to_device_id: string; kind: 'wel
  * envelopes. Welcome wire = sha256(recipient key package) ‖ MLS Welcome, so the receiver finds
  * its private key package without trial decryption.
  */
-export async function createWith(me: Member, claimed: { id: number; device_id: string; key_package: string; profile: string }[]) {
+export async function createWith(me: Member, claimed: Claimed[], ctx?: string) {
   const impl = await suite();
   const own = await generateKeyPackage(credential(me), defaultCapabilities(), defaultLifetime, [], impl);
   const gid = rand(16);
@@ -109,18 +166,19 @@ export async function createWith(me: Member, claimed: { id: number; device_id: s
     to_device_id: k.c.device_id,
     kind: 'welcome',
     key_package_id: k.c.id,
-    ciphertext: toB64(concat(sha256(k.wire), welcome)),
+    ciphertext: toB64(concat(sha256(k.wire), header(ctx), welcome)),
   }));
   return { groupId, gid, envelopes };
 }
 
 /** Joins from a welcome envelope. Returns group id and members, or null if no matching key. */
-export async function join(wire: Uint8Array): Promise<{ groupId: string; members: Member[]; me: string } | null> {
+export async function join(wire: Uint8Array): Promise<{ groupId: string; members: Member[]; me: string; ctx?: string } | null> {
   const impl = await suite();
   const ref = hex(wire.slice(0, 32));
   const stored = await kv.get<StoredKp>('kp:' + ref);
   if (!stored) return null;
-  const msg = decodeMlsMessage(wire.slice(32), 0)?.[0] as { wireformat: string; welcome: never } | undefined;
+  const { ctx, body } = splitWelcome(wire.slice(32));
+  const msg = decodeMlsMessage(body, 0)?.[0] as { wireformat: string; welcome: never } | undefined;
   if (!msg || msg.wireformat !== 'mls_welcome') return null;
   const state = await joinGroup(msg.welcome, decKp(fromB64(stored.pub)), unpackPriv(stored.priv), emptyPskIndex, impl);
   const groupId = hex(state.groupContext.groupId as Uint8Array);
@@ -128,7 +186,7 @@ export async function join(wire: Uint8Array): Promise<{ groupId: string; members
   // single-use: forget it, unless it was the last-resort package (still on the server)
   const lr = await kv.get<string>('kp:lastresort:' + stored.profile);
   if (lr !== ref) await kv.del('kp:' + ref);
-  return { groupId, members: members(state), me: stored.profile };
+  return { groupId, members: members(state), me: stored.profile, ctx };
 }
 
 /** Encrypts an application message for the group. */
@@ -142,7 +200,7 @@ export async function seal(groupId: string, plaintext: Uint8Array): Promise<{ wi
   return { wire, members: members(r.newState) };
 }
 
-/** Decrypts an application message. */
+/** Decrypts an application message, or applies a commit (returns null then). */
 export async function open(groupId: string, wire: Uint8Array): Promise<Uint8Array | null> {
   const impl = await suite();
   const state = await load(groupId);

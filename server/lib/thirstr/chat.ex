@@ -86,10 +86,14 @@ defmodule Thirstr.Chat do
   Claims one key package per device of `to_profile` so `from_profile` can add it to a group.
   Single-use packages are deleted; the last-resort one is reused (RFC 9420 §16.8).
   """
-  def claim_key_packages(%Account{} = a, from_pid, to_pid) do
+  def claim_key_packages(%Account{} = a, from_pid, to_pid, context \\ nil) do
     with {:ok, _} <- own_profile(a, from_pid),
          {:ok, t} <- Social.target(a, to_pid),
-         :ok <- first_contact_ok(a, from_pid, to_pid) do
+         :ok <-
+           if(Thirstr.Groups.together?(context, from_pid, to_pid),
+             do: :ok,
+             else: first_contact_ok(a, from_pid, to_pid)
+           ) do
       devices =
         Repo.query!(
           "SELECT DISTINCT device_id FROM mls_key_packages WHERE profile_id = $1",
@@ -193,7 +197,9 @@ defmodule Thirstr.Chat do
   defp deliver(a, _device_id, from, to, group, envs, now, params) do
     case Social.target(a, to) do
       {:ok, t} ->
-        app? = Enum.any?(envs, &(&1.kind == "app"))
+        # Party / activity / club chats (F-10, F-11): members may write to each other freely.
+        group? = Thirstr.Groups.together?(params["context"], from, to)
+        app? = not group? and Enum.any?(envs, &(&1.kind == "app"))
 
         with :ok <- if(app?, do: new_contact_check(a, from, to), else: :ok),
              :ok <- devices_belong(envs, t.account_id) do

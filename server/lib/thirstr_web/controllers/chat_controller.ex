@@ -16,8 +16,8 @@ defmodule ThirstrWeb.ChatController do
   def key_package_counts(conn, _),
     do: json(conn, %{counts: Chat.key_package_counts(a(conn), d(conn)), device_id: d(conn)})
 
-  def claim_key_packages(conn, %{"from_profile_id" => from, "to_profile_id" => to}) do
-    with {:ok, kps} <- Chat.claim_key_packages(a(conn), from, to),
+  def claim_key_packages(conn, %{"from_profile_id" => from, "to_profile_id" => to} = p) do
+    with {:ok, kps} <- Chat.claim_key_packages(a(conn), from, to, p["context"]),
          do: json(conn, %{key_packages: kps})
   end
 

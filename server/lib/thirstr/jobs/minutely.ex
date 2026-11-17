@@ -9,6 +9,10 @@ defmodule Thirstr.Jobs.Minutely do
   def perform(_job) do
     Thirstr.Location.refresh_k_anonymity()
     Thirstr.Repo.query!("DELETE FROM now_status WHERE expires_at < now()")
+    # B3 expiries: plans/posts (AC-09.1 also filtered by queries), venue auto check-out (R-12.6)
+    Thirstr.Tonight.sweep()
+    Thirstr.Activities.sweep()
+    Thirstr.Venues.sweep()
     :ok
   end
 end

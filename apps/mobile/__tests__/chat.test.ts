@@ -84,4 +84,41 @@ describe('MLS 1:1 on the pure-JS subtle shim (Hermes path)', () => {
       Object.defineProperty(globalThis.crypto, 'subtle', { value: real, configurable: true });
     }
   }, 30000);
+
+  it('group: host adds and removes members with commits; welcome carries the chat context', async () => {
+    const mls = require('../src/chat/mls') as typeof import('../src/chat/mls');
+    const dev = (d: string) => ((globalThis as { __dev?: string }).__dev = d);
+    const kpOf = async (name: string) => {
+      dev(name);
+      const kp = await mls.newKeyPackage({ p: 'p' + name, d: 'd' + name });
+      return { id: 1, device_id: 'd' + name, key_package: toB64(kp.wire), profile: 'p' + name };
+    };
+    const bobKp = await kpOf('bob');
+    const carolKp = await kpOf('carol');
+    dev('host');
+    const g = await mls.createWith({ p: 'phost', d: 'dhost' }, [bobKp], 'party:x');
+    dev('bob');
+    expect((await mls.join(fromB64(g.envelopes[0].ciphertext)))?.ctx).toBe('party:x');
+    dev('host');
+    const add = await mls.addMembers(g.groupId, [carolKp], 'party:x');
+    dev('bob');
+    expect(await mls.open(g.groupId, add.commit)).toBeNull();
+    dev('carol');
+    const j = await mls.join(fromB64(add.welcomes[0].ciphertext));
+    expect(j?.members.map((m) => m.p).sort()).toEqual(['pbob', 'pcarol', 'phost']);
+    const m = await mls.seal(g.groupId, utf8('hi all'));
+    dev('bob');
+    expect(fromUtf8((await mls.open(g.groupId, m.wire))!)).toBe('hi all');
+    dev('host');
+    expect(fromUtf8((await mls.open(g.groupId, m.wire))!)).toBe('hi all');
+    const rm = await mls.removeProfiles(g.groupId, ['pbob']);
+    expect(rm?.to.map((x) => x.p).sort()).toEqual(['pcarol', 'phost']);
+    dev('carol');
+    await mls.open(g.groupId, rm!.commit);
+    const m2 = await mls.seal(g.groupId, utf8('bob is out'));
+    dev('host');
+    expect(fromUtf8((await mls.open(g.groupId, m2.wire))!)).toBe('bob is out');
+    dev('bob');
+    await expect(mls.open(g.groupId, m2.wire)).rejects.toBeTruthy();
+  }, 30000);
 });

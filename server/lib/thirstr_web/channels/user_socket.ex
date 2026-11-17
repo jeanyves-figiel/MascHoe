@@ -3,6 +3,8 @@ defmodule ThirstrWeb.UserSocket do
   use Phoenix.Socket
 
   channel "user:me", ThirstrWeb.UserChannel
+  channel "party:*", ThirstrWeb.SceneChannel
+  channel "venue:*", ThirstrWeb.SceneChannel
 
   @impl true
   def connect(%{"token" => token}, socket, _info) when is_binary(token) do
