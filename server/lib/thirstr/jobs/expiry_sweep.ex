@@ -13,6 +13,8 @@ defmodule Thirstr.Jobs.ExpirySweep do
         where: lc.updated_at < ago(24, "hour") and p.seeded == false
     )
 
+    # taps expire after 7 days (data-model.md)
+    Thirstr.Repo.query!("DELETE FROM taps WHERE created_at < now() - interval '7 days'")
     :ok
   end
 end

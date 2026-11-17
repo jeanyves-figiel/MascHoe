@@ -22,6 +22,12 @@ defmodule Thirstr.Valkey do
     :ok
   end
 
+  @doc "Decode a term written by put_term/3. Input is server-written RAM state, decoded with :safe."
+  # sobelow_skip ["Misc.BinToTerm"]
+  def decode(bin) do
+    if is_binary(bin), do: :erlang.binary_to_term(bin, [:safe])
+  end
+
   @doc "Atomically read and delete (single-use secrets)."
   # Input is server-written (own DB / RAM store), decoded with :safe.
   # sobelow_skip ["Misc.BinToTerm"]

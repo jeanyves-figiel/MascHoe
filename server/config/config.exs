@@ -17,7 +17,11 @@ config :thirstr, Oban,
   queues: [default: 10, maintenance: 2],
   plugins: [
     {Oban.Plugins.Pruner, max_age: 3600},
-    {Oban.Plugins.Cron, crontab: [{"*/15 * * * *", Thirstr.Jobs.ExpirySweep}]}
+    {Oban.Plugins.Cron,
+     crontab: [
+       {"*/15 * * * *", Thirstr.Jobs.ExpirySweep},
+       {"* * * * *", Thirstr.Jobs.Minutely}
+     ]}
   ]
 
 # Product rules (spec references inline)

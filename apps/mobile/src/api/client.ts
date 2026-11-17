@@ -1,30 +1,43 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
+import type { MyProfile, NowStatus, Settings } from './types';
 
 // Web build is served by the API host (DEV: https://localhost:7443), so same-origin by default.
 const BASE = (process.env.EXPO_PUBLIC_API_URL ?? '') + '/v1';
 
-// TODO(native): move tokens to Keychain/Keystore (expo-secure-store) before native beta builds.
 const K = { access: 'thirstr.access', refresh: 'thirstr.refresh', install: 'thirstr.install' };
+
+// Tokens live in Keychain/Keystore on native; web (DEV tool only) falls back to AsyncStorage.
+const native = Platform.OS === 'ios' || Platform.OS === 'android';
+const secure = {
+  get: (k: string) => (native ? SecureStore.getItemAsync(k) : AsyncStorage.getItem(k)),
+  set: (k: string, v: string) => (native ? SecureStore.setItemAsync(k, v) : AsyncStorage.setItem(k, v)),
+  del: (k: string) => (native ? SecureStore.deleteItemAsync(k) : AsyncStorage.removeItem(k)),
+};
 
 export type Me = {
   status: 'active' | 'paused' | 'quarantined' | 'banned' | 'deleted';
   verified: boolean;
+  verified_since?: string | null;
   onboarding_step: 'basics' | 'location' | 'photo' | 'verify' | 'done';
-  safe_mode: string;
-  profile: null | {
-    id: string;
-    display_name: string;
-    age: number;
-    gender: string;
-    gender_other: string | null;
-    here_for: string[];
-    photos: Photo[];
+  safe_mode: 'auto' | 'on' | 'off' | string;
+  safe_mode_active?: boolean;
+  incognito?: boolean;
+  hidden?: boolean;
+  member_since?: string;
+  profile: null | MyProfile;
+  profiles?: MyProfile[];
+  location: null | {
+    level: 'hidden' | 'city' | 'area' | 'exact' | null;
+    pin?: null | { lat: number; lng: number; audience: string; expires_at: string };
+    hide_from_hidden?: boolean;
   };
-  location: null | { level: 'city' | 'area' | 'exact' | null };
+  now?: NowStatus | null;
+  settings?: Settings;
 };
 
-export type Photo = { id: string; slot: number; status: string; reject_reason: string | null; url: string | null };
+export type Photo = { id: string; slot: number; status: string; reject_reason: string | null; url: string | null; main_ok?: boolean };
 export type Session = { access_token: string; refresh_token: string; expires_in: number; account: Me };
 
 export class ApiError extends Error {
@@ -50,23 +63,22 @@ export async function installId(): Promise<string> {
 }
 
 export async function saveSession(s: Session) {
-  await AsyncStorage.multiSet([
-    [K.access, s.access_token],
-    [K.refresh, s.refresh_token],
-  ]);
+  await secure.set(K.access, s.access_token);
+  await secure.set(K.refresh, s.refresh_token);
   return s.account;
 }
 
 export async function clearSession() {
-  await AsyncStorage.multiRemove([K.access, K.refresh]);
+  await secure.del(K.access);
+  await secure.del(K.refresh);
 }
 
 export async function hasSession() {
-  return (await AsyncStorage.getItem(K.refresh)) !== null;
+  return (await secure.get(K.refresh)) !== null;
 }
 
 async function refresh(): Promise<boolean> {
-  const token = await AsyncStorage.getItem(K.refresh);
+  const token = await secure.get(K.refresh);
   if (!token) return false;
   const res = await fetch(BASE + '/auth/refresh', {
     method: 'POST',
@@ -87,7 +99,7 @@ export async function api<T = unknown>(method: string, path: string, body?: unkn
     'x-thirstr-install': await installId(),
     'x-thirstr-platform': Platform.OS,
   };
-  const access = await AsyncStorage.getItem(K.access);
+  const access = await secure.get(K.access);
   if (access) headers.authorization = 'Bearer ' + access;
 
   const res = await fetch(BASE + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
@@ -102,3 +114,12 @@ export async function api<T = unknown>(method: string, path: string, body?: unkn
 }
 
 export const platform = Platform.OS === 'ios' || Platform.OS === 'android' ? Platform.OS : 'web';
+
+export const API_BASE = BASE;
+
+/** Uploads a picked image to a presigned URL (public photos; EXIF stripped by the picker re-encode). */
+export async function putBlob(url: string, uri: string, contentType: string) {
+  const blob = await (await fetch(uri)).blob();
+  const res = await fetch(url, { method: 'PUT', headers: { 'content-type': contentType }, body: blob });
+  if (!res.ok) throw new ApiError(res.status, 'upload_failed', 'Upload failed');
+}

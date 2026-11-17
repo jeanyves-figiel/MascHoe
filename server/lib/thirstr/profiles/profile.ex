@@ -1,5 +1,5 @@
 defmodule Thirstr.Profiles.Profile do
-  @moduledoc "profiles table (F-06 subset needed by F-02 Basics)."
+  @moduledoc "profiles table (F-06). One per kind (now, sport, friends), max 3 per account (R-06.1)."
   use Ecto.Schema
   import Ecto.Changeset
 
@@ -23,10 +23,14 @@ defmodule Thirstr.Profiles.Profile do
     field :photo_ids, {:array, :binary_id}, default: []
     field :completeness, :integer, default: 0
     field :seeded, :boolean, default: false
+    field :fields, :map, default: %{}
+    field :public_updated_at, :utc_datetime_usec
     has_many :photos, Thirstr.Profiles.Photo
     timestamps()
   end
 
+  @kinds ~w(now sport friends)
+  def kinds, do: @kinds
   def genders, do: @genders
   def here_for_values, do: @here_for
 

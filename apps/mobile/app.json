@@ -7,11 +7,11 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "backgroundColor": "#0B0B0F",
+    "backgroundColor": "#17142E",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0B0B0F"
+      "backgroundColor": "#17142E"
     },
     "ios": {
       "bundleIdentifier": "app.thirstr",
@@ -25,7 +25,7 @@
       "package": "app.thirstr",
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundColor": "#0B0B0F"
+        "backgroundColor": "#17142E"
       }
     },
     "web": {
@@ -46,7 +46,11 @@
           "photosPermission": "Pick photos for your profile."
         }
       ],
-      "expo-apple-authentication"
+      "expo-apple-authentication",
+      "@maplibre/maplibre-react-native",
+      "expo-secure-store",
+      "expo-font",
+      "expo-localization"
     ],
     "runtimeVersion": {
       "policy": "appVersion"

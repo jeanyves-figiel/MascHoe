@@ -9,6 +9,7 @@ defmodule ThirstrWeb.Plugs.Auth do
     with ["Bearer " <> token] <- get_req_header(conn, "authorization"),
          {:ok, account, device_id} <- Accounts.authenticate_access(token),
          false <- account.status in ~w(banned deleted) do
+      touch_seen(account.id)
       conn |> assign(:account, account) |> assign(:device_id, device_id)
     else
       _ ->
@@ -21,6 +22,17 @@ defmodule ThirstrWeb.Plugs.Auth do
           |> halt()
         end
     end
+  end
+
+  # Online dot (F-04): last activity, RAM only, 15 min.
+  defp touch_seen(account_id) do
+    Thirstr.Valkey.command([
+      "SET",
+      "seen:" <> account_id,
+      Integer.to_string(System.system_time(:second)),
+      "EX",
+      "900"
+    ])
   end
 
   @doc "Hashed install id (sent by the app) used for the R-02.3 under-age flag."

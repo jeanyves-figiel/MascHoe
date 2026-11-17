@@ -4,7 +4,7 @@ const expoConfig = require('eslint-config-expo/flat');
 
 module.exports = defineConfig([
   expoConfig,
-  { ignores: ['dist/**', 'node_modules/**', '.expo/**'] },
+  { ignores: ['dist/**', 'node_modules/**', '.expo/**', 'public/maplibre/**'] },
   {
     rules: {
       // design-system.md: colours come from tokens only
