@@ -6,6 +6,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **B4b Verification** (F-03, issue 37): server challenge (nonce + 3 random liveness steps, single use), blind-signed credential (Chaum RSA-FDH 3072, SHA-384; server never sees the token), redeem with spent-token check, 3 fails → 24 h cooldown, 12-month expiry. App: iPhone selfie check with an on-device Apple Vision module (`modules/thirstr-face`, frames deleted after measuring), camera permission text, blind/unblind in the app.
 - **B4a Trust & safety: moderation** (issue 37), server:
   - Reports (S-50, R-15.9) with franked messages: a reported message is kept only if its franking key opens a tag stored at delivery, so reports can't be forged; only kind, text and time are kept.
   - Community quarantine (R-15.7: 3 verified spam/scam reports in 24 h) and beta auto-hide (R-15.13: 2 severe reports). Shadow quarantine is invisible to the account: its sends return 200 and reach nobody (AC-15.1).

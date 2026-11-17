@@ -1,9 +1,23 @@
 defmodule ThirstrWeb.TrustController do
   @moduledoc "B4a: reports (S-50), enforcement notices and appeals, vouches."
   use ThirstrWeb, :controller
-  alias Thirstr.{Reports, Trust}
+  alias Thirstr.{Reports, Trust, Verification}
+  alias ThirstrWeb.MeJSON
 
   action_fallback ThirstrWeb.FallbackController
+
+  # F-03 verification (challenge → on-device liveness → blind issue → redeem)
+  def verify_challenge(conn, _) do
+    with {:ok, r} <- Verification.challenge(conn.assigns.account), do: json(conn, r)
+  end
+
+  def verify_issue(conn, p) do
+    with {:ok, r} <- Verification.issue(conn.assigns.account, p), do: json(conn, r)
+  end
+
+  def verify_redeem(conn, p) do
+    with {:ok, a} <- Verification.redeem(conn.assigns.account, p), do: json(conn, MeJSON.me(a))
+  end
 
   def report(conn, p) do
     with {:ok, r} <- Reports.create(conn.assigns.account, p),

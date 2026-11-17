@@ -46,6 +46,14 @@
           "photosPermission": "Pick photos for your profile."
         }
       ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Thirstr uses the camera for the selfie check. Photos are checked on your phone and deleted; nothing is uploaded.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
       "expo-apple-authentication",
       "@maplibre/maplibre-react-native",
       "expo-secure-store",
