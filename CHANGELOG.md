@@ -5,6 +5,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+- Concept §6.2: exact pins visible to hidden/incognito viewers too (no give-to-get); pin owner's audience setting is the only filter.
+
 ### Added
 - Concept §6.2: Area default ~500 m (H3 res 8, k-anonymity fallback to res 7); give-to-get rule for exact pins; viewing rules for grid/map.
 - Mockups canvas: 7 new v1 screens (map-first home, Tonight board, party hosting, Activities, venue check-in, profile switcher + private notes, verification).

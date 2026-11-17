@@ -167,7 +167,7 @@ Precision is the user's call. Four levels, switchable anytime (mockup: Location 
 What you see = what each nearby person chose, not your own setting. Your setting only controls how others see you.
 
 Viewing rules:
-- **Give-to-get for exact pins**: you see others' exact pins only if you're visible yourself (Area or Exact; not Hidden/incognito). Blocks lurker stalking.
+- **Exact pins visible to any viewer the pin owner allows** (owner decision 2026-11-17), incl. Hidden/incognito viewers; no give-to-get. Pin owner's audience setting (verified only by default / my chats / everyone) is the only filter.
 - Grid sort: exact users by metres, then area users by cell distance, randomized within cell.
 - **k-anonymity**: a cell is only shown at res 8 if it holds ≥ k active users (e.g. k = 5); else merged up to res 7.
 
