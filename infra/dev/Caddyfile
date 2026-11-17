@@ -36,6 +36,12 @@ https://localhost:7443 {
 	}
 }
 
+# Marketing site (W-01) through Phoenix, like thirstr.fun in prod.
+https://localhost:7446 {
+	encode gzip
+	reverse_proxy api:4000
+}
+
 # S3 (SeaweedFS) for presigned photo PUT/GET from the browser.
 https://localhost:7444 {
 	reverse_proxy s3:9000 {

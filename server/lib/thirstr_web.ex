@@ -17,7 +17,8 @@ defmodule ThirstrWeb do
   those modules here.
   """
 
-  def static_paths, do: ~w(assets fonts images favicon.ico robots.txt)
+  # Public web files are the marketing site (ThirstrWeb.Plugs.Site, W-01), not Phoenix statics.
+  def static_paths, do: ~w()
 
   def router do
     quote do

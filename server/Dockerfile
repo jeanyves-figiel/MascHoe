@@ -6,14 +6,11 @@ ARG DEBIAN_VERSION=bookworm-20241016-slim
 ARG BUILDER_IMAGE="hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-debian-${DEBIAN_VERSION}"
 ARG RUNNER_IMAGE="debian:${DEBIAN_VERSION}"
 
-# Web client (Expo web export) — served only where SERVE_WEB_CLIENT=true (staging testers).
-FROM node:22-bookworm-slim AS web
-WORKDIR /web
-COPY apps/mobile/package.json apps/mobile/package-lock.json ./
-RUN npm ci --no-audit --no-fund
-COPY apps/mobile ./
-ENV EXPO_OFFLINE=1
-RUN npx expo export --platform web --output-dir dist
+# Public marketing site (W-01, docs/spec/website.md): static build, no dependencies.
+FROM node:22-bookworm-slim AS site
+WORKDIR /site
+COPY web/site ./
+RUN node build.mjs /site/dist
 
 FROM ${BUILDER_IMAGE} AS builder
 RUN apt-get update -y && apt-get install -y build-essential git && apt-get clean && rm -f /var/lib/apt/lists/*_*
@@ -26,7 +23,7 @@ RUN mkdir config
 COPY server/config/config.exs server/config/${MIX_ENV}.exs config/
 RUN mix deps.compile
 COPY server/priv priv
-COPY --from=web /web/dist priv/static/web
+COPY --from=site /site/dist priv/static/site
 COPY server/lib lib
 RUN mix compile
 COPY server/config/runtime.exs config/

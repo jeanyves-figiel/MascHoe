@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- Public marketing site (W-01, #40, `docs/spec/website.md`): Pop design, en/fr/de (`/`, `/fr/`, `/de/`), privacy summary, 404; static, no JS, no cookies, no third-party requests, self-hosted Bricolage Grotesque. Source `web/site/` (`build.mjs`, no dependencies), served by Phoenix (`ThirstrWeb.Plugs.Site`) on every non-API path with strict CSP; `www.` → 301 apex; hosts other than `SITE_HOST` (prod `thirstr.fun`) get `X-Robots-Tag: noindex`. DEV: https://localhost:7446.
+
+### Removed
+- Expo web client on staging/release image (`SERVE_WEB_CLIENT`, web build stage): the web shows the marketing site, the app is native only. DEV keeps the Expo web build at https://localhost:7443 as a developer tool. Phoenix default `favicon.ico`/`robots.txt` removed.
+
 ### Changed
 - Design: **Pop** is the only theme (#38). design-system.md: ink base `#17142E`, mode colours coral/violet/lime, teal for trust/location/privacy, sunflower for personal items, Bricolage Grotesque, new radius scale, logo/wordmark spec (`thirstr` with coral `r` + three dots), Pop component rules. Light theme removed (F-17 theme setting dropped). Concept doc colours/fonts updated.
 
