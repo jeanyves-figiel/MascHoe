@@ -15,6 +15,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - API: `GET /.well-known/apple-app-site-association` (`webcredentials`, from `APPLE_TEAM_ID`; 404 until set). Staging now sets the Team ID.
 
 ### Fixed
+- iOS TestFlight workflow: first run failed because `eas build --non-interactive` cannot create signing credentials; new step `scripts/eas-credentials-bootstrap.py` runs `eas credentials:configure-build` under a pseudo-terminal using the App Store Connect API key.
 - Release scripts `bin/migrate` and `bin/server` committed without the executable bit, so the Fly release command failed on the first staging deploy.
 - Release node name built from `FLY_IMAGE_REF`; a digest-pinned image made it invalid and the app crash-looped on staging. Node is now `<app>@<private IPv6>`.
 

@@ -89,6 +89,14 @@ jobs:
             fs.writeFileSync("eas.json", JSON.stringify(j, null, 2));
           '
 
+      # Non-interactive builds can't create the Distribution Certificate / profile;
+      # a pseudo-terminal run of configure-build can (idempotent once they exist).
+      - name: iOS signing credentials
+        if: steps.gate.outputs.ok == 'true'
+        run: |
+          python3 -m pip install --quiet pexpect==4.9.0
+          python3 ../../scripts/eas-credentials-bootstrap.py
+
       - name: Build and submit to TestFlight
         if: steps.gate.outputs.ok == 'true'
         run: |
