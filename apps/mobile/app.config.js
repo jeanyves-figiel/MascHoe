@@ -9,6 +9,8 @@ module.exports = ({ config }) => {
     ...config,
     ios: {
       ...config.ios,
+      // CI sets IOS_BUILD_NUMBER (run number + offset); TestFlight needs it to grow.
+      ...(process.env.IOS_BUILD_NUMBER ? { buildNumber: process.env.IOS_BUILD_NUMBER } : {}),
       associatedDomains: host ? [`webcredentials:${host}`, `applinks:${site}`] : [],
     },
   };
