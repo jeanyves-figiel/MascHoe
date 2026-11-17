@@ -36,4 +36,4 @@ jobs:
         working-directory: apps/mobile
         run: npm ci && npm audit --omit=dev --audit-level=high
       - name: Staging smoke
-        run: ./scripts/smoke.sh https://thirstr-api-staging.fly.dev
+        run: ./scripts/smoke.sh https://staging.thirstr.fun

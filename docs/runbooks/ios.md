@@ -1,6 +1,6 @@
 # Runbook: iOS TestFlight builds (#31)
 
-Beta testers install the real app from TestFlight. Builds point at **staging** (`https://thirstr-api-staging.fly.dev`).
+Beta testers install the real app from TestFlight. Builds point at **staging** (`https://staging.thirstr.fun`).
 
 ## How it works
 - `.github/workflows/ios-testflight.yml` runs on every push to `main` touching `apps/mobile/**`, or manually (Actions → iOS TestFlight → Run workflow).
@@ -28,4 +28,4 @@ GitHub secrets: repo → Settings → Secrets and variables → Actions.
 ## Troubleshooting
 - Build logs: link printed in the workflow log, or expo.dev → project `thirstr` → Builds.
 - "Missing compliance": answered in-app (`ITSAppUsesNonExemptEncryption = false`).
-- Passkey sheet says the app is not associated: check `curl https://thirstr-api-staging.fly.dev/.well-known/apple-app-site-association` and the Team ID.
+- Passkey sheet says the app is not associated: check `curl https://staging.thirstr.fun/.well-known/apple-app-site-association` and the Team ID.

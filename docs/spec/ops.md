@@ -15,8 +15,8 @@
 | Env | URL | Data | Deploy |
 |---|---|---|---|
 | DEV | `https://localhost:7443` | seeded fake data | `docker compose up` (caddy, phoenix, postgres+h3, valkey, seaweedfs-s3, mailpit, mock-push, tile server) |
-| Staging | `https://thirstr-api-staging.fly.dev` (→ `staging.<domain>` later) | synthetic (re-seeded idempotently on deploy) + testers; web client served for testers | auto on squash-merge to `main` |
-| Prod | `https://thirstr-api-prod.fly.dev` (→ `api.<domain>` later) | real | manual workflow **"Promote to production"** (same image digest as staging), owner OK per change; owner is the only required reviewer |
+| Staging | `https://staging.thirstr.fun` (Fly app `thirstr-api-staging`) | synthetic (re-seeded idempotently on deploy) + testers; web client served for testers | auto on squash-merge to `main` |
+| Prod | `https://api.thirstr.fun` (Fly app `thirstr-api-prod`) | real | manual workflow **"Promote to production"** (same image digest as staging), owner OK per change; owner is the only required reviewer |
 
 ## Trunk model
 1. Branch off `main` → PR (template: summary, linked spec IDs, ChangeLog entry, screenshots ≤ 800 px).
@@ -42,7 +42,7 @@
 - Image registry: `registry.fly.io`, images signed with cosign; deploy by digest only.
 - Secrets: `fly secrets` (per app); pepper/KMS keys stay outside Fly (EU KMS).
 - Region policy: primary_region `fra`; no machine outside EU regions (CI check on fly.toml).
-- Domain: none yet. Host is config only (`PHX_HOST`, `APP_URL`, `WEBAUTHN_ORIGIN`, `WEBAUTHN_RP_ID` in `infra/fly/api-<env>.toml`). Passkeys are bound to the RP ID, so testers re-enrol once when the domain arrives.
+- Domain: `thirstr.fun` (registrar + DNS: GoDaddy; D-01). `staging.thirstr.fun` → `thirstr-api-staging`, `api.thirstr.fun` → `thirstr-api-prod`: A (Fly shared IPv4) + AAAA (app IPv6) + `_acme-challenge.<host>` CNAME to Fly for Let's Encrypt DNS-01. `*.fly.dev` hosts stay reachable but are not canonical. Apex/`www` parked (no website); MX/SPF/DKIM wait for the SMTP provider (#26). Host is config only (`PHX_HOST`, `APP_URL`, `WEBAUTHN_ORIGIN`, `WEBAUTHN_RP_ID` in `infra/fly/api-<env>.toml`); passkeys are bound to the RP ID, so testers re-enrolled once at the switch (#34). Runbook: `docs/runbooks/fly.md` › Domain.
 - Access: Fly org `personal` for beta (move to org `thirstr` before public launch); CI uses org-scoped deploy token `FLY_TOKEN` in GitHub environment secrets; humans via SSO + 2FA.
 - Exit path: same Docker images run on Hetzner k3s; review before public launch (#23).
 - Observability: OpenTelemetry → Grafana stack; SLOs: API availability 99.9 %, grid p95 < 300 ms, message p95 < 500 ms.
