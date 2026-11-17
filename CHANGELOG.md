@@ -11,6 +11,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Concept §6.2: exact pins visible to hidden/incognito viewers too (no give-to-get); pin owner's audience setting is the only filter.
 
 ### Added
+- `docs/spec/`: beta specification — ADR-0001 stack (Elixir/Phoenix, Postgres+h3, Valkey, OpenMLS, React Native + Rust core, MapLibre; accepted), glossary, data model, API & realtime contract, screen inventory, feature specs F-01…F-18, integration specs I-01…I-03.
 - `docs/concept/onboarding-and-design.md`: login options (passkey default, Apple/Google/email, no phone), 6-step onboarding < 60 s, progressive profiling, design system (mode colours, type, nav), design audit. Mockups: onboarding row (Welcome, Sign up, Basics, Location, Photo, Verify).
 - Concept: share posts from X, Bluesky, OnlyFans, JustFor.Fans to members (share sheet, device-side E2EE preview, blurred explicit, verified linked accounts, anti-bot guardrails).
 - `docs/concept/profile-and-settings.md`: own-profile fields with per-field visibility (Public / Verified / My chats / Only me), up to 3 profiles, Preview-as, full settings tree. Mockups: Me + Settings boards.
