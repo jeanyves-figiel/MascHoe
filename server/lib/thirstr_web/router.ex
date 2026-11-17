@@ -21,6 +21,11 @@ defmodule ThirstrWeb.Router do
     plug ThirstrWeb.Plugs.RateLimit, bucket: "email", limit: 5, window: 3600
   end
 
+  # iOS passkeys / universal links (I-03). Apple fetches this without auth.
+  scope "/.well-known", ThirstrWeb do
+    get "/apple-app-site-association", WellKnownController, :aasa
+  end
+
   scope "/v1", ThirstrWeb do
     pipe_through :api
 

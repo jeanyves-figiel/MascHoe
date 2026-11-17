@@ -31,7 +31,8 @@
 | `ci.yml` | PR | server (mix format/credo/sobelow/deps.audit/test), core (cargo fmt/clippy/test/audit), mobile (tsc/eslint/jest/web build), image build, infra (EU-region check, compose config), changelog-check, secret scan (gitleaks) |
 | `deploy-staging.yml` | push main | build+sign images (cosign), SBOM, push to EU registry, `fly deploy --image <digest>` to staging apps, smoke tests |
 | `promote-prod.yml` | manual | verify digest deployed on staging ≥ 30 min (Machines API, `scripts/fly-live-image.sh`) & smoke green → environment `production` approval → `fly deploy --image <digest>` to prod apps → smoke → auto-rollback (redeploy previous release) on failure |
-| `mobile-release.yml` | tag `app-v*` | EAS/fastlane build → TestFlight / Play internal; store submission manual |
+| `ios-testflight.yml` | push main touching `apps/mobile/**`, manual | EAS Build (iOS, profile `staging` → staging API) → auto-submit to TestFlight; skips with a warning until owner secrets exist (#31, runbook `docs/runbooks/ios.md`) |
+| `mobile-release.yml` (later) | tag `app-v*` | prod-pointing store builds; store submission manual |
 | `nightly.yml` | cron | dependency audits (mix, cargo, npm), staging smoke; abuse harnesses (trilateration, scraping) added as features land |
 | `infra-images.yml` | manual / infra/postgres change | build + push Postgres 16 + h3 image for `thirstr-db-<env>` |
 

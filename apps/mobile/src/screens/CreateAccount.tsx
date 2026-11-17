@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View } from 'react-native';
 import { ApiError, Me } from '../api/client';
-import { signInWith, requestEmailLink } from '../auth/oidc';
+import { authMethods, signInWith, requestEmailLink } from '../auth/oidc';
 import { loginPasskey, passkeysAvailable, registerPasskey } from '../auth/passkey';
 import { t } from '../i18n/strings';
 import { space } from '../theme/tokens';
@@ -41,9 +41,9 @@ export function CreateAccountScreen({ mode, onDone, onEmailSent, onUnderage }: {
         {passkeysAvailable() ? (
           <Button testID="passkey" title={t.create.passkey} busy={busy === 'pk'} onPress={() => run('pk', () => (mode === 'signup' ? registerPasskey(adult) : loginPasskey()))} />
         ) : null}
-        <Button title={t.create.apple} kind="secondary" busy={busy === 'apple'} onPress={() => run('apple', () => signInWith('apple', adult))} />
-        <Button title={t.create.google} kind="secondary" busy={busy === 'google'} onPress={() => run('google', () => signInWith('google', adult))} />
-        {showEmail ? (
+        {authMethods.apple ? <Button title={t.create.apple} kind="secondary" busy={busy === 'apple'} onPress={() => run('apple', () => signInWith('apple', adult))} /> : null}
+        {authMethods.google ? <Button title={t.create.google} kind="secondary" busy={busy === 'google'} onPress={() => run('google', () => signInWith('google', adult))} /> : null}
+        {!authMethods.email ? null : showEmail ? (
           <View style={{ gap: space.s }}>
             <Field label="Email" placeholder={t.create.emailPlaceholder} value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" autoComplete="email" />
             <Button title={t.create.sendLink} busy={busy === 'email'} disabled={!email.includes('@')} onPress={() => run('email', async () => { await requestEmailLink(email, adult); onEmailSent(); })} />

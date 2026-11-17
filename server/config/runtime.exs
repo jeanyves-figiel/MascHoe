@@ -24,6 +24,18 @@ config :thirstr,
   valkey_url: env.("VALKEY_URL", "redis://localhost:6379/#{if test?, do: 1, else: 0}"),
   # R-01.2/R-01.3: pepper for identifier hashes. Prod: injected from EU KMS via fly secrets.
   pepper: env.("ID_PEPPER", "dev-pepper-not-secret"),
+  # AASA webcredentials (I-03): "<TeamID>.<bundle id>" once APPLE_TEAM_ID is set.
+  apple_app_ids:
+    (case System.get_env("APPLE_TEAM_ID") do
+       nil ->
+         []
+
+       "" ->
+         []
+
+       team ->
+         Enum.map(String.split(env.("IOS_BUNDLE_IDS", "app.thirstr"), ","), &"#{team}.#{&1}")
+     end),
   webauthn: [
     origin: env.("WEBAUTHN_ORIGIN", app_url),
     rp_id: env.("WEBAUTHN_RP_ID", URI.parse(app_url).host),
