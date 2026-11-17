@@ -6,7 +6,7 @@ Date: 2026-11-17. Source: [sign-off form](https://claude.ai/artifact/XqFcGc8h7xN
 |---|---|---|---|
 | D-01 | App name | **Thirstr** (replaces working name MascHoe, 2026-11-17). Domain target `thirstr.app` (+ `thirstr.com`), fallback `getthirstr.app`. Bundle ID `app.thirstr`. | store listings, bundle IDs, docs |
 | D-02 | Legal entity | Switzerland (hosting EU) | #9, security.md |
-| D-03 | Hosting | Hetzner (EU regions) | ops.md Infra |
+| D-03 | Hosting | **Fly.io, EU regions only** (fra primary, ams secondary) for beta; review jurisdiction (US CLOUD Act) + cost before public launch; Hetzner = exit path. Revised 2026-11-17 (was Hetzner). | ops.md, ADR-0001 |
 | D-04 | Beta access | Invite-only, ~500 testers, 3 invite codes each | F-01, F-02 |
 | D-05 | Seed cities | Zurich, Berlin, Paris (app usable worldwide) | testing.md seed data, go-to-market |
 | D-06 | Beta languages | en, fr, de; 14 more at public launch | design-system.md i18n |

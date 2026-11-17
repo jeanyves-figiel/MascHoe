@@ -22,7 +22,7 @@ Status: **accepted** (owner picked Elixir / Phoenix, 2026-11-17) · Closes #1.
 | Moderation ML | Self-hosted image classifier (GPU node) for public photos; PhotoDNA-style hash list for CSAM | No third-party content exposure. |
 | Search/filters | Postgres (GIN on flag arrays) | Enough for beta. |
 | Observability | OpenTelemetry → self-hosted Grafana/Loki/Tempo; **no user IDs in logs**, IP hashed 24 h | Privacy. |
-| Infra | Docker; Kubernetes (k3s) on EU cloud; Terraform; GitHub Actions | Matches trunk model. |
+| Infra | Docker; **Fly.io EU regions** (beta, D-03); GitHub Actions; Hetzner k3s as exit path | Matches trunk model; native Elixir clustering. |
 
 ### Client
 | Concern | Choice |
@@ -38,8 +38,8 @@ Status: **accepted** (owner picked Elixir / Phoenix, 2026-11-17) · Closes #1.
 | Env | Where | Deploy |
 |---|---|---|
 | DEV | `localhost:7443` via `docker compose` (Phoenix, Postgres, Valkey, MinIO, mock push) | local |
-| Staging | EU k3s | auto on squash-merge to `main` |
-| Prod | EU k3s | manual "Promote to production" workflow, same image, owner OK per change |
+| Staging | Fly.io EU | auto on squash-merge to `main` |
+| Prod | Fly.io EU | manual "Promote to production" workflow, same image, owner OK per change |
 
 ## Consequences
 - Elixir hiring pool smaller than Go/Node; mitigated by small backend surface.

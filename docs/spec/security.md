@@ -22,7 +22,7 @@ Method: STRIDE per asset + attacker profiles. Owner: security lead. Review befor
 | A4 | Data broker / advertiser | harvest data | zero SDKs, no ads, no IDs in logs, anti-scrape (attested clients, rate limits) |
 | A5 | Malicious insider | read data | E2EE, least privilege, audited moderator access, no plaintext chats exist |
 | A6 | Server breach | dump DB | nothing sensitive in plaintext; hashed identifiers; exact pins not persisted |
-| A7 | Legal compulsion | user data | warrant canary, transparency report, minimal retention ⇒ little to hand over |
+| A7 | Legal compulsion | user data | warrant canary, transparency report, minimal retention ⇒ little to hand over; beta host Fly.io is US-owned (CLOUD Act): E2EE + no plaintext sensitive data, keys in EU KMS; reassess before public launch |
 | A8 | Device seizure | read phone | app lock, SQLCipher, duress PIN/decoy, panic wipe, disappearing messages |
 | A9 | Scraper with real accounts | build profile dataset | attestation, per-account view caps (300 profiles/h), random pagination tokens, no public web profiles |
 
