@@ -294,7 +294,7 @@ defmodule ThirstrWeb.SceneTest do
 
       req(h, :post, "/v1/clubs/#{club["id"]}/members/#{gs}/approve") |> json_response(200)
 
-      assert %{"my_state" => "member", "members" => [_, _]} =
+      assert %{"my_state" => "member", "member_list" => [_, _]} =
                req(g, :get, "/v1/clubs/#{club["id"]}") |> json_response(200)
     end
   end

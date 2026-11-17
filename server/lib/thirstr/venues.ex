@@ -170,7 +170,6 @@ defmodule Thirstr.Venues do
         ]
       ).rows
       |> Nearby.utc()
-      |> Nearby.utc()
 
     Enum.each(List.flatten(rows), &diff/1)
     :ok

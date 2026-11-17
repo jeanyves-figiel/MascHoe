@@ -433,7 +433,7 @@ defmodule Thirstr.Activities do
                 st == "member" or club.my_role == "admin",
                 do: %{profile: cards[pid], role: role, state: st}
 
-          %{members: members}
+          %{member_list: members}
         else
           %{}
         end
