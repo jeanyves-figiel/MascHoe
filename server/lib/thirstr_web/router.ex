@@ -118,6 +118,37 @@ defmodule ThirstrWeb.Router do
       get "/media/:id", ChatController, :blob
       delete "/media/:id", ChatController, :delete_blob
       put "/me/push", ChatController, :push_token
+
+      # B3: Tonight, parties, activities & clubs, venues
+      get "/tonight", SceneController, :tonight
+      post "/tonight", SceneController, :create_plan
+      delete "/tonight/:id", SceneController, :delete_plan
+      get "/parties", SceneController, :parties
+      post "/parties", SceneController, :create_party
+      get "/parties/:id", SceneController, :party
+      patch "/parties/:id", SceneController, :update_party
+      post "/parties/:id/request", SceneController, :request_party
+      post "/parties/:id/leave", SceneController, :leave_party
+      post "/parties/:id/rate", SceneController, :rate_party
+      post "/parties/:id/report", SceneController, :report_party
+      post "/parties/:id/requests/:profile_id/:action", SceneController, :party_request_action
+      get "/activities", SceneController, :activities
+      post "/activities", SceneController, :create_activity
+      delete "/activities/:id", SceneController, :delete_activity
+      post "/activities/:id/rsvp", SceneController, :rsvp
+      get "/activities/:id/members", SceneController, :activity_members
+      delete "/activities/:id/members/:profile_id", SceneController, :remove_member
+      get "/clubs", SceneController, :clubs
+      post "/clubs", SceneController, :create_club
+      get "/clubs/:id", SceneController, :club
+      post "/clubs/:id/join", SceneController, :join_club
+      post "/clubs/:id/leave", SceneController, :leave_club
+      post "/clubs/:id/members/:profile_id/:action", SceneController, :club_admin
+      get "/venues/nearby", SceneController, :venues
+      post "/venues/:id/checkin", SceneController, :checkin
+      patch "/venues/:id/checkin", SceneController, :update_checkin
+      post "/venues/checkout", SceneController, :checkout
+      get "/venues/:id/here", SceneController, :here
     end
   end
 

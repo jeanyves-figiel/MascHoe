@@ -13,6 +13,11 @@ defmodule Thirstr.Push do
     "message.new" => {"message", false},
     "tap.new" => {"tap", false},
     "tap.mutual" => {"mutual", false},
+    "party.request" => {"party_request", false},
+    "party.accepted" => {"party_accepted", false},
+    "party.status" => {"party_accepted", false},
+    "activity.join" => {"activity_join", false},
+    "club.request" => {"club_event", false},
     "checkin.due" => {"checkin", true},
     "checkin.alert" => {"checkin_alert", true}
   }

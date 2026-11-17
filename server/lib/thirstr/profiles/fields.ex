@@ -70,6 +70,8 @@ defmodule Thirstr.Profiles.Fields do
   def health, do: @health
   def visibilities, do: @visibilities
 
+  def sports, do: @sports
+
   def options do
     %{
       orientation: @orientations,
