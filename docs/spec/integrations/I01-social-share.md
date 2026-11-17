@@ -2,7 +2,7 @@
 
 Platforms: X, Bluesky, OnlyFans, JustFor.Fans, Instagram (link-only).
 
-## Share into MascHoe
+## Share into Thirstr
 - R-I01.1 iOS Share Extension + Android share target accept URLs (and text containing URLs). Flow: pick recipients (recent chats, search) → optional message → send.
 - R-I01.2 Link preview built **on device**: fetch URL with generic UA, parse OpenGraph/oEmbed (title, image, video poster); image re-encoded and encrypted as F-08 media. Server never fetches the URL.
 - R-I01.3 Preview card in chat: platform icon, title, thumbnail; explicit classifier on receiver device → blurred if explicit (per settings); tap → opens URL in external browser/app (never in-app webview for adult domains).

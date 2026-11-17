@@ -2,7 +2,7 @@
 
 ## Share link / QR
 - R-I02.1 Each profile can generate a share link `https://<domain>/p/{random_slug}` + QR. Slug rotatable/revocable; separate per profile.
-- R-I02.2 Web page shows: main photo (blurred unless viewer opens in app), display name, "Chat me safely on MascHoe", store badges. No distance, no other fields.
+- R-I02.2 Web page shows: main photo (blurred unless viewer opens in app), display name, "Chat me safely on Thirstr", store badges. No distance, no other fields.
 - R-I02.3 Opening link in app → profile S-20 (if allowed by visibility).
 - R-I02.4 Intended for bios on other apps. No tracking params, no analytics on the page.
 

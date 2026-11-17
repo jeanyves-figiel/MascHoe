@@ -1,7 +1,7 @@
 # F-13 Safety: meet check-in, trusted contacts, panic, app lock
 
 ## Trusted contacts
-- R-13.1 1–3 contacts. Add from MascHoe chats (in-app) or invite link via OS share sheet (SMS/WhatsApp/etc.). Contacts don't need the app: they get a web page (E2EE via key in URL fragment, never sent to server).
+- R-13.1 1–3 contacts. Add from Thirstr chats (in-app) or invite link via OS share sheet (SMS/WhatsApp/etc.). Contacts don't need the app: they get a web page (E2EE via key in URL fragment, never sent to server).
 - R-13.2 Contact accepts once (proves channel + consent). Contact list stored **device-only**; server holds opaque relay tokens.
 - R-13.3 Remove contact anytime; contact can opt out.
 

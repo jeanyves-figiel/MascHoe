@@ -1,4 +1,4 @@
-# MascHoe — Product Concept v0.3
+# Thirstr — Product Concept v0.3
 
 Status: draft v0.3 (audience, photo policy, worldwide launch) · 2026-11-16 · Owner: Jean-Yves
 
@@ -11,7 +11,7 @@ Positioning:
 - Audience: self-identified men, incl. trans men and non-binary people who identify as men. Self-declared identity; no proof asked. Gender/identity fields + filters inclusive from v1; transphobia = moderation offence.
 - Distribution: **App Store + Google Play** (native). Store rules drive public-photo policy (§5 Photos).
 - Scope: **worldwide from day 1** (§12).
-- Mockups: [MascHoe app screens](https://claude.ai/artifact/TErsb1tkyu5qWo8JQxD6VG) (private canvas; share from its menu).
+- Mockups: [Thirstr app screens](https://claude.ai/artifact/TErsb1tkyu5qWo8JQxD6VG) (private canvas; share from its menu).
 
 ---
 
@@ -122,7 +122,7 @@ Cross-app pain points (user reviews):
 Goal: send a member a post (e.g. a clip showing what you're like in bed) straight from those platforms.
 
 How:
-- **Share-sheet target**: in X/Bluesky/OF/JFF app or browser → Share → MascHoe → pick member(s). Also paste link in chat.
+- **Share-sheet target**: in X/Bluesky/OF/JFF app or browser → Share → Thirstr → pick member(s). Also paste link in chat.
 - **Preview built on the sender's phone** (OpenGraph/oEmbed), sent E2EE inside the message. Server never fetches the URL, so it never learns what was shared.
 - Explicit previews **blurred by default**, receiver taps → opens in the source app/browser. Explicit media never rendered inside our app's public surfaces (store rules); inside E2EE chat it follows the receiver's "explicit media" setting.
 - **Linked accounts on profile** (optional, visibility per field, default My chats): X, Bluesky, OnlyFans, JustFor.Fans, Instagram.
@@ -396,7 +396,7 @@ User ask: let people link existing Grindr/Scruff/Romeo/Hornet accounts and use t
 | A. Unofficial client / bridge (log in with their credentials, proxy their API) | Reverse-engineer private APIs; we or the device hold their session tokens | **Reject.** ToS breach → user bans, cease-and-desist, app-store removal, CFAA/contract risk (US). Holding other apps' credentials contradicts our privacy stance. Breaks constantly. Ships their trackers' data flows into our trust story. |
 | B. On-device-only bridge (tokens never leave phone) | Same as A, client-side | **Reject for product.** Lower our liability, same ban/store/legal risk for users. |
 | C. Profile import via GDPR export | User requests export from Grindr/Romeo/etc., uploads ZIP; we parse locally on device, pre-fill profile, photos, tags | **Do (v1.1).** Legal, user-initiated, privacy-preserving. Import parsing on-device; nothing kept server-side beyond chosen profile. |
-| D. Contact bridge via share links | User posts our profile link/QR in their bio elsewhere ("chat me safely on MascHoe") | **Do (MVP).** Viral loop, no ToS risk on our side (check each app's bio rules). |
+| D. Contact bridge via share links | User posts our profile link/QR in their bio elsewhere ("chat me safely on Thirstr") | **Do (MVP).** Viral loop, no ToS risk on our side (check each app's bio rules). |
 | E. Open protocol / federation | Publish our profile+E2EE chat protocol (MLS-based); invite other apps to federate | **Do (v2+), strategic.** Positions us as the interoperable standard; incumbents unlikely to join, but small apps/venues/NGOs might. Moat by openness. |
 | F. Regulatory push | Support EU calls to extend interop/portability rules | Low cost, long horizon. |
 

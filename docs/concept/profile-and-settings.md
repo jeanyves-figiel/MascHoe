@@ -1,4 +1,4 @@
-# MascHoe — My profile & settings (v0.1)
+# Thirstr — My profile & settings (v0.1)
 
 Status: draft · 2026-11-17 · Companion to [product-concept.md](product-concept.md) · Mockups: "Me" + "Settings" boards on the [canvas](https://claude.ai/artifact/TErsb1tkyu5qWo8JQxD6VG).
 

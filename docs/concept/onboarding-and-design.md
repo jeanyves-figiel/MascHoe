@@ -1,4 +1,4 @@
-# MascHoe — Sign-up, onboarding & design system (v0.1)
+# Thirstr — Sign-up, onboarding & design system (v0.1)
 
 Status: draft · 2026-11-17 · Companion to [product-concept.md](product-concept.md) · Mockups: "Onboarding" row on the [canvas](https://claude.ai/artifact/TErsb1tkyu5qWo8JQxD6VG).
 

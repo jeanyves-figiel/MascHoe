@@ -1,4 +1,4 @@
-# MascHoe — Functional & technical specification (beta)
+# Thirstr — Functional & technical specification (beta)
 
 Status: draft v0.1 · 2026-11-17 · Source of truth before any code. Product rationale lives in [`docs/concept/`](../concept/); this folder says **exactly what to build**.
 
