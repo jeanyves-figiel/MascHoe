@@ -57,7 +57,13 @@ Generated to TS (RN theme) by Style Dictionary in CI. Hard-coded colours/sizes i
 - Wordmark: `thirstr` all lowercase, Bricolage Grotesque 800, letter spacing −0.04 em. The final `r` in `mode.hookup` coral; the rest `fg.primary`. Followed by three dots (Ø 0.3 em, gap 0.08 em, baseline-aligned): `personal` sunflower, `mode.friends` violet, `mode.sport` lime.
 - The wordmark colours are fixed brand colours: they do NOT follow the current mode.
 - Header use: 27 pt, left-aligned, on `bg.base` or the map.
-- App icon: ink `bg.base` square, lowercase `t` in white 800 followed by the coral `r` and the three dots (short form of the wordmark). Final artwork is a separate task; disguised-icon builds (I-03) keep their neutral icons.
+- App icon (chosen 2026-11-17, concept A of the [icon concepts](https://claude.ai/artifact/L54sELRarhcQp1E8poghPZ)): short form of the wordmark. Ink `bg.base` full-bleed square; lowercase `t` white and `r` coral (Bricolage Grotesque 800, outlined, 600/1024 of the canvas, tracking −0.04 em, baseline at y 702), then three dots Ø 80/1024, gap 18, bottom on the baseline: sunflower, violet, lime. No gradient, no shadow, no text other than `tr`.
+  - Sources: `/design/brand/*.svg` (glyphs outlined from the bundled font, so no font is needed to render). `design/brand/build.js` regenerates every PNG in `/apps/mobile/assets`.
+  - iOS: `icon.png` 1024×1024, RGB without alpha (App Store rejects alpha); iOS applies the mask.
+  - Android adaptive: `android-icon-foreground.png` (mark scaled to 66 % about the centre so it sits inside the 66 dp safe circle on every launcher mask), background colour `bg.base` (`android-icon-background.png` kept for tools that need an image), `android-icon-monochrome.png` (all-white mark for Android 13+ themed icons).
+  - Store safety: App Store guideline 2.3.8 requires icons to suit 4+ even for a 17+ app; Play bans sexual content in icons. The mark is lettering only, so no review risk. Sass lives in the app, not the icon.
+  - Disguised-icon builds (I-03) keep their neutral icons.
+- Splash: `bg.base` with the full wordmark centred (white `thirst`, coral `r`, three dots), 70 % of the 1024 `splash-icon.png` canvas, transparent background; `resizeMode: contain`. Same wordmark as the header, never the icon.
 - Clear space = height of the `t`. Never outline, stretch, recolour or put on a photo.
 
 ### Space, radius, elevation, motion
