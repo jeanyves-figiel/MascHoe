@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { View } from 'react-native';
 import { api, ApiError, Me } from '../api/client';
 import { t } from '../i18n/strings';
-import { BasicsInput, basicsValid } from '../onboarding/flow';
+import { BasicsInput, basicsValid, maskBirthday } from '../onboarding/flow';
 import { Button, Chip, ErrorText, Field, H1, Label, Screen, s } from '../ui';
 
-// S-03 (R-02.4, R-02.5). Birthday as YYYY-MM-DD on web; native gets the OS date wheel.
+// S-03 (R-02.4, R-02.5). Birthday typed as digits; dashes auto-inserted (number pad has no "-").
 export function BasicsScreen({ me, onDone, onUnderage }: { me: Me; onDone: (me: Me) => void; onUnderage: () => void }) {
   const [b, setB] = useState<BasicsInput>({
     display_name: me.profile?.display_name ?? '',
@@ -38,7 +38,7 @@ export function BasicsScreen({ me, onDone, onUnderage }: { me: Me; onDone: (me: 
     <Screen progress={2}>
       <H1>{t.basics.title}</H1>
       <Field label={t.basics.name} placeholder={t.basics.namePh} value={b.display_name} maxLength={30} onChangeText={(v) => set('display_name', v)} error={fields.display_name?.[0]} />
-      <Field label={t.basics.birthday} placeholder="YYYY-MM-DD" value={b.birthdate} onChangeText={(v) => set('birthdate', v)} inputMode="numeric" error={fields.birthdate?.[0] ?? undefined} />
+      <Field label={t.basics.birthday} placeholder="YYYY-MM-DD" value={b.birthdate} maxLength={10} onChangeText={(v) => set('birthdate', maskBirthday(v))} inputMode="numeric" error={fields.birthdate?.[0] ?? undefined} />
       <Label>{t.basics.iam}</Label>
       <View style={s.chips}>
         {Object.entries(t.basics.genders).map(([k, label]) => (

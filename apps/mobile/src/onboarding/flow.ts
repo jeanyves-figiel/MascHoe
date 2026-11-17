@@ -36,6 +36,14 @@ export function parseBirthday(s: string): Date | null {
   return d.getUTCMonth() === +m[2] - 1 ? d : null;
 }
 
+// Birthday typed on a number pad (iOS has no "-" key): keep digits only and insert the dashes.
+export function maskBirthday(raw: string): string {
+  const d = raw.replace(/\D/g, '').slice(0, 8);
+  if (d.length <= 4) return d;
+  if (d.length <= 6) return `${d.slice(0, 4)}-${d.slice(4)}`;
+  return `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6)}`;
+}
+
 export type BasicsInput = { display_name: string; birthdate: string; gender: string; gender_other: string; here_for: string[] };
 
 // Mirrors server validation (R-02.4/R-02.5) so Continue only enables when valid.

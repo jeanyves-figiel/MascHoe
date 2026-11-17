@@ -1,5 +1,5 @@
 import { describe, expect, test } from '@jest/globals';
-import { ageOn, basicsValid, displayCount, parseBirthday, screenFor } from '../src/onboarding/flow';
+import { ageOn, basicsValid, displayCount, maskBirthday, parseBirthday, screenFor } from '../src/onboarding/flow';
 import { areaCell } from '../src/geo/cells';
 
 const me = (step: any) => ({ status: 'active', verified: false, onboarding_step: step, safe_mode: 'auto', profile: null, location: null }) as any;
@@ -24,6 +24,16 @@ describe('F-02 flow', () => {
     expect(parseBirthday('2000-02-30')).toBeNull();
     expect(parseBirthday('2000-02-29')).not.toBeNull();
     expect(parseBirthday('29.02.2000')).toBeNull();
+  });
+
+  test('birthday mask inserts dashes for the number pad', () => {
+    expect(maskBirthday('1997')).toBe('1997');
+    expect(maskBirthday('19970')).toBe('1997-0');
+    expect(maskBirthday('19970614')).toBe('1997-06-14');
+    expect(maskBirthday('1997-06-14')).toBe('1997-06-14');
+    expect(maskBirthday('1997-06-1')).toBe('1997-06-1');
+    expect(maskBirthday('199706145')).toBe('1997-06-14');
+    expect(parseBirthday(maskBirthday('19970614'))).not.toBeNull();
   });
 
   test('basics validation mirrors server (R-02.4, R-02.5)', () => {
