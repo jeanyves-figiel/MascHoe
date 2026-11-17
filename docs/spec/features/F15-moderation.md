@@ -15,7 +15,7 @@
 - R-15.10 Public photo classifier (self-hosted): labels nudity levels; main photo must be "clothed/shirtless"; slots 1–4 allow underwear/suggestive, reject genitals/sex acts; Sport profile strict. Borderline → human queue (SLA 12 h).
 - R-15.11 Hash matching (CSAM list) on all public photos; positive → account banned + legal reporting.
 - R-15.12 Bio/text: discriminatory phrases → write-time nudge; post-publish flag → hide field + warning.
-- R-15.13 Human moderators: regional language coverage (EN, FR, DE, ES, PT, IT, AR, RU, TR at beta), SLAs: underage/CSAM/violence 1 h, extortion 4 h, others 24 h.
+- R-15.13 Human moderators: closed beta = owner only, EN/FR/DE. Public launch: regional coverage (EN, FR, DE, ES, PT, IT, AR, RU, TR). SLAs: underage/CSAM/violence 1 h, extortion 4 h, others 24 h. Beta compensating control: content auto-hidden on classifier match or ≥ 2 independent reports for severe reasons until reviewed.
 - R-15.14 Actions: warn, hide field/photo, quarantine, suspend (1–30 d), ban (account + LSH face bucket, F-03 R-03.6). Every action has reason code + appeal (in-app, 1 appeal, reviewed by different moderator ≤ 72 h).
 - R-15.15 Moderator tool: sees only reported content + public profile + metadata signals; no access to chats beyond franked reported messages; all access logged.
 - R-15.16 Transparency report quarterly: reports by category, actions, bot-rate per 1k MAU, government requests.

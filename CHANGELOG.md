@@ -6,6 +6,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Changed
+- Spec sign-off round 1 (`docs/spec/decisions.md`, D-01…D-14): MascHoe final name; Swiss entity, Hetzner hosting; invite-only beta (~500) seeded in Zurich/Berlin/Paris; en/fr/de at beta; Exact pin TTL 30 min/1 h/2 h/4 h; party hosting verified-only without account-age minimum; owner sole moderator with auto-hide control; Yoti age fallback; owner-only prod approval.
 - Location: Area default ~200 m (H3 res 9, k-anonymity fallback); Hidden/incognito only for verified users; new setting "Hide me from hidden users".
 - Mockups/design: unified 4 tabs (Explore, Tonight, Chats, Me); Hookup/Sport/Friends mode switch on Explore replaces intent chips and Activities tab; separate Map screen retired.
 - Concept §6.2: exact pins visible to hidden/incognito viewers too (no give-to-get); pin owner's audience setting is the only filter.

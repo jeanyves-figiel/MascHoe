@@ -39,6 +39,7 @@ Internal web app (`/server/apps/admin`, Phoenix LiveView). Implements back offic
 - R-AD.8 Severity SLAs: minor safety / violence / CSAM ≤ 1 h; scam ≤ 12 h; other ≤ 48 h.
 - R-AD.9 Every enforcement sends the user an in-app notice with rule cited and appeal link (DSA Art. 17 statement of reasons).
 - R-AD.10 Transparency report figures (counts per action, per reason) computed from audit log, no user ids.
+- R-AD.12 Closed beta: owner is sole admin and moderator. Two-person rules (R-AD.3, A-09) degrade to owner self-approval with mandatory reason; audit log unchanged. Re-enable before public beta.
 - R-AD.11 Moderator wellbeing: queue rotation, max 4 h/day on severe queues, opt-out of categories.
 
 ## Acceptance

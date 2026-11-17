@@ -16,7 +16,7 @@
 |---|---|---|---|
 | DEV | `https://localhost:7443` | seeded fake data | `docker compose up` (phoenix, postgres+h3, valkey, minio, mailpit, mock-push, tile server) |
 | Staging | `https://staging.<domain>` | synthetic + testers | auto on squash-merge to `main` |
-| Prod | `https://api.<domain>` | real | manual workflow **"Promote to production"** (same image digest as staging), owner OK per change |
+| Prod | `https://api.<domain>` | real | manual workflow **"Promote to production"** (same image digest as staging), owner OK per change; owner is the only required reviewer |
 
 ## Trunk model
 1. Branch off `main` → PR (template: summary, linked spec IDs, ChangeLog entry, screenshots ≤ 800 px).

@@ -83,7 +83,7 @@ Button (primary/secondary/ghost/danger), Chip (toggle, filter, mode), Tile (grid
 | `push.generic` | "New activity" |
 
 ## i18n
-- Beta locales: en, fr, de, es, pt-BR, it, nl, pl, tr, ru, ar (RTL), he (RTL), ja, zh-Hans, id, th, hi.
+- Closed beta locales: en, fr, de. Public launch adds: es, pt-BR, it, nl, pl, tr, ru, ar (RTL), he (RTL), ja, zh-Hans, id, th, hi.
 - RTL: layout mirrors via RN `I18nManager`; map controls mirror; numerals per locale.
 - Translation: professional + community review (queer-native reviewers per locale); TMS self-hosted (Weblate), EU.
 - Locale MUST NOT be sent to server except for push language (stored on device, server sends generic key only; device renders).

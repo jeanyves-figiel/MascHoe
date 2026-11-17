@@ -12,7 +12,7 @@
 - R-05.1 Device computes H3 cells locally; only cell IDs leave the device except for Exact.
 - R-05.2 k-anonymity: a profile is placed at r9 only if its r9 cell has ≥ 5 visible profiles; else r8 (≥ 5) else r7. Evaluated server-side every minute.
 - R-05.3 Area avatar position on map = deterministic random point inside displayed cell (seed profile_id + UTC date). Never the true point.
-- R-05.4 Exact: requires explicit confirm each activation; TTL 30 m / 1 h / 3 h / "until I leave" (device geofence 150 m; max 6 h). Jitter uniform 10–20 m, re-drawn on each set. Audience: verified (default) · my chats · everyone. Server stores in Valkey only.
+- R-05.4 Exact: requires explicit confirm each activation; TTL 30 min / 1 h / 2 h / 4 h (max 4 h, owner decision 2026-11-17). Jitter uniform 10–20 m, re-drawn on each set. Audience: verified (default) · my chats · everyone. Server stores in Valkey only.
 - R-05.5 Exact pins visible to Hidden/incognito viewers **unless** owner sets "Hide me from hidden users".
 - R-05.6 "Hide me from hidden users" (default off): when on, Hidden and incognito viewers never receive this profile in any surface.
 - R-05.7 Incognito (verified only): browse without appearing; differs from Hidden in that location level is kept for when incognito ends.

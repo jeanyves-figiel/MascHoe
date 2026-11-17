@@ -14,6 +14,7 @@ Status: draft v0.1 · 2026-11-17 · Source of truth before any code. Product rat
 | ID | Spec |
 |---|---|
 | ADR-0001 | [Backend & client stack](adr/0001-stack.md) |
+| — | [Owner decisions](decisions.md) |
 | — | [Glossary](glossary.md) |
 | — | [Data model](data-model.md) |
 | — | [API & realtime contract](api.md) |

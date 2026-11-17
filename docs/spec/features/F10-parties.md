@@ -4,7 +4,7 @@
 Host or join group hookups/parties safely.
 
 ## Rules
-- R-10.1 Create (verified, account age ≥ 7 d): title 40, start/end (max 12 h), capacity 2–50, rules (chips: age range, PrEP/safer, vers welcome, no chems, custom ×3), audience (verified · my chats · invite only), approximate area (cell r8 auto). Max 3 created/day, 1 live at a time.
+- R-10.1 Create (verified; no account-age minimum, owner decision 2026-11-17): title 40, start/end (max 12 h), capacity 2–50, rules (chips: age range, PrEP/safer, vers welcome, no chems, custom ×3), audience (verified · my chats · invite only), approximate area (cell r8 auto). Max 3 created/day, 1 live at a time.
 - R-10.2 Discovery: Tonight featured cards, map marker (party icon) at cell r8 centroid, never exact.
 - R-10.3 Request to join: one tap; requester profile + vouches + verified shown to host. Requests expire at party end.
 - R-10.4 Host actions: accept / decline (silent to requester: "Not this time"), remove guest, mark full, cancel, end. Co-host (1) optional.
