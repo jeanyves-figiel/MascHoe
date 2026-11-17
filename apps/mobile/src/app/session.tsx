@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { api, Me } from '../api/client';
+import * as chat from '../chat/engine';
 import type { Mode } from '../api/types';
 
 type Session = {
@@ -31,13 +32,25 @@ export function SessionProvider({ me: initial, onSignedOut, children }: { me: Me
     AsyncStorage.setItem(MODE_KEY, m);
   }, []);
 
+  // F-07: chat engine runs for the whole signed-in session.
+  useEffect(() => {
+    chat.start(initial).catch(() => {});
+    return () => chat.stop();
+  }, [initial]);
+  useEffect(() => chat.updateMe(me), [me]);
+
+  // Sign-out / delete wipes device-only data (data-model.md › Device-only).
+  const signOut = useCallback(() => {
+    chat.wipe().finally(onSignedOut);
+  }, [onSignedOut]);
+
   const refresh = useCallback(async () => {
     const m = await api<Me>('GET', '/me');
     setMe(m);
     return m;
   }, []);
 
-  const value = useMemo(() => ({ me, setMe, refresh, mode, setMode, signOut: onSignedOut }), [me, refresh, mode, setMode, onSignedOut]);
+  const value = useMemo(() => ({ me, setMe, refresh, mode, setMode, signOut }), [me, refresh, mode, setMode, signOut]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

@@ -145,6 +145,7 @@ const KP_MIN = 15;
 async function ensureKeyPackages() {
   if (!me) return;
   const r = await api<{ counts: Record<string, { count: number; last_resort: boolean }>; device_id: string }>('GET', '/mls/keypackages');
+  if (!r.device_id) throw new Error('no device id');
   device = r.device_id;
   for (const [profile, c] of Object.entries(r.counts)) {
     if (c.count >= KP_MIN && c.last_resort) continue;
@@ -264,6 +265,7 @@ async function handle(m: Incoming) {
   if (!plain) return;
   const w = JSON.parse(fromUtf8(plain)) as Wire;
   const cid = (await kv.get<string>('g2c:' + gid)) ?? convId(m.to_profile_id, m.from_profile_id);
+  if (!convs[cid]) await ensureConv(m.to_profile_id, m.from_profile_id);
   await receive(cid, w, Date.parse(m.at) || w.at);
 }
 
@@ -543,6 +545,19 @@ export async function markOpened(cid: string, id: string) {
   list[i] = { ...list[i], opened: true };
   await putMessages(cid, list);
 }
+
+/** Delete one message on this device only (S-41 long-press › Delete for me). */
+export async function deleteMessage(cid: string, id: string) {
+  await putMessages(
+    cid,
+    (await messages(cid)).filter((x) => x.id !== id && !(x.p.t === 'reaction' && x.p.to === id)),
+  );
+}
+
+/** Keeps settings (read receipts, disappearing default) in sync with the session. */
+export const updateMe = (m: Me) => {
+  if (me) me = m;
+};
 
 export const currentDevice = () => device;
 export const currentMe = () => me;

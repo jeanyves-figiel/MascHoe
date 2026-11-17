@@ -5,6 +5,10 @@ import * as Haptics from 'expo-haptics';
 import React from 'react';
 import { Platform, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ChatScreen } from '../chat/ChatScreen';
+import { unreadTotal } from '../chat/engine';
+import { useTopics } from '../chat/hooks';
+import { InboxScreen } from '../chat/InboxScreen';
 import { ExploreScreen } from '../explore/ExploreScreen';
 import { tx } from '../i18n/app';
 import { BlockedScreen } from '../me/BlockedScreen';
@@ -28,6 +32,8 @@ const navTheme = { ...DarkTheme, colors: { ...DarkTheme.colors, background: colo
 function PillBar({ state, navigation }: BottomTabBarProps) {
   const { mode } = useSession();
   const insets = useSafeAreaInsets();
+  useTopics('convs');
+  const unread = unreadTotal();
   const labels: Record<string, string> = { Explore: tx.tabs.explore, Tonight: tx.tabs.tonight, Chats: tx.tabs.chats, Me: tx.tabs.me };
   return (
     <View
@@ -50,6 +56,11 @@ function PillBar({ state, navigation }: BottomTabBarProps) {
             style={{ flex: 1, height: 48, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? modeColor[mode] : 'transparent' }}
           >
             <Text style={{ ...type.headline, fontSize: 14, color: on ? color.onAccent : color.navInactive }}>{labels[r.name]}</Text>
+            {r.name === 'Chats' && unread > 0 ? (
+              <View testID="chats-badge" style={{ position: 'absolute', top: 6, right: 14, minWidth: 16, height: 16, borderRadius: 8, paddingHorizontal: 4, backgroundColor: color.hookup, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ ...type.caption, fontSize: 10, color: color.fgPrimary }}>{unread}</Text>
+              </View>
+            ) : null}
           </Pressable>
         );
       })}
@@ -62,7 +73,7 @@ function Tabs() {
     <Tab.Navigator screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: color.bgBase } }} tabBar={(p) => <PillBar {...p} />}>
       <Tab.Screen name="Explore" component={ExploreScreen as React.ComponentType} />
       <Tab.Screen name="Tonight" component={Soon} />
-      <Tab.Screen name="Chats" component={Soon} />
+      <Tab.Screen name="Chats" component={InboxScreen as React.ComponentType} />
       <Tab.Screen name="Me" component={MeScreen as React.ComponentType} />
     </Tab.Navigator>
   );
@@ -95,7 +106,7 @@ export function Main() {
           <Stack.Screen name="Blocked" component={BlockedScreen} options={sub} />
           <Stack.Screen name="Taps" component={TapsScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="Verify" component={VerifyRoute as React.ComponentType} />
-          <Stack.Screen name="Chat" component={Soon} options={sub} />
+          <Stack.Screen name="Chat" component={ChatScreen as React.ComponentType} />
           <Stack.Screen name="Report" component={Soon} options={sub} />
         </Stack.Navigator>
       </NavigationContainer>

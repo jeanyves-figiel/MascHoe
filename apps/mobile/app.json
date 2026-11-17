@@ -50,7 +50,17 @@
       "@maplibre/maplibre-react-native",
       "expo-secure-store",
       "expo-font",
-      "expo-localization"
+      "expo-localization",
+      [
+        "expo-sqlite",
+        {
+          "useSQLCipher": true
+        }
+      ],
+      [
+        "expo-notifications",
+        {}
+      ]
     ],
     "runtimeVersion": {
       "policy": "appVersion"
