@@ -1,5 +1,7 @@
 import { getLocales } from 'expo-localization';
 import { inMiles } from '../me/prefs';
+import { de } from './de';
+import { fr } from './fr';
 // Strings for the main app (beyond onboarding). en is the reference; fr/de override per key
 // and fall back to en (design-system.md › i18n, D-06).
 const en = {
@@ -685,7 +687,7 @@ const en = {
 };
 
 export type AppStrings = typeof en;
-type Partialize<T> = { [K in keyof T]?: T[K] extends (...a: never[]) => unknown ? T[K] : T[K] extends object ? Partialize<T[K]> : T[K] };
+export type Partialize<T> = { [K in keyof T]?: T[K] extends (...a: never[]) => unknown ? T[K] : T[K] extends object ? Partialize<T[K]> : T[K] };
 
 function merge<T>(base: T, over: Partialize<T>): T {
   const out: Record<string, unknown> = { ...(base as Record<string, unknown>) };
@@ -695,26 +697,6 @@ function merge<T>(base: T, over: Partialize<T>): T {
   }
   return out as T;
 }
-
-const fr: Partialize<AppStrings> = {
-  tabs: { explore: 'Explorer', tonight: 'Ce soir', chats: 'Messages', me: 'Moi' },
-  modes: { hookup: 'Plan', friends: 'Amis', sport: 'Sport' },
-  common: { save: 'Enregistrer', cancel: 'Annuler', close: 'Fermer', retry: 'Réessayer', error: 'Un problème est survenu. Réessaie.', offline: 'Hors ligne', confirm: 'Confirmer', delete: 'Supprimer', done: 'OK', back: 'Retour', loading: 'Chargement…', verifyToDo: 'Vérifie ton profil pour faire ça' },
-  explore: { map: 'Carte', grid: 'Grille', filters: 'Filtres', activeNow: (n: number) => `Actifs · ${n}`, nearestFirst: 'Les plus proches', further: 'Plus loin', empty: 'Personne de visible ici', emptyBody: 'Élargis tes filtres ou repasse ce soir.', noLocation: 'Indique ta position pour voir qui est autour', setLocation: 'Position', verifyBanner: 'Vérifie-toi pour être vu et écrire en premier', you: 'Toi' },
-  profile: { unavailable: 'Indisponible', tap: 'Tap', tapped: 'Tapé', message: 'Message', tappedYou: 'T’a tapé', block: 'Bloquer', report: 'Signaler', hide: 'Masquer', privateNote: 'Note privée' },
-  me: { title: 'Moi', editProfile: 'Modifier le profil', photos: 'Photos', settings: 'Réglages', verified: 'Vérifié', notVerified: 'Pas encore vérifié', verifyNow: 'Me vérifier' },
-  settings: { title: 'Réglages', visibility: 'Visibilité', logout: 'Se déconnecter', logoutAll: 'Se déconnecter partout', delete: 'Supprimer le compte', pause: 'Mettre en pause', resume: 'Réactiver' },
-};
-
-const de: Partialize<AppStrings> = {
-  tabs: { explore: 'Entdecken', tonight: 'Heute Nacht', chats: 'Chats', me: 'Ich' },
-  modes: { hookup: 'Sex', friends: 'Freunde', sport: 'Sport' },
-  common: { save: 'Speichern', cancel: 'Abbrechen', close: 'Schließen', retry: 'Nochmal', error: 'Etwas ist schiefgelaufen. Versuch es nochmal.', offline: 'Offline', confirm: 'Bestätigen', delete: 'Löschen', done: 'Fertig', back: 'Zurück', loading: 'Lädt…', verifyToDo: 'Verifiziere dich dafür' },
-  explore: { map: 'Karte', grid: 'Raster', filters: 'Filter', activeNow: (n: number) => `Gerade aktiv · ${n}`, nearestFirst: 'Nächste zuerst', further: 'Weiter weg', empty: 'Hier ist noch niemand sichtbar', emptyBody: 'Erweitere deine Filter oder schau heute Abend wieder rein.', noLocation: 'Lege deinen Standort fest, um zu sehen, wer da ist', setLocation: 'Standort', verifyBanner: 'Verifiziere dich, um gesehen zu werden und zuerst zu schreiben', you: 'Du' },
-  profile: { unavailable: 'Nicht verfügbar', tap: 'Tap', tapped: 'Getappt', message: 'Nachricht', tappedYou: 'Hat dich getappt', block: 'Blockieren', report: 'Melden', hide: 'Ausblenden', privateNote: 'Private Notiz' },
-  me: { title: 'Ich', editProfile: 'Profil bearbeiten', photos: 'Fotos', settings: 'Einstellungen', verified: 'Verifiziert', notVerified: 'Noch nicht verifiziert', verifyNow: 'Jetzt verifizieren' },
-  settings: { title: 'Einstellungen', visibility: 'Sichtbarkeit', logout: 'Abmelden', logoutAll: 'Überall abmelden', delete: 'Konto löschen', pause: 'Konto pausieren', resume: 'Fortsetzen' },
-};
 
 function pick(): AppStrings {
   const lang = getLocales()[0]?.languageCode ?? 'en';
