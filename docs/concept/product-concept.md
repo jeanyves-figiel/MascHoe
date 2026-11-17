@@ -144,7 +144,7 @@ Cross-app pain points (user reviews):
 | Data | Stored server-side? |
 |---|---|
 | Precise GPS | **Only if user opts into Exact** (§6.2): RAM-only, TTL-bound, no history, no logs, never backed up |
-| Location (default) | Coarse H3 cell (res ~7, ~5 km²) + timestamp; overwritten, no history |
+| Location (default) | H3 cell (res ~8, ~0.7 km², ~500 m; res 7 when sparse) + timestamp; overwritten, no history |
 | Phone number / email | Optional. Account = keypair. Recovery via recovery phrase or optional email hash |
 | Real name, DOB | No. Age = boolean "18+ verified" credential |
 | Messages / media | Ciphertext only, deleted after delivery (or TTL 30 d undelivered) |
@@ -161,8 +161,15 @@ Precision is the user's call. Four levels, switchable anytime (mockup: Location 
 |---|---|---|---|
 | Hidden | Nothing (browse only) | Cell for own grid query, not indexed | |
 | City | City name | City-level cell (res ~5) | Safe Mode |
-| Area | Distance bucket ("1–3 km"), cell heat on map | Cell res ~7 | **Yes** |
+| Area | Distance bucket ("< 500 m", "500 m–1 km", "1–2 km"...), avatar placed inside its zone on map (not at real point) | Cell res ~8 (~500 m) in cities; auto-coarsens to res 7 when cell has < k users | **Yes** |
 | Exact | Pin on map + distance in metres | Exact point, RAM-only, TTL | Opt-in only |
+
+What you see = what each nearby person chose, not your own setting. Your setting only controls how others see you.
+
+Viewing rules:
+- **Give-to-get for exact pins**: you see others' exact pins only if you're visible yourself (Area or Exact; not Hidden/incognito). Blocks lurker stalking.
+- Grid sort: exact users by metres, then area users by cell distance, randomized within cell.
+- **k-anonymity**: a cell is only shown at res 8 if it holds ≥ k active users (e.g. k = 5); else merged up to res 7.
 
 Exact opt-in rules:
 - Explicit action each time; one-screen warning ("anyone you allow sees your exact spot").

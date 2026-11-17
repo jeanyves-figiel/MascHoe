@@ -6,6 +6,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Concept §6.2: Area default ~500 m (H3 res 8, k-anonymity fallback to res 7); give-to-get rule for exact pins; viewing rules for grid/map.
 - Mockups canvas: 7 new v1 screens (map-first home, Tonight board, party hosting, Activities, venue check-in, profile switcher + private notes, verification).
 - Concept MVP scope: map-first home, social hookup features and Activities moved into v1 (owner decision).
 - Concept: approved features: group/party hosting, private profile notes, disappearing chats default, multiple profiles, venue check-in, Tonight board.
