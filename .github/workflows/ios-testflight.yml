@@ -83,7 +83,7 @@ jobs:
 
       - name: Native project (expo prebuild)
         if: steps.gate.outputs.ok == 'true'
-        run: npx expo prebuild --platform ios --clean
+        run: IOS_BUILD_NUMBER=$((GITHUB_RUN_NUMBER + BUILD_NUMBER_OFFSET)) npx expo prebuild --platform ios --clean
 
       - name: Archive
         if: steps.gate.outputs.ok == 'true'
