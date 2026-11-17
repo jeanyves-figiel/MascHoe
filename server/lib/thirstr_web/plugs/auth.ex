@@ -39,7 +39,10 @@ defmodule ThirstrWeb.Plugs.Auth do
     ~r{^/v1/auth/logout},
     ~r{^/v1/account$},
     ~r{^/v1/mls/messages/ack$},
-    ~r{^/v1/me/push$}
+    ~r{^/v1/me/push$},
+    # Safety is never blocked (F-13)
+    ~r{^/v1/checkin(/.*)?$},
+    ~r{^/v1/trusted(/.*)?$}
   ]
   defp suspended_ok(%{method: m}, %{status: "suspended"} = _a) when m in ~w(GET HEAD), do: :ok
 

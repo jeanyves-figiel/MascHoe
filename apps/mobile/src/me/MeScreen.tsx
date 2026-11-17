@@ -126,6 +126,7 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
         <Section>
           <ListRow title={tx.me.taps} onPress={() => navigation.navigate('Taps')} />
           <ListRow testID="me-albums" title={tx.albums.menu} onPress={() => navigation.navigate('Albums')} />
+          <ListRow testID="me-safety" title={tx.safety.menu} onPress={() => navigation.navigate('Safety')} />
           <ListRow testID="me-settings" title={tx.me.settings} onPress={() => navigation.navigate('Settings')} />
           <ListRow testID="me-notices" title={tx.notices.title} onPress={() => navigation.navigate('Notices')} />
           {p && p.kind !== 'now' ? <ListRow title={tx.me.deleteProfile} danger onPress={() => run(() => api('DELETE', `/me/profiles/${p.id}`))} /> : null}

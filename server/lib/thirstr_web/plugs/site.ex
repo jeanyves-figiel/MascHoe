@@ -16,6 +16,9 @@ defmodule ThirstrWeb.Plugs.Site do
   @api ~w(v1 socket .well-known admin)
   @csp "default-src 'none'; style-src 'self'; font-src 'self'; img-src 'self' data:; " <>
          "base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+  # Trusted-contact page (F-13): own scripts, service worker, same-origin relay API only.
+  @csp_contact @csp <>
+                 "; script-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'"
 
   @impl true
   def init(opts), do: opts
@@ -88,7 +91,7 @@ defmodule ThirstrWeb.Plugs.Site do
     conn
     |> put_resp_content_type(type, charset(type))
     |> put_resp_header("cache-control", cache(path))
-    |> put_resp_header("content-security-policy", @csp)
+    |> put_resp_header("content-security-policy", csp(conn))
     |> put_resp_header("referrer-policy", "no-referrer")
     |> put_resp_header("x-content-type-options", "nosniff")
     |> put_resp_header("permissions-policy", "interest-cohort=()")
@@ -97,6 +100,9 @@ defmodule ThirstrWeb.Plugs.Site do
     |> send_file(status, path)
     |> halt()
   end
+
+  defp csp(%Plug.Conn{path_info: ["c" | _]}), do: @csp_contact
+  defp csp(_), do: @csp
 
   defp charset("text/" <> _), do: "utf-8"
   defp charset("application/xml"), do: "utf-8"

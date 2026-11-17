@@ -17,6 +17,10 @@ defmodule ThirstrWeb.Router do
     plug ThirstrWeb.Plugs.RateLimit, bucket: "auth", limit: 60, window: 3600
   end
 
+  pipeline :relay_limit do
+    plug ThirstrWeb.Plugs.RateLimit, bucket: "relay", limit: 60, window: 60
+  end
+
   pipeline :email_limit do
     plug ThirstrWeb.Plugs.RateLimit, bucket: "email", limit: 5, window: 3600
   end
@@ -217,6 +221,29 @@ defmodule ThirstrWeb.Router do
       post "/me/notices/:id/appeal", TrustController, :appeal
       post "/profiles/:id/vouch", TrustController, :vouch
       delete "/profiles/:id/vouch", TrustController, :unvouch
+
+      # B4c: safety (F-13)
+      post "/trusted/invite", SafetyController, :invite
+      get "/trusted", SafetyController, :contacts
+      delete "/trusted/:id", SafetyController, :remove
+      get "/checkin", SafetyController, :current
+      post "/checkin", SafetyController, :start
+      post "/checkin/panic", SafetyController, :panic
+      put "/checkin/:token/alerts", SafetyController, :refresh
+      post "/checkin/:token/extend", SafetyController, :extend
+      post "/checkin/:token/ok", SafetyController, :ok
+      post "/checkin/:token/panic", SafetyController, :panic_checkin
+    end
+
+    # Trusted-contact web page (no account; rid from the link fragment)
+    scope "/relay" do
+      pipe_through :relay_limit
+      get "/:rid", SafetyController, :relay
+      post "/:rid/accept", SafetyController, :accept
+      put "/:rid/push", SafetyController, :push
+      get "/:rid/messages", SafetyController, :messages
+      post "/:rid/ack", SafetyController, :ack
+      delete "/:rid", SafetyController, :opt_out
     end
   end
 

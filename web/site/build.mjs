@@ -114,5 +114,5 @@ write(
     ["", "privacy/"].map((s) => `<url><loc>${CANON}${prefix(l)}${s}</loc></url>`)
   ).join("\n")}\n</urlset>\n`
 );
-for (const f of ["site.css", "favicon.svg", "fonts"]) cpSync(join(here, f), join(out, f), { recursive: true });
+for (const f of ["site.css", "favicon.svg", "fonts", "c"]) cpSync(join(here, f), join(out, f), { recursive: true });
 console.log(`site built → ${out}`);

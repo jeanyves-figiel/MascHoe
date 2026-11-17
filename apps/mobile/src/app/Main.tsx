@@ -1,9 +1,9 @@
 import { BottomTabBarProps, createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { DarkTheme, NavigationContainer } from '@react-navigation/native';
+import { createNavigationContainerRef, DarkTheme, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as Haptics from 'expo-haptics';
 import React from 'react';
-import { Platform, Pressable, Text, View } from 'react-native';
+import { AppState, Platform, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AlbumEditScreen, AlbumsScreen, AlbumViewScreen } from '../chat/AlbumScreens';
 import { ChatScreen } from '../chat/ChatScreen';
@@ -25,6 +25,11 @@ import { PartyScreen } from '../scene/PartyScreen';
 import { resyncHostGroups } from '../scene/groupSync';
 import { ActivityNewScreen, ActivityScreen, ClubNewScreen, ClubScreen } from '../scene/SportScreens';
 import { TonightScreen } from '../scene/TonightScreen';
+import { AppLockScreen } from '../safety/AppLockScreen';
+import { CheckinDueScreen, CheckinStartScreen } from '../safety/CheckinScreens';
+import { LockGate } from '../safety/LockGate';
+import { active as activeCheckin, refreshCheckin } from '../safety/safety';
+import { SafetyScreen } from '../safety/SafetyScreen';
 import { NoticesScreen } from '../trust/NoticesScreen';
 import { ReportScreen } from '../trust/ReportScreen';
 import { VenueScreen } from '../scene/VenueScreens';
@@ -100,6 +105,37 @@ function VerifyRoute({ navigation }: { navigation: { goBack: () => void } }) {
   );
 }
 
+const nav = createNavigationContainerRef<Record<string, object | undefined>>();
+
+/** F-13: open "All good?" once a check-in is due; keep the held alert's location fresh (5 min). */
+function useCheckinWatch() {
+  React.useEffect(() => {
+    const check = async () => {
+      const a = await activeCheckin().catch(() => null);
+      if (!a) return;
+      if (new Date(a.due).getTime() <= Date.now() && nav.isReady() && nav.getCurrentRoute()?.name !== 'CheckinDue') nav.navigate('CheckinDue');
+    };
+    const t1 = setInterval(check, 30_000);
+    const t2 = setInterval(() => refreshCheckin().catch(() => {}), 5 * 60_000);
+    const s = AppState.addEventListener('change', (st) => st === 'active' && check());
+    let rm: (() => void) | undefined;
+    if (Platform.OS !== 'web')
+      import('expo-notifications').then((N) => {
+        const sub = N.addNotificationResponseReceivedListener((r) => {
+          if ((r.notification.request.content.data as { checkin?: boolean })?.checkin && nav.isReady()) nav.navigate('CheckinDue');
+        });
+        rm = () => sub.remove();
+      });
+    check();
+    return () => {
+      clearInterval(t1);
+      clearInterval(t2);
+      s.remove();
+      rm?.();
+    };
+  }, []);
+}
+
 const sub = { headerShown: true, title: '', headerStyle: { backgroundColor: color.bgBase }, headerTintColor: color.fgPrimary, headerShadowVisible: false };
 
 export function Main() {
@@ -111,9 +147,11 @@ export function Main() {
       resyncHostGroups().catch(() => {});
     });
   }, []);
+  useCheckinWatch();
   return (
     <ModeContext.Provider value={mode}>
-      <NavigationContainer theme={navTheme}>
+      <LockGate>
+      <NavigationContainer ref={nav} theme={navTheme}>
         <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: color.bgBase } }}>
           <Stack.Screen name="Tabs" component={Tabs} />
           <Stack.Screen name="Profile" component={ProfileScreen as React.ComponentType} />
@@ -135,9 +173,14 @@ export function Main() {
           <Stack.Screen name="Venue" component={VenueScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="Report" component={ReportScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="Notices" component={NoticesScreen} options={sub} />
+          <Stack.Screen name="Safety" component={SafetyScreen as React.ComponentType} options={sub} />
+          <Stack.Screen name="CheckinStart" component={CheckinStartScreen as React.ComponentType} options={sub} />
+          <Stack.Screen name="CheckinDue" component={CheckinDueScreen as React.ComponentType} options={sub} />
+          <Stack.Screen name="AppLock" component={AppLockScreen} options={sub} />
         </Stack.Navigator>
         <PushPrompt />
       </NavigationContainer>
+      </LockGate>
     </ModeContext.Provider>
   );
 }
