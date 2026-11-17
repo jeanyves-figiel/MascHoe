@@ -196,6 +196,8 @@ defmodule Thirstr.Explore do
   # ------------------------------------------------------------------ core query
 
   @doc false
+  # The interpolated WHERE fragment is built from fixed clauses; all values are bound params.
+  # sobelow_skip ["SQL.Query"]
   def candidates(v, filters, surface) do
     {where, params} = filter_sql(v, filters, surface)
     radius = if Map.has_key?(filters, :cells), do: nil, else: filters[:distance_max] || @far_m

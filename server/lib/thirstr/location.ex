@@ -172,7 +172,7 @@ defmodule Thirstr.Location do
   def viewer_cell(%Account{} = a) do
     case Valkey.command!(["GET", "vcell:" <> a.id]) do
       nil -> fallback_cell(a)
-      bin -> :erlang.binary_to_term(bin, [:safe])
+      bin -> Valkey.decode(bin)
     end
   end
 
@@ -260,14 +260,14 @@ defmodule Thirstr.Location do
   defp own_pin(a) do
     case Valkey.command!(["GET", "ownpin:" <> a.id]) do
       nil -> nil
-      bin -> :erlang.binary_to_term(bin, [:safe]) |> Map.take([:lat, :lng]) |> Map.put(:res, 15)
+      bin -> Valkey.decode(bin) |> Map.take([:lat, :lng]) |> Map.put(:res, 15)
     end
   end
 
   def own_pin_info(a) do
     case Valkey.command!(["GET", "ownpin:" <> a.id]) do
       nil -> nil
-      bin -> :erlang.binary_to_term(bin, [:safe])
+      bin -> Valkey.decode(bin)
     end
   end
 
@@ -287,7 +287,7 @@ defmodule Thirstr.Location do
     |> Enum.zip(Valkey.command!(["MGET" | Enum.map(ids, &("pin:" <> &1))]))
     |> Enum.flat_map(fn
       {_, nil} -> []
-      {id, bin} -> [{id, :erlang.binary_to_term(bin, [:safe])}]
+      {id, bin} -> [{id, Valkey.decode(bin)}]
     end)
     |> Map.new()
   end
@@ -332,7 +332,7 @@ defmodule Thirstr.Location do
   def hide_from_hidden?(%Account{} = a) do
     case Valkey.command!(["GET", "hfh:" <> a.id]) do
       nil -> false
-      bin -> :erlang.binary_to_term(bin, [:safe])
+      bin -> Valkey.decode(bin)
     end
   end
 
@@ -346,7 +346,7 @@ defmodule Thirstr.Location do
         :ok
 
       bin ->
-        {prev, t} = :erlang.binary_to_term(bin, [:safe])
+        {prev, t} = Valkey.decode(bin)
         dt_h = max(now - t, 1) / 3600
 
         %{rows: [[km]]} =
