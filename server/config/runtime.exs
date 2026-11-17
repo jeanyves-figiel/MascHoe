@@ -23,6 +23,8 @@ config :thirstr,
   app_url: app_url,
   tiles_upstream: env.("TILES_UPSTREAM", "https://tiles.openfreemap.org"),
   classifier_url: System.get_env("CLASSIFIER_URL"),
+  # W-01: canonical marketing host (prod "thirstr.fun"). Other hosts serve the site with noindex.
+  site_host: System.get_env("SITE_HOST"),
   valkey_url: env.("VALKEY_URL", "redis://localhost:6379/#{if test?, do: 1, else: 0}"),
   # R-01.2/R-01.3: pepper for identifier hashes. Prod: injected from EU KMS via fly secrets.
   pepper: env.("ID_PEPPER", "dev-pepper-not-secret"),

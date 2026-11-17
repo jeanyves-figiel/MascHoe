@@ -9,13 +9,14 @@ kill_signal = "SIGTERM"
 
 [env]
   DEPLOY_ENV = "prod"
-  PHX_HOST = "thirstr-api-prod.fly.dev"
-  APP_URL = "https://thirstr-api-prod.fly.dev"
-  WEBAUTHN_ORIGIN = "https://thirstr-api-prod.fly.dev"
-  WEBAUTHN_RP_ID = "thirstr-api-prod.fly.dev"
+  PHX_HOST = "api.thirstr.fun"
+  APP_URL = "https://api.thirstr.fun"
+  WEBAUTHN_ORIGIN = "https://api.thirstr.fun"
+  WEBAUTHN_RP_ID = "api.thirstr.fun"
   PORT = "4000"
   ECTO_IPV6 = "true"
-  SERVE_WEB_CLIENT = "false"
+  # W-01 canonical marketing host (www redirects here; other hosts get noindex).
+  SITE_HOST = "thirstr.fun"
   WELCOME_DEFAULT_CITY = "Zurich"
   S3_REGION = "auto"
 

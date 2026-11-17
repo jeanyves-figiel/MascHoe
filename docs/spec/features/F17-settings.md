@@ -10,7 +10,7 @@ Full tree: [concept/profile-and-settings.md §3](../../concept/profile-and-setti
 - R-17.6 "Who can message me": everyone verified (default) · only people I tapped · only people matching my filters.
 - R-17.7 "Hide from": age ranges, accounts < 7 days, unverified (default on).
 - R-17.8 Destructive actions (delete account, panic wipe setup) require biometrics.
-- R-17.9 App: language, units, theme (dark default/light/auto), accent per mode (fixed palette), haptics, data saver (thumbnails only on cellular).
+- R-17.9 App: language, units, theme: none (single Pop theme, see design-system.md), accent per mode (fixed palette), haptics, data saver (thumbnails only on cellular).
 
 ## Acceptance criteria
 - AC-17.1 Every setting in the tree has an API field or local key documented in data-model/api.

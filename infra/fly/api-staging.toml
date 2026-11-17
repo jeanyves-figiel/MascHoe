@@ -9,13 +9,12 @@ kill_signal = "SIGTERM"
 
 [env]
   DEPLOY_ENV = "staging"
-  PHX_HOST = "thirstr-api-staging.fly.dev"
-  APP_URL = "https://thirstr-api-staging.fly.dev"
-  WEBAUTHN_ORIGIN = "https://thirstr-api-staging.fly.dev"
-  WEBAUTHN_RP_ID = "thirstr-api-staging.fly.dev"
+  PHX_HOST = "staging.thirstr.fun"
+  APP_URL = "https://staging.thirstr.fun"
+  WEBAUTHN_ORIGIN = "https://staging.thirstr.fun"
+  WEBAUTHN_RP_ID = "staging.thirstr.fun"
   PORT = "4000"
   ECTO_IPV6 = "true"
-  SERVE_WEB_CLIENT = "true"
   WELCOME_DEFAULT_CITY = "Zurich"
   S3_REGION = "auto"
   # Apple Team ID (public, not a secret): enables /.well-known/apple-app-site-association

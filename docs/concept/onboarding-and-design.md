@@ -50,14 +50,14 @@ Safe Mode onboarding (detected hostile country): order changes → disguised ico
 1. **One primary action per screen**, bottom thumb zone.
 2. **3 taps max** to message someone nearby from launch.
 3. **Progressive disclosure**: defaults that work; options in sheets, not on screen.
-4. **Mode = colour**: Hookup = ember orange `#FF7A33`; Sport = lime `#C6F432`; Friends = violet `#A98BFF`; trust/location = blue `#4DA3FF`/`#6FB6FF`; safety = green `#8FE3A0`. Switching mode recolours the whole app: you always know where you are.
+4. **Mode = colour** (Pop theme, see [design-system.md](../spec/design-system.md)): Hookup = coral `#FF6B5B`; Friends = violet `#A78BFA`; Sport = lime `#B8F04A`; trust/location/privacy = teal `#3DD6C3`; personal = sunflower `#FFC93C`. Switching mode recolours the whole app: you always know where you are.
 5. **Dark by default** (night use, discreet), light theme available.
 6. **Real people first**: photos large, chrome minimal, no ads, no upsell banners.
 7. **Motion with purpose**: pins pulse when someone goes "Now"; party seats fill; verification badge lands with haptic. Reduced-motion respected.
 8. **Accessible**: 4.5:1 contrast, ≥ 44 px targets, Dynamic Type, VoiceOver labels.
 
 ### Type & shape
-- Headings Space Grotesk 700; body Inter 400–600.
+- Bricolage Grotesque throughout: headings 800, body 400–500 (Pop theme).
 - Radius: 14–18 px cards, pill chips, 22 px sheets.
 - Spacing scale 4/8/12/16/24.
 

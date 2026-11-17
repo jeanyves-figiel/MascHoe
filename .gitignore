@@ -3,3 +3,6 @@
 docker-compose.override.yml
 infra/tiles/*.pmtiles
 .DS_Store
+
+# marketing site build (W-01)
+server/priv/static/site/

@@ -170,7 +170,14 @@ defmodule Thirstr.Seeds do
       "looking_for" => Enum.take_random(opts.looking_for, 2),
       "tribes" => Enum.take_random(opts.tribes, 1),
       "languages" => Enum.take_random(~w(en fr de it es), 2),
-      "bio" => Enum.random(["Here for a good time.", "Coffee first?", "New in town.", "Gym, food, repeat.", ""])
+      "bio" =>
+        Enum.random([
+          "Here for a good time.",
+          "Coffee first?",
+          "New in town.",
+          "Gym, food, repeat.",
+          ""
+        ])
     }
     |> Map.reject(fn {_, v} -> v == "" end)
   end

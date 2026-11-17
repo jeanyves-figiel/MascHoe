@@ -22,11 +22,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - Edit profile with photo editor and per-field visibility. Device-only values are stored locally.
   - Settings with search, Safe Mode and account actions. Also: blocked list and taps list.
 - `docs/spec/beta-build-plan.md`: milestones B1–B4 and beta implementation choices.
+- Public marketing site (W-01, #40, `docs/spec/website.md`): Pop design, en/fr/de (`/`, `/fr/`, `/de/`), privacy summary, 404; static, no JS, no cookies, no third-party requests, self-hosted Bricolage Grotesque. Source `web/site/` (`build.mjs`, no dependencies), served by Phoenix (`ThirstrWeb.Plugs.Site`) on every non-API path with strict CSP; `www.` → 301 apex; hosts other than `SITE_HOST` (prod `thirstr.fun`) get `X-Robots-Tag: noindex`. DEV: https://localhost:7446.
+
+### Removed
+- Expo web client on staging/release image (`SERVE_WEB_CLIENT`, web build stage): the web shows the marketing site, the app is native only. DEV keeps the Expo web build at https://localhost:7443 as a developer tool. Phoenix default `favicon.ico`/`robots.txt` removed.
+
+### Changed
+- Design: **Pop** is the only theme (#38). design-system.md: ink base `#17142E`, mode colours coral/violet/lime, teal for trust/location/privacy, sunflower for personal items, Bricolage Grotesque, new radius scale, logo/wordmark spec (`thirstr` with coral `r` + three dots), Pop component rules. Light theme removed (F-17 theme setting dropped). Concept doc colours/fonts updated.
+
+### Added
+- Domain `thirstr.fun` (#34): staging at `https://staging.thirstr.fun`, prod at `https://api.thirstr.fun` (Fly certs + GoDaddy DNS). Staging toml, EAS staging API URL (passkey associated domain), workflow smoke URLs and docs (D-01, ops.md, api.md, runbooks) switched from `*.fly.dev`. Prod host takes effect on the next promotion. Staging passkeys must be re-enrolled (RP ID changed).
 - iOS TestFlight pipeline (#31): `ios-testflight.yml` (EAS Build + auto-submit, app points at staging), `apps/mobile/eas.json`, `app.config.js` (passkey associated domain from API host), runbook `docs/runbooks/ios.md`.
 - Native sign-in on iOS: Sign in with Apple (no name/email scopes) and native passkeys (`react-native-passkey`). Google and email link hidden on native builds until configured (`EXPO_PUBLIC_AUTH_GOOGLE`, `EXPO_PUBLIC_AUTH_EMAIL`).
 - API: `GET /.well-known/apple-app-site-association` (`webcredentials`, from `APPLE_TEAM_ID`; 404 until set). Staging now sets the Team ID.
 
 ### Fixed
+- iOS TestFlight workflow: first run failed because `eas build --non-interactive` cannot create signing credentials; new step `scripts/eas-credentials-bootstrap.py` runs `eas credentials:configure-build` under a pseudo-terminal using the App Store Connect API key.
 - Release scripts `bin/migrate` and `bin/server` committed without the executable bit, so the Fly release command failed on the first staging deploy.
 - Release node name built from `FLY_IMAGE_REF`; a digest-pinned image made it invalid and the app crash-looped on staging. Node is now `<app>@<private IPv6>`.
 
