@@ -22,6 +22,9 @@ defmodule Thirstr.Accounts.Account do
     field :verification_epoch, :integer, default: 0
     field :paused_at, :utc_datetime_usec
     field :settings, :map, default: %{}
+    field :incognito, :boolean, default: false
+    field :hidden, :boolean, default: false
+    field :safe_mode_active, :boolean, default: false
     has_many :passkeys, Thirstr.Accounts.Passkey
     has_many :devices, Thirstr.Accounts.Device
     has_many :profiles, Thirstr.Profiles.Profile
@@ -47,4 +50,9 @@ defmodule Thirstr.Accounts.Account do
   end
 
   def verified?(%__MODULE__{verified_at: v}), do: not is_nil(v)
+
+  @doc "Accounts younger than 7 days get halved limits and can't see Safe Mode users (R-15.4, F-14)."
+  def new?(%__MODULE__{inserted_at: t}), do: DateTime.diff(DateTime.utc_now(), t, :day) < 7
+
+  def safe_mode_on?(%__MODULE__{safe_mode: m, safe_mode_active: act}), do: m == "on" or act
 end

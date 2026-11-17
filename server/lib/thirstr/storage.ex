@@ -15,6 +15,14 @@ defmodule Thirstr.Storage do
     url
   end
 
+  @doc "GET URL for server-side services (classifier) reaching storage on the private network."
+  def internal_presigned_get(key) do
+    {:ok, url} =
+      ExAws.S3.presigned_url(ExAws.Config.new(:s3), :get, bucket(), key, expires_in: 120)
+
+    url
+  end
+
   def head(key), do: adapter().head(key)
 
   def s3_head(key) do

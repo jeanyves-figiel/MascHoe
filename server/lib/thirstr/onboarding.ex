@@ -5,9 +5,8 @@ defmodule Thirstr.Onboarding do
   app resumes at the last incomplete step.
   """
   import Ecto.Query
-  alias Thirstr.{Accounts, Repo, Storage}
+  alias Thirstr.{Accounts, Repo}
   alias Thirstr.Accounts.Account
-  alias Thirstr.Moderation.Classifier
   alias Thirstr.Profiles.{Photo, Profile}
 
   @next %{"basics" => "location", "location" => "photo", "photo" => "verify", "verify" => "done"}
@@ -72,69 +71,18 @@ defmodule Thirstr.Onboarding do
   # ------------------------------------------------------------- S-05 Photo
 
   def create_photo_upload(%Account{} = a, slot, content_type) do
-    with %Profile{} = p <- main_profile(a) || {:error, :basics_required},
-         true <- slot in 0..4 || {:error, {:validation, %{slot: ["must be 0..4"]}}},
-         true <-
-           content_type in ~w(image/jpeg image/png image/heic image/webp) ||
-             {:error, {:validation, %{content_type: ["unsupported"]}}} do
-      key = "public/#{Ecto.UUID.generate()}"
-      photo = Repo.insert!(%Photo{profile_id: p.id, slot: slot, storage_key: key})
-      {:ok, put_url} = Storage.presigned_put(key, content_type)
-      {:ok, photo, put_url}
+    with %Profile{} = p <- main_profile(a) || {:error, :basics_required} do
+      Thirstr.Profiles.create_photo_upload(a, p.id, slot, content_type)
     end
   end
 
   @doc "R-02.7: classify after upload; inline result. Main photo (slot 0) must be :ok_main."
   def check_photo(%Account{} = a, photo_id) do
     with %Profile{} = p <- main_profile(a) || {:error, :not_found},
-         %Photo{} = ph <-
-           Repo.get_by(Photo, id: photo_id, profile_id: p.id) || {:error, :not_found},
-         {:ok, %{size: size}} when size > 0 and size <= 15_000_000 <- Storage.head(ph.storage_key) do
-      {status, reason, score} =
-        case Classifier.impl().classify(ph.storage_key, ph.slot) do
-          {ok, score} -> {Atom.to_string(ok), nil, score}
-          {:rejected, why, score} -> {"rejected", Atom.to_string(why), score}
-        end
-
-      ph =
-        ph
-        |> Ecto.Changeset.change(status: status, reject_reason: reason, classifier_score: score)
-        |> Repo.update!()
-
-      if status in ~w(ok_main ok_public), do: replace_slot(p, ph)
-
-      a = if ph.slot == 0 and status == "ok_main", do: advance!(a, "photo"), else: a
+         {:ok, ph, _p} <- Thirstr.Profiles.check_photo(a, p.id, photo_id) do
+      a = if ph.slot == 0 and ph.status == "ok_main", do: advance!(a, "photo"), else: a
       {:ok, ph, a}
-    else
-      {:ok, %{size: _}} -> {:error, {:validation, %{photo: ["missing or too large"]}}}
-      {:error, :not_found} -> {:error, :not_found}
-      other -> other
     end
-  end
-
-  defp replace_slot(%Profile{} = p, %Photo{} = ph) do
-    others =
-      Repo.all(
-        from x in Photo,
-          where: x.profile_id == ^p.id and x.slot == ^ph.slot and x.id != ^ph.id,
-          select: x.storage_key
-      )
-
-    Repo.delete_all(
-      from x in Photo, where: x.profile_id == ^p.id and x.slot == ^ph.slot and x.id != ^ph.id
-    )
-
-    Storage.delete_many(others)
-
-    ordered =
-      Repo.all(
-        from x in Photo,
-          where: x.profile_id == ^p.id and x.status in ["ok_main", "ok_public"],
-          order_by: x.slot,
-          select: x.id
-      )
-
-    Repo.update_all(from(x in Profile, where: x.id == ^p.id), set: [photo_ids: ordered])
   end
 
   # ------------------------------------------------------------- S-06 Verify

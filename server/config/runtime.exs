@@ -21,6 +21,8 @@ app_url = env.("APP_URL", "https://localhost:7443")
 
 config :thirstr,
   app_url: app_url,
+  tiles_upstream: env.("TILES_UPSTREAM", "https://tiles.openfreemap.org"),
+  classifier_url: System.get_env("CLASSIFIER_URL"),
   valkey_url: env.("VALKEY_URL", "redis://localhost:6379/#{if test?, do: 1, else: 0}"),
   # R-01.2/R-01.3: pepper for identifier hashes. Prod: injected from EU KMS via fly secrets.
   pepper: env.("ID_PEPPER", "dev-pepper-not-secret"),
@@ -55,6 +57,10 @@ config :thirstr,
     public_endpoint: env.("S3_PUBLIC_ENDPOINT", "https://localhost:7444"),
     region: env.("S3_REGION", "eu-central-1")
   ]
+
+if System.get_env("CLASSIFIER_URL") not in [nil, ""] do
+  config :thirstr, :photo_classifier, Thirstr.Moderation.NudeNetClassifier
+end
 
 s3 = URI.parse(env.("S3_ENDPOINT", "http://localhost:9000"))
 

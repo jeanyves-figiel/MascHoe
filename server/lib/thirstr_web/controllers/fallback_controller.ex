@@ -26,6 +26,16 @@ defmodule ThirstrWeb.FallbackController do
         age_confirmed: ["must be accepted"]
       })
 
+  def error(conn, {:not_verified, msg}), do: send_error(conn, 403, "not_verified", msg)
+  def error(conn, {:safe_mode_blocked, msg}), do: send_error(conn, 403, "safe_mode_blocked", msg)
+
+  def error(conn, {:rate_limited, retry}) do
+    conn
+    |> put_resp_header("retry-after", Integer.to_string(retry))
+    |> put_status(429)
+    |> json(%{error: %{code: "rate_limited", message: "Slow down", retry_after: retry}})
+  end
+
   def error(conn, :underage), do: send_error(conn, 403, "underage", "You need to be 18+")
   def error(conn, :underage_blocked), do: send_error(conn, 403, "underage", "You need to be 18+")
   def error(conn, :basics_required), do: send_error(conn, 409, "conflict", "Finish Basics first")

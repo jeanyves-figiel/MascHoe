@@ -1,0 +1,32 @@
+import { api } from '../api/client';
+import type { Card, Grid, MapData, Mode } from '../api/types';
+
+export type Filters = {
+  age_min?: number;
+  age_max?: number;
+  distance_max?: number;
+  verified_only: boolean;
+  online_now: boolean;
+  has_now: boolean;
+  hide_creators: boolean;
+  new_members: boolean;
+  [k: string]: unknown;
+};
+
+export const defaultFilters: Filters = { verified_only: true, online_now: false, has_now: false, hide_creators: true, new_members: false };
+
+export function query(mode: Mode, f: Filters, extra: Record<string, string> = {}): string {
+  const p: string[] = ['mode=' + mode];
+  for (const [k, v] of Object.entries({ ...f, ...extra })) {
+    if (v === undefined || v === null || v === '') continue;
+    if (Array.isArray(v)) {
+      if (v.length) p.push(`${k}=${encodeURIComponent(v.join(','))}`);
+    } else p.push(`${k}=${encodeURIComponent(String(v))}`);
+  }
+  return p.join('&');
+}
+
+export const loadGrid = (mode: Mode, f: Filters, cursor?: string | null) => api<Grid>('GET', '/explore/grid?' + query(mode, f, cursor ? { cursor } : {}));
+export const loadTray = (mode: Mode, f: Filters) => api<{ items: Card[] }>('GET', '/explore/tray?' + query(mode, f));
+export const loadMap = (mode: Mode, f: Filters, bbox: [number, number, number, number]) =>
+  api<MapData>('GET', '/explore/map?' + query(mode, f, { bbox: bbox.map((n) => n.toFixed(5)).join(',') }));

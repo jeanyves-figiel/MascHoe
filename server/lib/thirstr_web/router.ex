@@ -33,6 +33,11 @@ defmodule ThirstrWeb.Router do
     get "/welcome", PublicController, :welcome
     get "/cities", PublicController, :cities
 
+    # Map tiles proxied so the upstream never sees users (beta-build-plan.md)
+    get "/tiles/style.json", TileController, :style
+    get "/tiles/v/:z/:x/:y", TileController, :tile
+    get "/tiles/fonts/:stack/:range", TileController, :font
+
     scope "/auth" do
       pipe_through [:auth_limit, :maybe_auth]
       post "/passkey/register/options", AuthController, :passkey_register_options
@@ -60,10 +65,47 @@ defmodule ThirstrWeb.Router do
       post "/account/resume", AccountController, :resume
 
       put "/me/basics", AccountController, :basics
-      put "/me/location", AccountController, :location
-      post "/me/profiles/:profile_id/photos", AccountController, :create_photo
-      post "/me/profiles/:profile_id/photos/:photo_id/check", AccountController, :check_photo
       post "/me/onboarding/verify_later", AccountController, :verify_later
+
+      # F-06 profiles
+      get "/profile-options", ProfileController, :options
+      get "/me/profiles", ProfileController, :index
+      post "/me/profiles", ProfileController, :create
+      patch "/me/profiles/:id", ProfileController, :update
+      delete "/me/profiles/:id", ProfileController, :delete
+      post "/me/profiles/:profile_id/photos", ProfileController, :create_photo
+      post "/me/profiles/:profile_id/photos/:photo_id/check", ProfileController, :check_photo
+      delete "/me/profiles/:profile_id/photos/:photo_id", ProfileController, :delete_photo
+      put "/me/profiles/:profile_id/photos/order", ProfileController, :order_photos
+      get "/profiles/:id", ProfileController, :show
+      post "/profiles/:id/tap", ProfileController, :tap
+      post "/profiles/:id/block", ProfileController, :block
+      post "/profiles/:id/hide", ProfileController, :hide
+      delete "/profiles/:id/hide", ProfileController, :unhide
+      get "/me/blocks", ProfileController, :blocks
+      delete "/me/blocks/:id", ProfileController, :unblock
+      get "/taps", ProfileController, :taps
+      post "/taps/seen", ProfileController, :taps_seen
+
+      # F-05 location & visibility
+      put "/me/location", ExploreController, :location
+      put "/me/pin", ExploreController, :pin
+      delete "/me/pin", ExploreController, :unpin
+      patch "/me/visibility", ExploreController, :visibility
+
+      # F-04 explore
+      get "/explore/grid", ExploreController, :grid
+      get "/explore/map", ExploreController, :map
+      get "/explore/tray", ExploreController, :tray
+
+      # F-09 Now
+      put "/me/now", ExploreController, :set_now
+      delete "/me/now", ExploreController, :end_now
+
+      # F-17 / F-14
+      get "/me/settings", ExploreController, :settings
+      patch "/me/settings", ExploreController, :update_settings
+      put "/me/safe_mode", ExploreController, :safe_mode
     end
   end
 

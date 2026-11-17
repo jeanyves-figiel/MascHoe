@@ -13,6 +13,7 @@ defmodule Thirstr.Profiles.Photo do
     field :status, :string, default: "pending"
     field :classifier_score, :map, default: %{}
     field :reject_reason, :string
+    field :review_state, :string
     timestamps()
   end
 end

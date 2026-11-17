@@ -4,67 +4,121 @@ defmodule Thirstr.Location do
   The server receives H3 cells computed on device; it never sees coordinates
   except for Exact pins (Valkey, not here).
   """
+  import Ecto.Query
   alias Thirstr.Repo
   alias Thirstr.Accounts.Account
   alias Thirstr.Profiles.Profile
 
-  @levels ~w(hidden city area exact)
+  alias Thirstr.Valkey
 
-  @doc "Upserts or clears the profile's location cell row."
-  def put(%Account{} = a, %Profile{} = p, %{"level" => level} = params) when level in @levels do
+  @levels ~w(hidden city area exact)
+  @pin_ttls [1800, 3600, 7200, 14_400]
+  @pin_audiences ~w(verified chats everyone)
+  # R-05.9: implied speed above this between updates is a spoofing flag
+  @max_kmh 900
+
+  @doc """
+  PUT /me/location. Level is account-wide: every own profile gets the same cell row.
+  Hidden/Exact need verification (AC-05.4). The device sends H3 cells, never lat/lng.
+  """
+  def put(%Account{} = a, %Profile{} = _main, params), do: put(a, params)
+
+  def put(%Account{} = a, %{"level" => level} = params) when level in @levels do
     cond do
-      level == "hidden" and not Account.verified?(a) ->
-        {:error, {:forbidden, "Hidden is available after you verify"}}
+      level in ~w(hidden exact) and not Account.verified?(a) ->
+        {:error, {:not_verified, "#{String.capitalize(level)} is available after you verify"}}
+
+      level == "exact" and Account.safe_mode_on?(a) and params["safe_mode_override"] != true ->
+        {:error, {:safe_mode_blocked, "Exact is off in Safe Mode"}}
 
       level == "hidden" ->
-        Repo.query!("DELETE FROM location_cells WHERE profile_id = $1", [dump(p.id)])
-        {:ok, :hidden}
+        with {:ok, r8} <- cell(params["cell_r8"] || parent(params["cell_r9"], 8), 8) do
+          Repo.query!(
+            "DELETE FROM location_cells WHERE profile_id IN (SELECT id FROM profiles WHERE account_id = $1)",
+            [dump(a.id)]
+          )
+
+          clear_pins(a)
+          set_viewer_cell(a, r8)
+          set_account(a, hidden: true)
+          {:ok, :hidden}
+        end
 
       level in ~w(area exact) ->
         with {:ok, r9} <- cell(params["cell_r9"], 9) do
-          upsert(p, level, r9, :r9, params)
+          velocity_check(a, r9)
+          set_viewer_cell(a, r9)
+          if level == "area", do: clear_pins(a)
+          set_account(a, hidden: false)
+          upsert_all(a, level, r9, :r9, params)
         end
 
       level == "city" ->
         with {:ok, r5} <- city_cell(params) do
-          upsert(p, level, r5, :r5, params)
+          clear_pins(a)
+          set_viewer_cell(a, r5)
+          set_account(a, hidden: false)
+          upsert_all(a, "city", r5, :r5, params)
         end
     end
   end
 
-  def put(_, _, _),
+  def put(_, _),
     do: {:error, {:validation, %{level: ["must be one of #{Enum.join(@levels, ", ")}"]}}}
 
-  defp upsert(p, level, cell, :r9, params) do
+  defp set_account(a, changes),
+    do: Repo.update_all(from(x in Account, where: x.id == ^a.id), set: changes)
+
+  defp parent(nil, _), do: nil
+
+  defp parent(hex, res) do
+    case cell(hex, 9) do
+      {:ok, c} ->
+        Repo.query!("SELECT h3_cell_to_parent($1::text::h3index, $2)::text", [c, res]).rows
+        |> hd()
+        |> hd()
+
+      _ ->
+        nil
+    end
+  end
+
+  defp upsert_all(a, level, cell, :r9, params) do
     Repo.query!(
       """
       INSERT INTO location_cells (profile_id, level, cell_r9, cell_r8, cell_r7, cell_r5, hide_from_hidden, updated_at)
-      SELECT $1, $2, c::bigint, h3_cell_to_parent(c, 8)::bigint, h3_cell_to_parent(c, 7)::bigint,
-             h3_cell_to_parent(c, 5)::bigint, $4, now()
-      FROM (SELECT $3::text::h3index AS c) s
+      SELECT p.id, $2, c::bigint, h3_cell_to_parent(c, 8)::bigint, h3_cell_to_parent(c, 7)::bigint,
+             h3_cell_to_parent(c, 5)::bigint, COALESCE($4, (SELECT bool_or(hide_from_hidden) FROM location_cells x JOIN profiles y ON y.id = x.profile_id WHERE y.account_id = $1), false), now()
+      FROM profiles p, (SELECT $3::text::h3index AS c) s
+      WHERE p.account_id = $1
       ON CONFLICT (profile_id) DO UPDATE SET level = EXCLUDED.level, cell_r9 = EXCLUDED.cell_r9,
         cell_r8 = EXCLUDED.cell_r8, cell_r7 = EXCLUDED.cell_r7, cell_r5 = EXCLUDED.cell_r5,
         hide_from_hidden = EXCLUDED.hide_from_hidden, updated_at = now()
       """,
-      [dump(p.id), level, cell, params["hide_from_hidden"] == true]
+      [dump(a.id), level, cell, bool_or_nil(params["hide_from_hidden"])]
     )
 
     {:ok, level}
   end
 
-  defp upsert(p, "city", cell, :r5, params) do
+  defp upsert_all(a, "city", cell, :r5, params) do
     Repo.query!(
       """
-      INSERT INTO location_cells (profile_id, level, cell_r9, cell_r8, cell_r7, cell_r5, hide_from_hidden, updated_at)
-      VALUES ($1, 'city', NULL, NULL, NULL, $2::text::h3index::bigint, $3, now())
+      INSERT INTO location_cells (profile_id, level, cell_r9, cell_r8, cell_r7, cell_r5, hide_from_hidden, display_res, updated_at)
+      SELECT p.id, 'city', NULL, NULL, NULL, $2::text::h3index::bigint,
+             COALESCE($3, (SELECT bool_or(hide_from_hidden) FROM location_cells x JOIN profiles y ON y.id = x.profile_id WHERE y.account_id = $1), false), 5, now()
+      FROM profiles p WHERE p.account_id = $1
       ON CONFLICT (profile_id) DO UPDATE SET level = 'city', cell_r9 = NULL, cell_r8 = NULL, cell_r7 = NULL,
-        cell_r5 = EXCLUDED.cell_r5, hide_from_hidden = EXCLUDED.hide_from_hidden, updated_at = now()
+        cell_r5 = EXCLUDED.cell_r5, hide_from_hidden = EXCLUDED.hide_from_hidden, display_res = 5, updated_at = now()
       """,
-      [dump(p.id), cell, params["hide_from_hidden"] == true]
+      [dump(a.id), cell, bool_or_nil(params["hide_from_hidden"])]
     )
 
     {:ok, "city"}
   end
+
+  defp bool_or_nil(b) when is_boolean(b), do: b
+  defp bool_or_nil(_), do: nil
 
   defp city_cell(%{"city_id" => id}) when is_integer(id) do
     case Repo.query!("SELECT cell_r5::h3index::text FROM cities WHERE id = $1", [id]) do
@@ -92,6 +146,246 @@ defmodule Thirstr.Location do
   end
 
   def cell(_, res), do: {:error, {:validation, %{"cell_r#{res}" => ["can't be blank"]}}}
+
+  # ------------------------------------------------------------- viewer cell (own queries)
+
+  # The viewer's own cell for Explore queries. Hidden users have no indexed row (F-05).
+  defp set_viewer_cell(a, hex), do: Valkey.put_term("vcell:" <> a.id, hex, 24 * 3600)
+
+  @doc "{lat, lng, res} the viewer queries from: exact pin, else the cell they last sent."
+  def viewer_point(%Account{} = a) do
+    with nil <- own_pin(a),
+         hex when is_binary(hex) <- viewer_cell(a) do
+      [[lat, lng, res]] =
+        Repo.query!(
+          "SELECT (h3_cell_to_lat_lng(c))[1], (h3_cell_to_lat_lng(c))[0], h3_get_resolution(c) FROM (SELECT $1::text::h3index c) s",
+          [hex]
+        ).rows
+
+      %{lat: lat, lng: lng, res: res, exact: false, cell: hex}
+    else
+      %{} = pin -> Map.merge(pin, %{exact: true})
+      _ -> nil
+    end
+  end
+
+  def viewer_cell(%Account{} = a) do
+    case Valkey.command!(["GET", "vcell:" <> a.id]) do
+      nil -> fallback_cell(a)
+      bin -> :erlang.binary_to_term(bin, [:safe])
+    end
+  end
+
+  defp fallback_cell(a) do
+    case Repo.query!(
+           """
+           SELECT COALESCE(lc.cell_r9, lc.cell_r5)::h3index::text FROM location_cells lc
+           JOIN profiles p ON p.id = lc.profile_id WHERE p.account_id = $1 LIMIT 1
+           """,
+           [dump(a.id)]
+         ).rows do
+      [[c]] -> c
+      _ -> nil
+    end
+  end
+
+  # ------------------------------------------------------------- Exact pins (Valkey only)
+
+  @doc "R-05.4: explicit confirm, TTL 30 min…4 h, jitter 10–20 m re-drawn on each set."
+  def set_pin(%Account{} = a, params) do
+    ttl = params["ttl_s"]
+    audience = params["audience"] || "verified"
+
+    cond do
+      not Account.verified?(a) ->
+        {:error, {:not_verified, "Exact is available after you verify"}}
+
+      Account.safe_mode_on?(a) and params["safe_mode_override"] != true ->
+        {:error, {:safe_mode_blocked, "Exact is off in Safe Mode"}}
+
+      params["confirm"] != true ->
+        {:error, {:validation, %{confirm: ["confirm sharing your exact position"]}}}
+
+      ttl not in @pin_ttls ->
+        {:error, {:validation, %{ttl_s: ["must be 30 min, 1 h, 2 h or 4 h"]}}}
+
+      audience not in @pin_audiences ->
+        {:error, {:validation, %{audience: ["invalid"]}}}
+
+      not valid_coord?(params["lat"], params["lng"]) ->
+        {:error, {:validation, %{lat: ["invalid coordinates"]}}}
+
+      true ->
+        {lat, lng} = jitter(params["lat"], params["lng"])
+
+        %{rows: [[r9]]} =
+          Repo.query!("SELECT h3_lat_lng_to_cell(point($1::float8, $2::float8), 9)::text", [
+            lng,
+            lat
+          ])
+
+        with {:ok, _} <-
+               put(a, %{"level" => "exact", "cell_r9" => r9, "safe_mode_override" => true}) do
+          expires = DateTime.add(DateTime.utc_now(), ttl, :second)
+
+          pin = %{
+            lat: lat,
+            lng: lng,
+            audience: audience,
+            expires_at: DateTime.to_iso8601(expires)
+          }
+
+          for pid <- pin_profile_ids(a) do
+            Valkey.put_term("pin:" <> pid, pin, ttl)
+          end
+
+          Valkey.put_term("ownpin:" <> a.id, pin, ttl)
+          {:ok, pin}
+        end
+    end
+  end
+
+  def clear_pins(%Account{} = a) do
+    keys = ["ownpin:" <> a.id | Enum.map(pin_profile_ids(a), &("pin:" <> &1))]
+    Valkey.command!(["DEL" | keys])
+
+    Repo.query!(
+      "UPDATE location_cells SET level = 'area' WHERE level = 'exact' AND profile_id IN (SELECT id FROM profiles WHERE account_id = $1)",
+      [dump(a.id)]
+    )
+
+    :ok
+  end
+
+  defp own_pin(a) do
+    case Valkey.command!(["GET", "ownpin:" <> a.id]) do
+      nil -> nil
+      bin -> :erlang.binary_to_term(bin, [:safe]) |> Map.take([:lat, :lng]) |> Map.put(:res, 15)
+    end
+  end
+
+  def own_pin_info(a) do
+    case Valkey.command!(["GET", "ownpin:" <> a.id]) do
+      nil -> nil
+      bin -> :erlang.binary_to_term(bin, [:safe])
+    end
+  end
+
+  # Sport mode never shows pins (R-11.9).
+  defp pin_profile_ids(a) do
+    Repo.query!("SELECT id::text FROM profiles WHERE account_id = $1 AND kind <> 'sport'", [
+      dump(a.id)
+    ]).rows
+    |> List.flatten()
+  end
+
+  @doc "Pins for a list of profile ids (MGET). Returns %{profile_id => pin}."
+  def pins(ids) when ids == [], do: %{}
+
+  def pins(ids) do
+    ids
+    |> Enum.zip(Valkey.command!(["MGET" | Enum.map(ids, &("pin:" <> &1))]))
+    |> Enum.flat_map(fn
+      {_, nil} -> []
+      {id, bin} -> [{id, :erlang.binary_to_term(bin, [:safe])}]
+    end)
+    |> Map.new()
+  end
+
+  defp valid_coord?(lat, lng),
+    do:
+      is_number(lat) and is_number(lng) and lat >= -85 and lat <= 85 and lng >= -180 and
+        lng <= 180
+
+  defp jitter(lat, lng) do
+    d = 10 + :rand.uniform() * 10
+    theta = :rand.uniform() * 2 * :math.pi()
+    dlat = d * :math.cos(theta) / 111_320
+    dlng = d * :math.sin(theta) / (111_320 * :math.cos(lat * :math.pi() / 180))
+    {lat + dlat, lng + dlng}
+  end
+
+  # ------------------------------------------------------------- visibility toggles
+
+  @doc "PATCH /me/visibility: incognito (verified only, R-05.7), hide_from_hidden (R-05.6)."
+  def set_visibility(%Account{} = a, params) do
+    cond do
+      params["incognito"] == true and not Account.verified?(a) ->
+        {:error, {:not_verified, "Incognito is available after you verify"}}
+
+      true ->
+        if is_boolean(params["incognito"]), do: set_account(a, incognito: params["incognito"])
+
+        if is_boolean(params["hide_from_hidden"]) do
+          Repo.query!(
+            "UPDATE location_cells SET hide_from_hidden = $2 WHERE profile_id IN (SELECT id FROM profiles WHERE account_id = $1)",
+            [dump(a.id), params["hide_from_hidden"]]
+          )
+
+          Valkey.put_term("hfh:" <> a.id, params["hide_from_hidden"], 30 * 24 * 3600)
+        end
+
+        {:ok, Repo.get!(Account, a.id)}
+    end
+  end
+
+  def hide_from_hidden?(%Account{} = a) do
+    case Valkey.command!(["GET", "hfh:" <> a.id]) do
+      nil -> false
+      bin -> :erlang.binary_to_term(bin, [:safe])
+    end
+  end
+
+  # ------------------------------------------------------------- R-05.9 velocity
+
+  defp velocity_check(a, r9) do
+    now = System.system_time(:second)
+
+    case Valkey.command!(["GET", "lastcell:" <> a.id]) do
+      nil ->
+        :ok
+
+      bin ->
+        {prev, t} = :erlang.binary_to_term(bin, [:safe])
+        dt_h = max(now - t, 1) / 3600
+
+        %{rows: [[km]]} =
+          Repo.query!(
+            "SELECT h3_great_circle_distance(h3_cell_to_lat_lng($1::text::h3index), h3_cell_to_lat_lng($2::text::h3index), 'km')",
+            [prev, r9]
+          )
+
+        # cell-size noise: ignore moves under 5 km
+        if km > 5 and km / dt_h > @max_kmh, do: Thirstr.Signals.record(a, :velocity)
+    end
+
+    Valkey.put_term("lastcell:" <> a.id, {r9, now}, 24 * 3600)
+  end
+
+  # ------------------------------------------------------------- R-05.2 k-anonymity
+
+  @doc "Every minute: display at r9 only with ≥ 5 visible profiles in the cell, else r8, else r7."
+  def refresh_k_anonymity(k \\ 5) do
+    Repo.query!(
+      """
+      WITH vis AS (
+        SELECT lc.profile_id, lc.cell_r9, lc.cell_r8, p.kind FROM location_cells lc
+        JOIN profiles p ON p.id = lc.profile_id JOIN accounts a ON a.id = p.account_id
+        WHERE lc.level <> 'city' AND a.status = 'active' AND NOT a.incognito
+      ), c9 AS (SELECT kind, cell_r9, count(*) n FROM vis GROUP BY 1, 2),
+         c8 AS (SELECT kind, cell_r8, count(*) n FROM vis GROUP BY 1, 2)
+      UPDATE location_cells lc SET display_res = CASE
+          WHEN c9.n >= $1 THEN 9 WHEN c8.n >= $1 THEN 8 ELSE 7 END
+      FROM vis
+      JOIN c9 ON c9.kind = vis.kind AND c9.cell_r9 = vis.cell_r9
+      JOIN c8 ON c8.kind = vis.kind AND c8.cell_r8 = vis.cell_r8
+      WHERE lc.profile_id = vis.profile_id
+      """,
+      [k]
+    )
+
+    :ok
+  end
 
   # ------------------------------------------------------------- cities & welcome
 

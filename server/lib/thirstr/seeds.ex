@@ -134,7 +134,8 @@ defmodule Thirstr.Seeds do
         onboarding_step: "done",
         verified_at: if(:rand.uniform() < 0.6, do: now),
         verification_epoch: 0,
-        settings: %{},
+        # most seeded guys let unverified people browse them (R-17.7 default is on)
+        settings: %{"hide_from_unverified" => :rand.uniform() < 0.3},
         inserted_at: now,
         updated_at: now
       },
@@ -148,6 +149,7 @@ defmodule Thirstr.Seeds do
         gender_other: if(gender == "other", do: "Genderfluid"),
         here_for: if(here == [], do: ["chat"], else: here),
         visibility_map: %{},
+        fields: fake_fields(),
         photo_ids: [],
         completeness: 40 + :rand.uniform(60),
         seeded: true,
@@ -155,6 +157,22 @@ defmodule Thirstr.Seeds do
         updated_at: now
       }
     }
+  end
+
+  defp fake_fields do
+    opts = Thirstr.Profiles.Fields.options()
+
+    %{
+      "build" => Enum.random(opts.build),
+      "height_cm" => 165 + :rand.uniform(30),
+      "position" => Enum.random(opts.position),
+      "hosting" => Enum.random(opts.hosting),
+      "looking_for" => Enum.take_random(opts.looking_for, 2),
+      "tribes" => Enum.take_random(opts.tribes, 1),
+      "languages" => Enum.take_random(~w(en fr de it es), 2),
+      "bio" => Enum.random(["Here for a good time.", "Coffee first?", "New in town.", "Gym, food, repeat.", ""])
+    }
+    |> Map.reject(fn {_, v} -> v == "" end)
   end
 
   defp weighted(pairs) do

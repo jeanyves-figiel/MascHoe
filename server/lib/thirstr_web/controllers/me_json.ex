@@ -1,18 +1,27 @@
 defmodule ThirstrWeb.MeJSON do
   @moduledoc "Own-account view. Never includes account id, email or birthdate."
   alias Thirstr.Accounts.Account
-  alias Thirstr.{Onboarding, Repo, Storage}
+  alias Thirstr.{Location, Profiles, Repo, Settings, Social, Storage}
 
   def me(%Account{} = a) do
-    profile = Onboarding.main_profile(a)
+    profiles = Profiles.list_own(a)
+    main = Enum.find(profiles, &(&1.kind == "now"))
 
     %{
       status: a.status,
       verified: Account.verified?(a),
+      verified_since: a.verified_at && Calendar.strftime(a.verified_at, "%Y-%m"),
       onboarding_step: a.onboarding_step,
       safe_mode: a.safe_mode,
-      profile: profile && profile(profile),
-      location: profile && location(profile.id)
+      safe_mode_active: a.safe_mode_active,
+      incognito: a.incognito,
+      hidden: a.hidden,
+      member_since: a.inserted_at && Calendar.strftime(a.inserted_at, "%Y-%m"),
+      profile: main && profile(main),
+      profiles: Enum.map(profiles, &profile/1),
+      location: main && location(a, main.id),
+      now: main && Social.now_of(main.id),
+      settings: Settings.get(a)
     }
   end
 
@@ -25,28 +34,44 @@ defmodule ThirstrWeb.MeJSON do
       slot: ph.slot,
       status: ph.status,
       reject_reason: ph.reject_reason,
-      url: if(ph.status in ~w(ok_main ok_public), do: Storage.presigned_get(ph.storage_key))
+      main_ok: Map.get(ph.classifier_score || %{}, "main_ok", ph.status == "ok_main"),
+      url:
+        if(ph.status in ~w(ok_main ok_public pending), do: Storage.presigned_get(ph.storage_key))
     }
   end
 
-  defp profile(p) do
+  def profile(p) do
     %{
       id: p.id,
+      kind: p.kind,
       display_name: p.display_name,
       age: p.age,
       gender: p.gender,
       gender_other: p.gender_other,
       here_for: p.here_for,
-      photos: Enum.map(p.photos, &photo/1)
+      fields: p.fields || %{},
+      visibility_map: p.visibility_map || %{},
+      completeness: p.completeness,
+      photos: p.photos |> Enum.reject(&(&1.status == "rejected")) |> Enum.map(&photo/1)
     }
   end
 
-  defp location(profile_id) do
-    case Repo.query!("SELECT level FROM location_cells WHERE profile_id = $1", [
-           Ecto.UUID.dump!(profile_id)
-         ]).rows do
-      [[level]] -> %{level: level}
-      _ -> %{level: nil}
-    end
+  defp location(a, profile_id) do
+    level =
+      case Repo.query!(
+             "SELECT level, hide_from_hidden FROM location_cells WHERE profile_id = $1",
+             [
+               Ecto.UUID.dump!(profile_id)
+             ]
+           ).rows do
+        [[level, _]] -> level
+        _ -> if a.hidden, do: "hidden"
+      end
+
+    %{
+      level: level,
+      pin: Location.own_pin_info(a),
+      hide_from_hidden: Location.hide_from_hidden?(a)
+    }
   end
 end

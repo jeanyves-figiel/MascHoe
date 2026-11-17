@@ -33,44 +33,7 @@ defmodule ThirstrWeb.AccountController do
     end
   end
 
-  def location(conn, params) do
-    with {:ok, a} <- Onboarding.set_location(conn.assigns.account, params),
-         do: json(conn, MeJSON.me(a))
-  end
-
-  def create_photo(conn, %{"profile_id" => pid} = params) do
-    with :ok <- own_profile(conn, pid),
-         {:ok, photo, put_url} <-
-           Onboarding.create_photo_upload(
-             conn.assigns.account,
-             params["slot"] || 0,
-             params["content_type"] || "image/jpeg"
-           ) do
-      conn
-      |> put_status(201)
-      |> json(%{
-        photo_id: photo.id,
-        put_url: put_url,
-        content_type: params["content_type"] || "image/jpeg"
-      })
-    end
-  end
-
-  def check_photo(conn, %{"profile_id" => pid, "photo_id" => id}) do
-    with :ok <- own_profile(conn, pid),
-         {:ok, photo, a} <- Onboarding.check_photo(conn.assigns.account, id) do
-      json(conn, %{photo: MeJSON.photo(photo), account: MeJSON.me(a)})
-    end
-  end
-
   def verify_later(conn, _) do
     with {:ok, a} <- Onboarding.verify_later(conn.assigns.account), do: json(conn, MeJSON.me(a))
-  end
-
-  defp own_profile(conn, pid) do
-    case Onboarding.main_profile(conn.assigns.account) do
-      %{id: ^pid} -> :ok
-      _ -> {:error, :not_found}
-    end
   end
 end

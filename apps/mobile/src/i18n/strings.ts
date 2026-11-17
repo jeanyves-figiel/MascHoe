@@ -1,3 +1,4 @@
+import { getLocales } from 'expo-localization';
 // Beta languages en/fr/de (D-06). Keys per screen; copy voice per design-system.md.
 const en = {
   welcome: {
@@ -103,7 +104,7 @@ const de: Strings = {
 };
 
 function pick(): Strings {
-  const lang = (typeof navigator !== 'undefined' && navigator.language ? navigator.language : 'en').slice(0, 2);
+  const lang = getLocales()[0]?.languageCode ?? 'en';
   return lang === 'fr' ? fr : lang === 'de' ? de : en;
 }
 
