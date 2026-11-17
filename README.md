@@ -33,4 +33,4 @@ cd core && cargo test
 ```
 
 ## Ship (trunk model, ops.md)
-Branch off `main` → PR (ChangeLog entry required) → squash-merge → auto-deploy **staging** (`https://thirstr-api-staging.fly.dev`) → validate → run **Promote to production** (same image digest, owner approval). Runbook: [`docs/runbooks/fly.md`](docs/runbooks/fly.md).
+Branch off `main` → PR (ChangeLog entry required) → squash-merge → auto-deploy **staging** (`https://staging.thirstr.fun`) → validate → run **Promote to production** (same image digest, owner approval). Runbook: [`docs/runbooks/fly.md`](docs/runbooks/fly.md).

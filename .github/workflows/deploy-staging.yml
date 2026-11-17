@@ -54,11 +54,11 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: staging
-      url: https://thirstr-api-staging.fly.dev
+      url: https://staging.thirstr.fun
     steps:
       - uses: actions/checkout@v4
       - uses: superfly/flyctl-actions/setup-flyctl@master
       - name: Deploy by digest
         run: flyctl deploy --config infra/fly/api-staging.toml --app thirstr-api-staging --image "${IMAGE}@${{ needs.build.outputs.digest }}" --wait-timeout 300
       - name: Smoke
-        run: ./scripts/smoke.sh https://thirstr-api-staging.fly.dev "${{ github.sha }}"
+        run: ./scripts/smoke.sh https://staging.thirstr.fun "${{ github.sha }}"

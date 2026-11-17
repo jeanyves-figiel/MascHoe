@@ -4,7 +4,7 @@ Date: 2026-11-17. Source: [sign-off form](https://claude.ai/artifact/XqFcGc8h7xN
 
 | # | Topic | Decision | Applied in |
 |---|---|---|---|
-| D-01 | App name | **Thirstr** (replaces working name MascHoe, 2026-11-17). Domain target `thirstr.app` (+ `thirstr.com`), fallback `getthirstr.app`. Bundle ID `app.thirstr`. | store listings, bundle IDs, docs |
+| D-01 | App name | **Thirstr** (replaces working name MascHoe, 2026-11-17). Domain `thirstr.fun` (registered 2026-11-17 at GoDaddy; `thirstr.app` taken). Bundle ID `app.thirstr`. | store listings, bundle IDs, docs |
 | D-02 | Legal entity | Switzerland (hosting EU) | #9, security.md |
 | D-03 | Hosting | **Fly.io, EU regions only** (fra primary, ams secondary) for beta; review jurisdiction (US CLOUD Act) + cost before public launch; Hetzner = exit path. Revised 2026-11-17 (was Hetzner). | ops.md, ADR-0001 |
 | D-04 | Beta access | Invite-only, ~500 testers, 3 invite codes each | F-01, F-02 |
@@ -20,6 +20,6 @@ Date: 2026-11-17. Source: [sign-off form](https://claude.ai/artifact/XqFcGc8h7xN
 | D-14 | Prod deploy approval | Owner only | ops.md |
 
 ## Open
-- D-01: domain availability not verified (registry lookups blocked from build env); register `thirstr.app` + `thirstr.com`. Trademark clearance (EUIPO, Swissreg, USPTO; classes 9, 42, 45) by counsel before store submission. Web search 2026-11-17 found no app or mark named Thirstr; nearby marks: "Thirst" drinks apps, "Thirsty Thursday".
+- D-01: domain `thirstr.fun` registered 2026-11-17 (`thirstr.app` taken); hosts `api.thirstr.fun` (prod), `staging.thirstr.fun` (#34). Trademark clearance (EUIPO, Swissreg, USPTO; classes 9, 42, 45) by counsel before store submission. Web search 2026-11-17 found no app or mark named Thirstr; nearby marks: "Thirst" drinks apps, "Thirsty Thursday".
 - Repo name `MascHoe` unchanged (owner action to rename).
 - Risk accepted by owner: single moderator cannot meet 1 h SLA around the clock; mitigated by auto-hide (R-15.13). Revisit before public beta.

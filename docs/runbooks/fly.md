@@ -18,6 +18,18 @@ Created 2026-11-17 in Fly org `personal`, region `fra` (EU only, enforced by `sc
 - Environments `staging` and `production`; `production` requires reviewer **jeanyves-figiel** (D-14).
 - Secret `FLY_TOKEN` (org-scoped deploy token) in both environments. Workflows map it to `FLY_API_TOKEN`.
 
+## Domain (#34)
+Registrar + DNS: GoDaddy (owner account). Records (TTL 1 h):
+
+| Name | Type | Value |
+|---|---|---|
+| `staging` | A / AAAA | `66.241.125.177` / `2a09:8280:1::20c:7564:0` (`thirstr-api-staging`) |
+| `_acme-challenge.staging` | CNAME | `staging.thirstr.fun.pk8d8p6.flydns.net` |
+| `api` | A / AAAA | `66.241.125.131` / `2a09:8280:1::20c:7568:0` (`thirstr-api-prod`) |
+| `_acme-challenge.api` | CNAME | `api.thirstr.fun.29xzx8w.flydns.net` |
+
+Fly certificates (Let's Encrypt, auto-renew) were added with GraphQL `addCertificate(appId, hostname)`; check with `checkCertificate` or `flyctl certs show <host> -a <app>`. IPs come from `app { sharedIpAddress ipAddresses }`. New host: add cert → add the 3 records → wait for `clientStatus: Ready` → change `PHX_HOST`/`APP_URL`/`WEBAUTHN_*` in the toml.
+
 ## Deploy
 - Staging: automatic on push to `main` (`deploy-staging.yml`): build → SBOM → cosign sign → `flyctl deploy --image <digest>` → migrate (+ idempotent synthetic seed on staging) → `scripts/smoke.sh`.
 - Prod: Actions → **Promote to production** → reason (+ optional digest). Checks the digest has been live on staging ≥ 30 min and staging smoke is green, waits for owner approval, deploys the same digest, smokes, rolls back to the previous image on failure.
@@ -25,7 +37,7 @@ Created 2026-11-17 in Fly org `personal`, region `fra` (EU only, enforced by `sc
 ## Checks
 ```sh
 FLY_API_TOKEN=… scripts/fly-live-image.sh thirstr-api-staging   # digest + rollout time
-scripts/smoke.sh https://thirstr-api-staging.fly.dev
+scripts/smoke.sh https://staging.thirstr.fun
 ```
 
 ## Known gaps (tracked in GitHub)
