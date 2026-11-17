@@ -9,6 +9,7 @@ import { tx } from '../i18n/app';
 import { color, radius, space, type } from '../theme/tokens';
 import { fromB64, rand, toB64 } from './bytes';
 import * as E from './engine';
+import { prefs } from '../me/prefs';
 
 export type SendOpts = { once: boolean; expiry: '1h' | '24h' | '7d' | 'keep'; save: boolean };
 const EXPIRY_S = { '1h': 3600, '24h': 86400, '7d': 7 * 86400, keep: null } as const;
@@ -76,7 +77,8 @@ export function MediaBubble({ m, media, mine, cid, conv }: { m: E.Msg; media: E.
   const [now] = useState(() => Date.now());
   const expired = !!media.exp && media.exp < now;
   const policy = mine ? 'show' : strangerPolicy(conv, me.settings?.explicit_from_strangers);
-  const once = !!media.once && !mine;
+  // View-once, or auto-delete after viewing (Settings, always in Safe Mode: F-14).
+  const once = (!!media.once || prefs().autoDelete || !!me.safe_mode_active) && !mine;
   const gone = expired || (once && m.opened);
   const autoload = !gone && !once && policy !== 'block';
 

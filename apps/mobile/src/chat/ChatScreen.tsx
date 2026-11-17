@@ -27,6 +27,16 @@ function errorText(e: unknown): string {
 }
 
 // S-41 Chat (F-07): header, E2EE line, messages, quick replies, composer.
+// F-14 entrapment warning: unverified, or a meet request in his first 5 messages (local check).
+const MEET = /\b(meet|come over|my place|your place|address|where are you|now\?|tonight|treffen|vorbei|rencontr|chez (moi|toi))\b/i;
+function careful(c: E.Conv, list: E.Msg[]) {
+  if (!c.verified) return true;
+  return list
+    .filter((m) => m.from === 'them')
+    .slice(0, 5)
+    .some((m) => MEET.test((m.p as { text?: string }).text ?? ''));
+}
+
 export function ChatScreen({ navigation, route }: { navigation: Nav; route: { params: Params } }) {
   const { me, mode } = useSession();
   const accent = useAccent();
@@ -201,6 +211,11 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
         }}
       />
 
+      {!group && (me.safe_mode_active || me.safe_mode === 'on') && list && careful(conv, list) ? (
+        <View style={{ paddingHorizontal: space.l }}>
+          <Banner testID="careful" tone="warn" text={tx.safeMode.careful} onPress={() => navigation.navigate('CheckinStart', { cid: conv.id })} />
+        </View>
+      ) : null}
       {group && !conv.groups.length ? (
         <View style={{ paddingHorizontal: space.l }}>
           <Banner tone="trust" text={conv.host ? tx.group.sync : tx.group.pending} />

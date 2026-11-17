@@ -1,4 +1,5 @@
 import { getLocales } from 'expo-localization';
+import { inMiles } from '../me/prefs';
 // Strings for the main app (beyond onboarding). en is the reference; fr/de override per key
 // and fall back to en (design-system.md › i18n, D-06).
 const en = {
@@ -592,6 +593,94 @@ const en = {
     },
     decoy: { explore: 'Nobody around yet', exploreBody: 'Check back later tonight.', chats: 'No chats yet' },
   },
+  devices: {
+    title: 'Linked devices',
+    hint: 'Up to 5 devices. Chats before a device was linked stay on the devices that had them.',
+    thisDevice: 'This device',
+    seen: (d: string) => `Last active ${d}`,
+    remove: 'Sign out',
+    link: 'Link a new device',
+    linkHint: 'On the new phone, open Thirstr and tap “I have Thirstr on another phone”, then scan this code or type it.',
+    expires: (s: number) => `Expires in ${s} s`,
+    wants: (p: string) => `A new ${p} wants to join your account`,
+    confirm: 'Allow',
+    deny: 'Not me',
+    adding: 'Adding the new device to your chats…',
+    done: (n: number) => `Linked. Added to ${n} chat${n === 1 ? '' : 's'}.`,
+    platforms: { ios: 'iPhone', android: 'Android phone', web: 'browser' } as Record<string, string>,
+    haveApp: 'I have Thirstr on another phone',
+    enterCode: 'Code from your other phone',
+    enterHint: 'On your other phone: Me › Settings › Linked devices › Link a new device.',
+    scan: 'Scan the code',
+    send: 'Continue',
+    waiting: 'Confirm on your other phone…',
+    badCode: 'This code didn’t work. Make a new one on your other phone.',
+  },
+  exportData: {
+    title: 'Download my data',
+    hint: 'Everything we hold about you plus the chats and notes on this phone, as one JSON file.',
+    go: 'Download',
+    ready: 'Your data file is ready.',
+  },
+  linked: {
+    title: 'Linked accounts',
+    hint: 'Show your other profiles. Bluesky gets a ✓ once you prove it’s yours.',
+    add: 'Add an account',
+    platform: 'Platform',
+    platforms: { x: 'X', bluesky: 'Bluesky', onlyfans: 'OnlyFans', jff: 'JustFor.Fans', instagram: 'Instagram' } as Record<string, string>,
+    handle: 'Username',
+    visibility: 'Who sees it',
+    vis: { everyone: 'Everyone', verified: 'Verified', chats: 'My chats' } as Record<string, string>,
+    proveHint: (code: string) => `Put ${code} in your Bluesky bio, then tap Check. You can remove it afterwards.`,
+    check: 'Check',
+    proven: 'Proven ✓',
+    notProven: 'Not proven yet',
+    remove: 'Remove',
+  },
+  share: {
+    title: 'Share link',
+    hint: 'A link and QR for your bio on other apps. It shows your blurred main photo and name only.',
+    create: 'Create link',
+    rotate: 'New link (old one stops working)',
+    off: 'Turn off link',
+    send: 'Share',
+  },
+  prefs: {
+    app: 'App',
+    units: 'Distance units',
+    unitOpts: { km: 'km', mi: 'miles' } as Record<string, string>,
+    haptics: 'Haptics',
+    dataSaver: 'Data saver',
+    dataSaverSub: 'Thumbnails only on mobile data',
+    language: 'Language',
+    languageSub: 'Uses your phone’s language. Change it in system settings.',
+    privacy: 'Privacy policy',
+    licenses: 'Open-source licences',
+    licensesBody: 'Thirstr is built with open-source software: React Native, Expo, MapLibre, ts-mls, noble cryptography, Phoenix, Elixir, PostgreSQL, H3 and others, under their MIT, Apache-2.0, BSD and ISC licences.',
+    autoDelete: 'Delete received photos after viewing',
+    verification: 'Verification',
+    verified: (d: string) => `Verified since ${d}`,
+    notVerified: 'Not verified',
+    reverify: 'Verify again',
+  },
+  safeMode: {
+    onTitle: 'Safe Mode is on',
+    onBody: 'Being gay is criminalised where you are. Thirstr hides your exact location, shows you to verified people only and keeps notifications neutral.',
+    setLock: 'Set up app lock and a duress PIN',
+    resources: 'Help & resources',
+    resourcesBody: 'International organisations that help LGBTQ+ people at risk:',
+    orgs: [
+      ['Rainbow Railroad', 'https://www.rainbowrailroad.org'],
+      ['ILGA World', 'https://ilga.org'],
+      ['Front Line Defenders', 'https://www.frontlinedefenders.org'],
+    ] as [string, string][],
+    later: 'Later',
+    leftTitle: 'You left the Safe Mode area',
+    leftBody: 'Restore the location setting you had before?',
+    restore: 'Restore',
+    keep: 'Keep current',
+    careful: 'Be careful: this is a new or unverified account, or he wants to meet very fast. Meet in public and use a check-in.',
+  },
   soon: { title: 'Arrives in the next build', body: 'This part of Thirstr is being finished.' },
 };
 
@@ -643,6 +732,8 @@ export function opt(value: string): string {
 
 export function distanceLabel(d: { kind: string; m?: number; bucket?: string; city?: string | null } | null): string {
   if (!d) return '';
+  const mi = inMiles(d);
+  if (mi) return mi;
   if (d.kind === 'exact') return tx.distance.m(d.m ?? 0);
   if (d.kind === 'city') return tx.distance.city(d.city ?? null);
   return (tx.distance as unknown as Record<string, string>)[d.bucket ?? ''] ?? '';

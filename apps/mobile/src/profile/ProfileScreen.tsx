@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Dimensions, FlatList, Pressable, ScrollView, Share, Text, View } from 'react-native';
+import { Dimensions, FlatList, Linking, Pressable, ScrollView, Share, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, ApiError } from '../api/client';
 import type { MyProfile, ProfileView, Visibility } from '../api/types';
@@ -150,6 +150,15 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
                 <Badge key={b.kind} label={tx.profile.hostRating(b.up_pct ?? 0, b.total ?? 0)} fill={color.hookup} />
               ))}
           </View>
+          {p.linked_accounts.length ? (
+            <View testID="profile-linked" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.s }}>
+              {p.linked_accounts.map((l) => (
+                <Pressable key={l.platform + l.handle} accessibilityRole="link" onPress={() => l.url && Linking.openURL(l.url)}>
+                  <Badge label={`${tx.linked.platforms[l.platform] ?? l.platform} @${l.handle}${l.verified ? ' ✓' : ''}`} fill={color.fgSoft} />
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
           {p.tapped && p.tapped_me ? <Banner tone="personal" text={tx.profile.mutual} /> : null}
           <FieldList fields={{ ...p.fields, ...(getConvs().find((c) => c.peer === p.id)?.peerFields ?? {}) }} accent={accent} />
           {!p.self && !preview ? <PrivateNote profileId={p.id} /> : null}

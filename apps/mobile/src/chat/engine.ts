@@ -303,7 +303,10 @@ async function handle(m: Incoming) {
   if (m.kind === 'welcome') {
     const j = await mls.join(wire);
     if (!j) return;
-    const c = j.ctx ? await ensureGroupConv(j.ctx, m.to_profile_id) : await ensureConv(m.to_profile_id, m.from_profile_id);
+    // R-01.6: my other device added this one to a 1:1 chat → the peer is the other profile in the group.
+    const peer = m.from_profile_id === m.to_profile_id ? j.members.find((x) => x.p !== m.to_profile_id)?.p : m.from_profile_id;
+    if (!j.ctx && !peer) return;
+    const c = j.ctx ? await ensureGroupConv(j.ctx, m.to_profile_id) : await ensureConv(m.to_profile_id, peer!);
     // Both sides may create a group at once: keep both, send on the lowest id (deterministic).
     if (!c.groups.includes(j.groupId)) c.groups = [...c.groups, j.groupId].sort();
     await kv.set('g2c:' + j.groupId, c.id);
@@ -357,20 +360,24 @@ async function receive(cid: string, w: Wire, at: number, from?: string, raw?: st
       break;
   }
   if (list.some((x) => x.id === w.id)) return;
+  // Sent from my other device (R-01.6): shows as mine, no unread.
+  const mine = !!from && from === c.me;
   list.push({
     id: w.id,
-    from: 'them',
+    from: mine ? 'me' : 'them',
+    status: mine ? 'sent' : undefined,
     at,
     p,
     fk: w.fk,
     raw,
     by: c.ctx ? from : undefined,
   });
-  c.theyWrote = true;
+  if (mine) c.iWrote = true;
+  else c.theyWrote = true;
   if (p.t !== 'reaction') {
     c.lastAt = at;
     c.last = preview(p);
-    c.unread += 1;
+    if (!mine) c.unread += 1;
     c.archived = false;
   }
   delete typing[cid];
@@ -548,6 +555,37 @@ export async function syncGroup(cid: string, list: { id: string; name: string }[
     }
   }
   await saveConvs();
+}
+
+/**
+ * R-01.6 device link: add my newly linked device(s) to every chat group this device is in
+ * (add commit to the other members, welcome to the new device). New chats include all devices.
+ */
+export async function addOwnDevices(): Promise<number> {
+  if (!device) await ensureKeyPackages();
+  let added = 0;
+  for (const c of Object.values(convs)) {
+    if (c.gone || !c.groups.length) continue;
+    const gid = c.groups[0];
+    const state = await mls.load(gid);
+    if (!state) continue;
+    const inGroup = new Set(mls.members(state).map((x) => x.p + '/' + x.d));
+    let claimed: { id: number; device_id: string; key_package: string; profile: string }[] = [];
+    try {
+      const r = await api<{ key_packages: { id: number; device_id: string; key_package: string }[] }>('POST', '/mls/keypackages/claim', { from_profile_id: c.me, to_profile_id: c.me, context: c.ctx });
+      claimed = r.key_packages.filter((k) => k.device_id !== device && !inGroup.has(c.me + '/' + k.device_id)).map((k) => ({ ...k, profile: c.me }));
+    } catch {
+      continue;
+    }
+    if (!claimed.length) continue;
+    const r = await mls.addMembers(gid, claimed, c.ctx);
+    const commits = r.before
+      .filter((x) => !(x.p === c.me && x.d === device))
+      .map((x) => ({ to_profile_id: x.p, to_device_id: x.d, kind: 'commit', ciphertext: toB64(r.commit) }));
+    await api('POST', '/mls/messages', { from_profile_id: c.me, group_id: toB64(fromHex(gid)), context: c.ctx, envelopes: [...commits, ...r.welcomes] });
+    added++;
+  }
+  return added;
 }
 
 /** Peer name/photo for the inbox (fetched like any profile view; never stored server-side). */

@@ -221,10 +221,10 @@ export function Section({ title, children }: { title?: string; children: React.R
   );
 }
 
-export function Banner({ text, tone = 'trust', onPress }: { text: string; tone?: 'trust' | 'danger' | 'warn' | 'personal'; onPress?: () => void }) {
+export function Banner({ text, tone = 'trust', onPress, testID }: { text: string; tone?: 'trust' | 'danger' | 'warn' | 'personal'; onPress?: () => void; testID?: string }) {
   const c = tone === 'warn' ? color.personal : color[tone];
   return (
-    <Pressable onPress={onPress} style={[s.banner, { borderColor: c }]} accessibilityRole={onPress ? 'button' : 'alert'}>
+    <Pressable testID={testID} onPress={onPress} style={[s.banner, { borderColor: c }]} accessibilityRole={onPress ? 'button' : 'alert'}>
       <Text style={[s.meta, { color: c }]}>{text}</Text>
     </Pressable>
   );

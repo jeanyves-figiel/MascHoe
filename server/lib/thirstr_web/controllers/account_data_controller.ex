@@ -1,0 +1,57 @@
+defmodule ThirstrWeb.AccountDataController do
+  @moduledoc "B4d: data export (R-01.11), linked devices (R-01.6), linked accounts (I-01), share links (I-02)."
+  use ThirstrWeb, :controller
+  alias Thirstr.{DeviceLink, Export, Linked, Social}
+
+  action_fallback ThirstrWeb.FallbackController
+
+  defp me(conn), do: conn.assigns.account
+  defp done(:ok, conn), do: send_resp(conn, 204, "")
+  defp done({:ok, r}, conn), do: json(conn, r)
+  defp done(e, _), do: e
+
+  def export(conn, _) do
+    with {:ok, _} <- Social.limit(me(conn), "export", 3, 86_400) do
+      conn
+      |> put_resp_header("content-disposition", ~s(attachment; filename="thirstr-export.json"))
+      |> put_resp_header("cache-control", "no-store")
+      |> json(Export.build(me(conn)))
+    end
+  end
+
+  # devices
+  def devices(conn, _), do: json(conn, DeviceLink.devices(me(conn), conn.assigns.device_id))
+  def remove_device(conn, %{"id" => id}), do: DeviceLink.remove(me(conn), id) |> done(conn)
+  def link_start(conn, _), do: DeviceLink.start(me(conn)) |> done(conn)
+  def link_status(conn, %{"code" => c}), do: DeviceLink.status(me(conn), c) |> done(conn)
+  def link_confirm(conn, %{"code" => c}), do: DeviceLink.confirm(me(conn), c) |> done(conn)
+
+  def link_claim(conn, p) do
+    case DeviceLink.claim(p) do
+      {:waiting, r} -> conn |> put_status(202) |> json(r)
+      {:ok, session} -> json(conn, ThirstrWeb.MeJSON.session(session))
+      e -> e
+    end
+  end
+
+  # linked accounts
+  def linked(conn, %{"id" => pid}), do: Linked.list(me(conn), pid) |> done(conn)
+
+  def link_account(conn, p) do
+    with {:ok, r} <- Linked.add(me(conn), p), do: conn |> put_status(201) |> json(r)
+  end
+
+  def update_linked(conn, %{"id" => id} = p), do: Linked.update(me(conn), id, p) |> done(conn)
+  def verify_linked(conn, %{"id" => id}), do: Linked.verify(me(conn), id) |> done(conn)
+  def remove_linked(conn, %{"id" => id}), do: Linked.remove(me(conn), id) |> done(conn)
+
+  # share links
+  def get_share(conn, %{"id" => pid}) do
+    with {:ok, _} <- Linked.list(me(conn), pid),
+         do: json(conn, %{share: Linked.current_share(pid)})
+  end
+
+  def share(conn, %{"id" => pid}), do: Linked.share(me(conn), pid) |> done(conn)
+  def unshare(conn, %{"id" => pid}), do: Linked.unshare(me(conn), pid) |> done(conn)
+  def resolve(conn, %{"slug" => s}), do: Linked.resolve(s) |> done(conn)
+end

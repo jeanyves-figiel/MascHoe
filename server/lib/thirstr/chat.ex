@@ -90,7 +90,7 @@ defmodule Thirstr.Chat do
     with {:ok, _} <- own_profile(a, from_pid),
          {:ok, t} <- Social.target(a, to_pid),
          :ok <-
-           if(Thirstr.Groups.together?(context, from_pid, to_pid),
+           if(from_pid == to_pid or Thirstr.Groups.together?(context, from_pid, to_pid),
              do: :ok,
              else: first_contact_ok(a, from_pid, to_pid)
            ) do
@@ -201,7 +201,8 @@ defmodule Thirstr.Chat do
     case Social.target(a, to) do
       {:ok, t} ->
         # Party / activity / club chats (F-10, F-11): members may write to each other freely.
-        group? = Thirstr.Groups.together?(params["context"], from, to)
+        # Own other devices (R-01.6 device link) count as a group: no first-contact rules.
+        group? = from == to or Thirstr.Groups.together?(params["context"], from, to)
         app? = not group? and Enum.any?(envs, &(&1.kind == "app"))
 
         with :ok <- if(app?, do: new_contact_check(a, from, to), else: :ok),

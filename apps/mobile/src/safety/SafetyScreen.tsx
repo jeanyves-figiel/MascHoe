@@ -8,6 +8,7 @@ import { tx } from '../i18n/app';
 import { color, space, type } from '../theme/tokens';
 import { Banner, Button, ErrorText, Field, ListRow, Section, Sheet } from '../ui';
 import { HoldButton } from './parts';
+import { Resources } from './SafeModeAuto';
 import * as S from './safety';
 
 type Nav = { navigate: (s: string, p?: object) => void };
@@ -114,6 +115,11 @@ export function SafetyScreen({ navigation }: { navigation: Nav }) {
 
       <Section>
         <ListRow testID="app-lock" title={tx.safety.lock.title} onPress={() => navigation.navigate('AppLock')} />
+      </Section>
+
+      <Text style={{ ...type.headline, color: color.fgPrimary }}>{tx.safeMode.resources}</Text>
+      <Section>
+        <Resources />
       </Section>
 
       <Sheet visible={adding} onClose={() => setAdding(false)} title={tx.safety.add} closeLabel={tx.common.close}>

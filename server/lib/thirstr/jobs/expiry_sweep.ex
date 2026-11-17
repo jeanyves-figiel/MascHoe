@@ -18,6 +18,7 @@ defmodule Thirstr.Jobs.ExpirySweep do
     # ciphertext queue 30 d, franking tags 90 d, expired media blobs (R-07.12, R-08.10)
     Thirstr.Chat.sweep()
     Thirstr.Verification.sweep()
+    Thirstr.Linked.recheck()
     :ok
   end
 end
