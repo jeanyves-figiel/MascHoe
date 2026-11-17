@@ -7,6 +7,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 - Release scripts `bin/migrate` and `bin/server` committed without the executable bit, so the Fly release command failed on the first staging deploy.
+- Release node name built from `FLY_IMAGE_REF`; a digest-pinned image made it invalid and the app crash-looped on staging. Node is now `<app>@<private IPv6>`.
 
 ### Changed
 - api.md: account & onboarding endpoints, logout, delete confirmation, session shape, install header.
