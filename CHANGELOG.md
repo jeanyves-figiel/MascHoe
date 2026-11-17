@@ -5,6 +5,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- iOS TestFlight pipeline (#31): `ios-testflight.yml` (EAS Build + auto-submit, app points at staging), `apps/mobile/eas.json`, `app.config.js` (passkey associated domain from API host), runbook `docs/runbooks/ios.md`.
+- Native sign-in on iOS: Sign in with Apple (no name/email scopes) and native passkeys (`react-native-passkey`). Google and email link hidden on native builds until configured (`EXPO_PUBLIC_AUTH_GOOGLE`, `EXPO_PUBLIC_AUTH_EMAIL`).
+- API: `GET /.well-known/apple-app-site-association` (`webcredentials`, from `APPLE_TEAM_ID`; 404 until set).
+
 ### Fixed
 - Release scripts `bin/migrate` and `bin/server` committed without the executable bit, so the Fly release command failed on the first staging deploy.
 - Release node name built from `FLY_IMAGE_REF`; a digest-pinned image made it invalid and the app crash-looped on staging. Node is now `<app>@<private IPv6>`.

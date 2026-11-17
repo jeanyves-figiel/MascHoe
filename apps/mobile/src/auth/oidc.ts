@@ -1,12 +1,44 @@
+import { Platform } from 'react-native';
 import { api, platform, saveSession, Session } from '../api/client';
 
-// Sign in with Apple / Google. Native SDK flows (I-03) hand us an ID token; on DEV the
+// Which sign-in methods this build offers (S-02). DEV (web, EXPO_PUBLIC_ENV=dev) uses the
+// server's dev issuer for Apple/Google. Native iOS uses the real Sign in with Apple sheet.
+// Google and email link need server config (Google client IDs, SMTP, #26): opt-in per build.
+const devAuth = process.env.EXPO_PUBLIC_ENV === 'dev';
+const flag = (v: string | undefined) => v === '1' || v === 'true';
+
+export const authMethods = {
+  apple: devAuth || Platform.OS === 'ios',
+  google: devAuth || flag(process.env.EXPO_PUBLIC_AUTH_GOOGLE),
+  email: devAuth || Platform.OS === 'web' || flag(process.env.EXPO_PUBLIC_AUTH_EMAIL),
+};
+
+// Sign in with Apple / Google. Native SDK flows hand us an ID token; on DEV the
 // server's dev issuer mints one so the full server path is exercised on localhost.
 export async function signInWith(provider: 'apple' | 'google', ageConfirmed: boolean) {
-  const sub = await devSubject(provider);
-  const { id_token } = await api<{ id_token: string }>('POST', '/dev/oidc/token', { sub });
+  const id_token = devAuth ? await devToken(provider) : await nativeToken(provider);
   const s = await api<Session>('POST', '/auth/oidc', { provider, id_token, age_confirmed: ageConfirmed, platform });
   return saveSession(s);
+}
+
+async function devToken(provider: string) {
+  const sub = await devSubject(provider);
+  const { id_token } = await api<{ id_token: string }>('POST', '/dev/oidc/token', { sub });
+  return id_token;
+}
+
+async function nativeToken(provider: 'apple' | 'google') {
+  if (provider !== 'apple' || Platform.OS !== 'ios') throw new Error('unsupported');
+  const Apple = await import('expo-apple-authentication');
+  try {
+    // No scopes: we never ask Apple for name or email (R-01.2).
+    const cred = await Apple.signInAsync({ requestedScopes: [] });
+    if (!cred.identityToken) throw new Error('cancelled');
+    return cred.identityToken;
+  } catch (e) {
+    if ((e as { code?: string }).code === 'ERR_REQUEST_CANCELED') throw new Error('cancelled');
+    throw e;
+  }
 }
 
 // Stable per-install fake subject so "sign in again" finds the same DEV account.

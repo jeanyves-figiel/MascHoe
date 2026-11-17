@@ -8,13 +8,48 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0B0B0F",
-    "splash": { "image": "./assets/splash-icon.png", "resizeMode": "contain", "backgroundColor": "#0B0B0F" },
-    "ios": { "bundleIdentifier": "app.thirstr", "supportsTablet": false },
-    "android": { "package": "app.thirstr", "adaptiveIcon": { "foregroundImage": "./assets/android-icon-foreground.png", "backgroundColor": "#0B0B0F" } },
-    "web": { "favicon": "./assets/favicon.png", "bundler": "metro", "output": "single" },
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0B0B0F"
+    },
+    "ios": {
+      "bundleIdentifier": "app.thirstr",
+      "supportsTablet": false,
+      "usesAppleSignIn": true,
+      "config": {
+        "usesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "app.thirstr",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundColor": "#0B0B0F"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "single"
+    },
     "plugins": [
-      ["expo-location", { "locationWhenInUsePermission": "Thirstr turns your position into an area on your phone. Only the area is shared." }],
-      ["expo-image-picker", { "photosPermission": "Pick photos for your profile." }]
-    ]
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Thirstr turns your position into an area on your phone. Only the area is shared."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Pick photos for your profile."
+        }
+      ],
+      "expo-apple-authentication"
+    ],
+    "runtimeVersion": {
+      "policy": "appVersion"
+    }
   }
 }

@@ -26,6 +26,8 @@ Errors: `{ "error": { "code": "rate_limited", "message": "...", "retry_after": 3
 
 Sign-up calls (passkey register, OIDC, email verify) carry `age_confirmed: true` (R-01.12) and `platform`. Every request carries `x-thirstr-install` (random per install, hashed server-side) used only for the R-02.3 under-age flag. Session response: `{access_token, refresh_token, expires_in, account: Me}`.
 
+Outside `/v1`: `GET /.well-known/apple-app-site-association` → `{webcredentials: {apps: ["<TeamID>.app.thirstr"]}}` so iOS accepts this host as passkey relying party (I-03); 404 until `APPLE_TEAM_ID` is set. Native Apple sign-in sends Apple's identity token with `aud` = bundle id (`APPLE_CLIENT_IDS`, default `app.thirstr`).
+
 ### Account & onboarding (F-01, F-02)
 | Method | Path | Body → Response |
 |---|---|---|

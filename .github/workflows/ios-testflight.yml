@@ -1,0 +1,102 @@
+# iOS beta builds (#31): EAS Build (Expo's macOS builders) → App Store Connect → TestFlight.
+# App talks to staging. Signing certs/profiles are created and kept by EAS from the
+# App Store Connect API key; nothing signing-related lives in this repo.
+# Runbook: docs/runbooks/ios.md
+name: iOS TestFlight
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["apps/mobile/**", ".github/workflows/ios-testflight.yml"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-testflight
+  cancel-in-progress: false
+
+jobs:
+  testflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: apps/mobile
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EXPO_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      EXPO_APPLE_TEAM_TYPE: ${{ vars.APPLE_TEAM_TYPE || 'INDIVIDUAL' }}
+      ASC_APP_ID: ${{ secrets.ASC_APP_ID }}
+      EXPO_ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      EXPO_ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+    steps:
+      - name: Owner setup present?
+        id: gate
+        working-directory: .
+        run: |
+          missing=""
+          for v in EXPO_TOKEN ASC_APP_ID EXPO_APPLE_TEAM_ID EXPO_ASC_KEY_ID EXPO_ASC_ISSUER_ID ASC_KEY_P8; do
+            [ -n "${!v}" ] || missing="$missing $v"
+          done
+          if [ -n "$missing" ]; then
+            echo "::warning::iOS build skipped, missing secrets:$missing (see docs/runbooks/ios.md)"
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.gate.outputs.ok == 'true'
+        uses: actions/checkout@v4
+
+      - if: steps.gate.outputs.ok == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+
+      - if: steps.gate.outputs.ok == 'true'
+        run: npm ci
+
+      - name: App Store Connect API key file
+        if: steps.gate.outputs.ok == 'true'
+        run: |
+          umask 077
+          printf '%s\n' "$ASC_KEY_P8" > "$RUNNER_TEMP/asc.p8"
+          echo "EXPO_ASC_API_KEY_PATH=$RUNNER_TEMP/asc.p8" >> "$GITHUB_ENV"
+
+      # EAS needs a project id in the app config. app.config.js is dynamic, so `eas init`
+      # cannot edit it: hide it while init writes the id into app.json (this run only;
+      # EAS uploads the working tree, so the builder sees the same id).
+      - name: EAS project + submit target
+        if: steps.gate.outputs.ok == 'true'
+        run: |
+          mv app.config.js "$RUNNER_TEMP/app.config.js"
+          npx --yes eas-cli@27 init --non-interactive --force
+          mv "$RUNNER_TEMP/app.config.js" app.config.js
+          node -e '
+            const fs = require("fs");
+            const j = JSON.parse(fs.readFileSync("eas.json", "utf8"));
+            Object.assign(j.submit.staging.ios, {
+              ascAppId: process.env.ASC_APP_ID,
+              ascApiKeyPath: process.env.EXPO_ASC_API_KEY_PATH,
+              ascApiKeyId: process.env.EXPO_ASC_KEY_ID,
+              ascApiKeyIssuerId: process.env.EXPO_ASC_ISSUER_ID,
+            });
+            fs.writeFileSync("eas.json", JSON.stringify(j, null, 2));
+          '
+
+      - name: Build and submit to TestFlight
+        if: steps.gate.outputs.ok == 'true'
+        run: |
+          npx --yes eas-cli@27 build --platform ios --profile staging \
+            --non-interactive --auto-submit-with-profile staging \
+            --message "staging ${GITHUB_SHA::7}"
+
+      - name: Remove key file
+        if: always()
+        working-directory: .
+        run: rm -f "$RUNNER_TEMP/asc.p8"

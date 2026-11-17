@@ -11,7 +11,7 @@ defmodule ThirstrWeb.Plugs.WebClient do
   def init(opts), do: opts
 
   def call(%Plug.Conn{method: "GET", path_info: [first | _]} = conn, _)
-      when first in ["v1", "socket"],
+      when first in ["v1", "socket", ".well-known"],
       do: conn
 
   def call(%Plug.Conn{method: "GET"} = conn, _) do
