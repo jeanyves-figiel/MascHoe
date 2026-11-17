@@ -21,6 +21,21 @@ defmodule ThirstrWeb.Router do
     plug ThirstrWeb.Plugs.RateLimit, bucket: "relay", limit: 60, window: 60
   end
 
+  pipeline :device_link_limit do
+    plug ThirstrWeb.Plugs.RateLimit, bucket: "dlink", limit: 10, window: 60
+  end
+
+  pipeline :page do
+    plug :accepts, ["html"]
+
+    plug :put_secure_browser_headers, %{
+      "content-security-policy" =>
+        "default-src 'none'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' https: http://localhost:9000; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+      "referrer-policy" => "no-referrer",
+      "x-robots-tag" => "noindex"
+    }
+  end
+
   pipeline :email_limit do
     plug ThirstrWeb.Plugs.RateLimit, bucket: "email", limit: 5, window: 3600
   end
@@ -83,6 +98,12 @@ defmodule ThirstrWeb.Router do
   end
 
   # iOS passkeys / universal links (I-03). Apple fetches this without auth.
+  # I-02 public profile share page (no scripts)
+  scope "/p", ThirstrWeb do
+    pipe_through :page
+    get "/:slug", SharePageController, :page
+  end
+
   scope "/.well-known", ThirstrWeb do
     get "/apple-app-site-association", WellKnownController, :aasa
   end
@@ -233,6 +254,28 @@ defmodule ThirstrWeb.Router do
       post "/checkin/:token/extend", SafetyController, :extend
       post "/checkin/:token/ok", SafetyController, :ok
       post "/checkin/:token/panic", SafetyController, :panic_checkin
+
+      # B4d: data export, devices, linked accounts, share links
+      get "/account/export", AccountDataController, :export
+      get "/me/devices", AccountDataController, :devices
+      delete "/me/devices/:id", AccountDataController, :remove_device
+      post "/devices/link", AccountDataController, :link_start
+      get "/devices/link/:code", AccountDataController, :link_status
+      post "/devices/link/:code/confirm", AccountDataController, :link_confirm
+      get "/me/profiles/:id/linked-accounts", AccountDataController, :linked
+      post "/me/linked-accounts", AccountDataController, :link_account
+      patch "/me/linked-accounts/:id", AccountDataController, :update_linked
+      post "/me/linked-accounts/:id/verify", AccountDataController, :verify_linked
+      delete "/me/linked-accounts/:id", AccountDataController, :remove_linked
+      get "/me/profiles/:id/share", AccountDataController, :get_share
+      post "/me/profiles/:id/share", AccountDataController, :share
+      delete "/me/profiles/:id/share", AccountDataController, :unshare
+      get "/share/:slug", AccountDataController, :resolve
+    end
+
+    scope "/auth" do
+      pipe_through :device_link_limit
+      post "/device-link", AccountDataController, :link_claim
     end
 
     # Trusted-contact web page (no account; rid from the link fragment)

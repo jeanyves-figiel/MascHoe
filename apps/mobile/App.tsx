@@ -19,6 +19,7 @@ import { SessionProvider } from './src/app/session';
 import { LocationScreen } from './src/screens/Location';
 import { PhotoScreen } from './src/screens/Photo';
 import { VerifyScreen } from './src/screens/Verify';
+import { LinkDeviceScreen } from './src/screens/LinkDevice';
 import { WelcomeScreen } from './src/screens/Welcome';
 import { color } from './src/theme/tokens';
 
@@ -61,7 +62,10 @@ export default function App() {
       body = <ActivityIndicator style={{ flex: 1 }} color={color.hookup} />;
       break;
     case 'welcome':
-      body = <WelcomeScreen onStart={() => { setMode('signup'); setScreen('create'); }} onLogin={() => { setMode('login'); setScreen('create'); }} />;
+      body = <WelcomeScreen onStart={() => { setMode('signup'); setScreen('create'); }} onLogin={() => { setMode('login'); setScreen('create'); }} onLink={() => setScreen('link')} />;
+      break;
+    case 'link':
+      body = <LinkDeviceScreen onDone={land} onBack={() => setScreen('welcome')} />;
       break;
     case 'create':
       body = <CreateAccountScreen mode={mode} onDone={land} onEmailSent={() => setScreen('inbox')} onUnderage={() => setScreen('underage')} />;

@@ -5,12 +5,13 @@ import { cellCenter } from '../geo/cells';
 import { t } from '../i18n/strings';
 import { displayCount } from '../onboarding/flow';
 import { color, radius, space } from '../theme/tokens';
+import { tx } from '../i18n/app';
 import { Body, Button, H1, Screen, s } from '../ui';
 
 type Welcome = { city: string | null; center: { lat: number; lng: number } | null; count: number | null; cells: { cell: string; count: number }[] };
 
 // S-01 (R-02.2): live blurred activity around an approximate city; no permission needed.
-export function WelcomeScreen({ onStart, onLogin }: { onStart: () => void; onLogin: () => void }) {
+export function WelcomeScreen({ onStart, onLogin, onLink }: { onStart: () => void; onLogin: () => void; onLink?: () => void }) {
   const [w, setW] = useState<Welcome | null>(null);
   useEffect(() => {
     api<Welcome>('GET', '/welcome').then(setW).catch(() => setW(null));
@@ -31,6 +32,7 @@ export function WelcomeScreen({ onStart, onLogin }: { onStart: () => void; onLog
       <View style={s.spacer} />
       <Button testID="start" title={t.welcome.start} onPress={onStart} />
       <Button title={t.welcome.login} kind="ghost" onPress={onLogin} />
+      {onLink ? <Button testID="link-device" title={tx.devices.haveApp} kind="ghost" onPress={onLink} /> : null}
     </Screen>
   );
 }

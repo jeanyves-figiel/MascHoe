@@ -12,6 +12,7 @@ import { Banner, Button, Chip, Chips, ErrorText, Field, Loading, Section, Toggle
 import { getLocal, setLocal } from './localFields';
 import { resharePrivate } from '../chat/engine';
 import { PhotoEditor } from './PhotoEditor';
+import { ProfileLinks } from './ProfileLinks';
 
 type Nav = { goBack: () => void };
 const VIS: Visibility[] = ['public', 'verified', 'chats', 'only_me'];
@@ -144,6 +145,7 @@ export function EditProfileScreen({ route, navigation }: { route: { params: { id
             </Section>
           );
         })}
+        <ProfileLinks profileId={p.id} />
         <ErrorText text={err} />
       </ScrollView>
       <View style={{ position: 'absolute', left: space.l, right: space.l, bottom: insets.bottom + space.l, flexDirection: 'row', gap: space.s, maxWidth: 560, alignSelf: 'center', width: '100%' }}>

@@ -93,7 +93,8 @@ defmodule Thirstr.Social do
          vouched: Thirstr.Trust.vouched?(viewer, t.id),
          can_vouch: t.account_id != viewer.id and Thirstr.Trust.can_vouch?(viewer, t.id),
          badges: Thirstr.Trust.badges(t),
-         linked_accounts: Thirstr.Trust.linked_accounts(t.id, audience),
+         linked_accounts:
+           Thirstr.Linked.visible(t.id, viewer, audience, t.account_id == viewer.id),
          updated_at: t.updated_at,
          self: t.account_id == viewer.id
        }}

@@ -14,6 +14,7 @@ defmodule ThirstrWeb.WellKnownTest do
   test "AASA lists webcredentials app ids", %{conn: conn} do
     Application.put_env(:thirstr, :apple_app_ids, ["ABCDE12345.app.thirstr"])
     body = conn |> get("/.well-known/apple-app-site-association") |> json_response(200)
-    assert body == %{"webcredentials" => %{"apps" => ["ABCDE12345.app.thirstr"]}}
+    assert body["webcredentials"] == %{"apps" => ["ABCDE12345.app.thirstr"]}
+    assert [%{"components" => [%{"/" => "/p/*"}]}] = body["applinks"]["details"]
   end
 end

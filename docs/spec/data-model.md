@@ -105,7 +105,8 @@ Address/door code: E2EE message to accepted guests, never in DB.
 ### server_keys (name pk, der, created_at) — `verify_rsa`: F-03 blind-signature issuer key (RSA 3072), generated on first use
 ### spent_tokens (hash pk = sha256(token), created_at) — redeemed verification tokens, no link to the account (R-03.4)
 ### admin_audit (id bigserial, actor, action, object_hash (sha256 prefix of the object id), reason, at) — append-only (DB rules drop UPDATE/DELETE), R-AD.4
-### linked_accounts (profile_id, platform enum(x, bluesky, onlyfans, jff, instagram), handle, proof_method, verified_at, visibility)
+### linked_accounts (id uuid, profile_id, platform enum(x, bluesky, onlyfans, jff, instagram), handle (64), code, verified_at, checked_at, visibility enum(everyone, verified, chats), created_at)
+### profile_shares (slug pk (10), profile_id unique, created_at) — I-02 share link; rotate = new row
 ### mls_key_packages (id bigserial, profile_id, device_id, key_package bytea, last_resort bool, created_at) — single-use; ≤ 200 per (profile, device); one last-resort per (profile, device)
 ### mls_messages (id bigserial, to_profile_id, to_device_id, from_profile_id, group_id bytea, kind welcome|commit|app, key_package_id, ciphertext bytea, created_at) — deleted on ack, swept after 30 d
 ### franking_tags (message_id, tag bytea, created_at) — R-07.11 commitments, swept with messages
@@ -128,6 +129,7 @@ Address/door code: E2EE message to accepted guests, never in DB.
 | `presence:{cell_r8}` | Phoenix Presence | live |
 | `rl:{account}:{action}` | counters | window |
 | `ip:{hash}` | abuse counters | 24 h |
+| `dlink:{code}` | device-link state (account, state, claim hash, new platform) | 120 s |
 | `pushq:{account}` | push throttle (1 per 20 s) | 20 s |
 
 ## Object storage

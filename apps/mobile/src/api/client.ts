@@ -104,7 +104,8 @@ export async function api<T = unknown>(method: string, path: string, body?: unkn
 
   const res = await fetch(BASE + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
   if (res.status === 401 && retry && access && (await refresh())) return api<T>(method, path, body, false);
-  if (res.status === 202 || res.status === 204) return undefined as T;
+  if (res.status === 204) return undefined as T;
+  if (res.status === 202) return (await res.json().catch(() => undefined)) as T;
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
     const e = json.error ?? {};

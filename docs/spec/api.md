@@ -22,7 +22,13 @@ Errors: `{ "error": { "code": "rate_limited", "message": "...", "retry_after": 3
 | POST | /auth/device/link/complete | {qr_payload, new_device_pubkey} → tokens |
 | DELETE | /account | {confirm: "DELETE"} → 202; rows deleted immediately, objects purged by job ≤ 24 h |
 | POST | /account/pause · /account/resume | |
-| GET | /account/export | → 202; E2EE archive link pushed when ready |
+| GET | /account/export | → 200 archive JSON to the device (beta-build-plan › B4d); 3/day |
+| GET | /me/devices | → {devices: [{id, platform, last_seen_day, current}]} |
+| DELETE | /me/devices/{id} | → 204 (signs that device out) |
+| POST | /devices/link | → {code, expires_in: 120} |
+| GET | /devices/link/{code} | → {state: pending\|claimed\|confirmed, platform?} |
+| POST | /devices/link/{code}/confirm | → 204 (after app lock / Face ID on the old device) |
+| POST | /auth/device-link | no auth, 10/min/IP. {code, platform} → {claim}; {code, claim} → 202 {state} until confirmed, then Session |
 
 Sign-up calls (passkey register, OIDC, email verify) carry `age_confirmed: true` (R-01.12) and `platform`. Every request carries `x-thirstr-install` (random per install, hashed server-side) used only for the R-02.3 under-age flag. Session response: `{access_token, refresh_token, expires_in, account: Me}`.
 
@@ -170,8 +176,16 @@ Contact side (no account; `rid` from the link fragment; 60 req/min per IP):
 | DELETE | /relay/{rid} | → 204 (opt out, R-13.3) |
 
 ### Social (I-01, I-02, F-18)
-| POST | /me/linked-accounts | {platform, handle} → {proof_method, code?} |
-| POST | /me/linked-accounts/{id}/verify | |
+| GET | /me/profiles/{id}/linked-accounts | → {linked: [{id, platform, handle, visibility, verified, code?}]} |
+| POST | /me/linked-accounts | {profile_id, platform: x\|bluesky\|onlyfans\|jff\|instagram, handle, visibility: everyone\|verified\|chats} → 201 {id, proof_method: bio_code\|none, code?} (max 5 per profile) |
+| PATCH | /me/linked-accounts/{id} | {visibility} → 204 |
+| POST | /me/linked-accounts/{id}/verify | → {verified} (Bluesky: code in public bio) |
+| DELETE | /me/linked-accounts/{id} | → 204 |
+| GET | /me/profiles/{id}/share | → {share: {slug, url} \| null} |
+| POST | /me/profiles/{id}/share | → {slug, url} (creates or rotates) |
+| DELETE | /me/profiles/{id}/share | → 204 (link dead) |
+| GET | /share/{slug} | → {profile_id} (signed in; then GET /profiles/{id}) |
+Public page `GET /p/{slug}` (HTML, no scripts) — I-02.
 | POST · DELETE | /profiles/{id}/vouch | vouch / withdraw. Verified, account ≥ 30 d (403, AC-18.1), ≥ 10 messages each way with that profile, ≤ 5 per 30 d. Profile view adds `vouches` (weighted, anonymous), `vouched`, `can_vouch` |
 
 ## Realtime (Phoenix Channels, WSS)

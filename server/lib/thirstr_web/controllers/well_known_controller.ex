@@ -1,7 +1,7 @@
 defmodule ThirstrWeb.WellKnownController do
   @moduledoc """
   apple-app-site-association: binds the iOS app to this host as a WebAuthn relying
-  party (`webcredentials`). App IDs are `<TeamID>.<bundle id>`, from APPLE_TEAM_ID.
+  party (`webcredentials`) and opens `/p/*` share links in the app (`applinks`). App IDs are `<TeamID>.<bundle id>`, from APPLE_TEAM_ID.
   404 until a team is configured.
   """
   use ThirstrWeb, :controller
@@ -12,7 +12,11 @@ defmodule ThirstrWeb.WellKnownController do
         send_resp(conn, 404, "")
 
       ids ->
-        json(conn, %{webcredentials: %{apps: ids}})
+        # Universal links: profile share pages open in the app (I-02 R-I02.3).
+        json(conn, %{
+          webcredentials: %{apps: ids},
+          applinks: %{details: [%{appIDs: ids, components: [%{"/" => "/p/*"}]}]}
+        })
     end
   end
 end

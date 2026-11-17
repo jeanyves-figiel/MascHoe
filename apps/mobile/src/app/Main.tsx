@@ -3,8 +3,9 @@ import { createNavigationContainerRef, DarkTheme, NavigationContainer } from '@r
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as Haptics from 'expo-haptics';
 import React from 'react';
-import { AppState, Platform, Pressable, Text, View } from 'react-native';
+import { AppState, Linking, Platform, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { api } from '../api/client';
 import { AlbumEditScreen, AlbumsScreen, AlbumViewScreen } from '../chat/AlbumScreens';
 import { ChatScreen } from '../chat/ChatScreen';
 import { on, unreadTotal } from '../chat/engine';
@@ -14,6 +15,7 @@ import { PushPrompt } from '../chat/PushPrompt';
 import { ExploreScreen } from '../explore/ExploreScreen';
 import { tx } from '../i18n/app';
 import { BlockedScreen } from '../me/BlockedScreen';
+import { DevicesScreen } from '../me/DevicesScreen';
 import { EditProfileScreen } from '../me/EditProfileScreen';
 import { MeScreen } from '../me/MeScreen';
 import { SettingsScreen } from '../me/SettingsScreen';
@@ -28,6 +30,8 @@ import { TonightScreen } from '../scene/TonightScreen';
 import { AppLockScreen } from '../safety/AppLockScreen';
 import { CheckinDueScreen, CheckinStartScreen } from '../safety/CheckinScreens';
 import { LockGate } from '../safety/LockGate';
+import { SafeModeAuto } from '../safety/SafeModeAuto';
+import { loadPrefs, prefs } from '../me/prefs';
 import { active as activeCheckin, refreshCheckin } from '../safety/safety';
 import { SafetyScreen } from '../safety/SafetyScreen';
 import { NoticesScreen } from '../trust/NoticesScreen';
@@ -64,7 +68,7 @@ function PillBar({ state, navigation }: BottomTabBarProps) {
             accessibilityState={{ selected: on }}
             accessibilityLabel={labels[r.name]}
             onPress={() => {
-              if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {});
+              if (Platform.OS !== 'web' && prefs().haptics) Haptics.selectionAsync().catch(() => {});
               if (!on) navigation.navigate(r.name);
             }}
             style={{ flex: 1, height: 48, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? modeColor[mode] : 'transparent' }}
@@ -136,18 +140,36 @@ function useCheckinWatch() {
   }, []);
 }
 
+/** I-02 R-I02.3: thirstr://p/{slug} and https://<site>/p/{slug} open the profile. */
+function useShareLinks() {
+  React.useEffect(() => {
+    const open = async (url: string | null | undefined) => {
+      const m = url?.match(/(?:^thirstr:\/\/p\/|\/p\/)([a-z0-9]{10})(?:[/?#]|$)/);
+      if (!m) return;
+      const r = await api<{ profile_id: string }>('GET', `/share/${m[1]}`).catch(() => null);
+      for (let i = 0; i < 20 && !nav.isReady(); i++) await new Promise((res) => setTimeout(res, 250));
+      if (r && nav.isReady()) nav.navigate('Profile', { id: r.profile_id });
+    };
+    Linking.getInitialURL().then(open);
+    const s = Linking.addEventListener('url', (e) => open(e.url));
+    return () => s.remove();
+  }, []);
+}
+
 const sub = { headerShown: true, title: '', headerStyle: { backgroundColor: color.bgBase }, headerTintColor: color.fgPrimary, headerShadowVisible: false };
 
 export function Main() {
   const { mode } = useSession();
   // Hosts keep party / activity / club group chats in step with their member lists.
   React.useEffect(() => {
+    loadPrefs();
     resyncHostGroups().catch(() => {});
     return on('scene', () => {
       resyncHostGroups().catch(() => {});
     });
   }, []);
   useCheckinWatch();
+  useShareLinks();
   return (
     <ModeContext.Provider value={mode}>
       <LockGate>
@@ -177,8 +199,10 @@ export function Main() {
           <Stack.Screen name="CheckinStart" component={CheckinStartScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="CheckinDue" component={CheckinDueScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="AppLock" component={AppLockScreen} options={sub} />
+          <Stack.Screen name="Devices" component={DevicesScreen} options={sub} />
         </Stack.Navigator>
         <PushPrompt />
+        <SafeModeAuto navigate={(r) => nav.isReady() && nav.navigate(r)} />
       </NavigationContainer>
       </LockGate>
     </ModeContext.Provider>

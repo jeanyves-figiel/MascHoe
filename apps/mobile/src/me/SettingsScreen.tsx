@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Platform, ScrollView, Text, View } from 'react-native';
+import { Linking, Platform, ScrollView, Text, View } from 'react-native';
 import { api, ApiError, clearSession, Me } from '../api/client';
 import type { Settings } from '../api/types';
 import { useSession } from '../app/session';
 import { askPushPermission } from '../chat/engine';
 import { customQuickReplies, setCustomQuickReplies } from '../chat/quick';
 import { tx } from '../i18n/app';
+import { exportData } from './exportData';
+import { type Prefs, prefs, setPrefs } from './prefs';
 import { color, space, type } from '../theme/tokens';
 import { Banner, Button, Chip, Chips, ErrorText, Field, ListRow, Loading, Section, Toggle } from '../ui';
 
@@ -20,6 +22,9 @@ export function SettingsScreen({ navigation }: { navigation: Nav }) {
   const [safeOffAsk, setSafeOffAsk] = useState(false);
   const [del, setDel] = useState<string | null>(null);
   const [quick, setQuick] = useState<string[]>([]);
+  const [pf, setPf] = useState<Prefs>(prefs());
+  const [exported, setExported] = useState(false);
+  const [lic, setLic] = useState(false);
   useEffect(() => {
     customQuickReplies().then(setQuick);
   }, []);
@@ -99,6 +104,7 @@ export function SettingsScreen({ navigation }: { navigation: Nav }) {
         {choice(tx.settings.whoMessage, st.who_can_message, tx.settings.whoOpts, (v) => put({ who_can_message: v }))}
         {choice(tx.settings.explicit, st.explicit_from_strangers, tx.settings.explicitOpts, (v) => put({ explicit_from_strangers: v }))}
         {choice(tx.settings.disappearing, st.disappearing_default, tx.settings.disOpts, (v) => put({ disappearing_default: v }))}
+        {tog(tx.prefs.autoDelete, pf.autoDelete || !!me.safe_mode_active, (v) => setPrefs({ autoDelete: v }).then(setPf))}
         {show(tx.settings.quickReplies) ? (
           <View style={{ gap: space.xs }}>
             <Text style={{ ...type.body, color: color.fgPrimary }}>{tx.settings.quickReplies}</Text>
@@ -153,6 +159,16 @@ export function SettingsScreen({ navigation }: { navigation: Nav }) {
           </View>
         ) : null}
         {show(tx.settings.blocked) ? <ListRow testID="settings-blocked" title={tx.settings.blocked} onPress={() => navigation.navigate('Blocked')} /> : null}
+        {show(tx.safety.menu) ? <ListRow title={tx.safety.menu} onPress={() => navigation.navigate('Safety')} /> : null}
+        {show(tx.safety.lock.title) ? <ListRow testID="settings-applock" title={tx.safety.lock.title} onPress={() => navigation.navigate('AppLock')} /> : null}
+        {show(tx.prefs.verification) ? (
+          <ListRow
+            title={tx.prefs.verification}
+            sub={me.verified ? tx.prefs.verified(me.verified_since ?? '') : tx.prefs.notVerified}
+            right={me.verified ? tx.prefs.reverify : undefined}
+            onPress={() => navigation.navigate('Verify')}
+          />
+        ) : null}
       </Section>
 
       <Section title={tx.settings.account}>
@@ -161,6 +177,8 @@ export function SettingsScreen({ navigation }: { navigation: Nav }) {
         ) : (
           <ListRow title={tx.settings.pause} onPress={() => call(async () => setMe(await api<Me>('POST', '/account/pause')))} />
         )}
+        <ListRow testID="settings-devices" title={tx.devices.title} onPress={() => navigation.navigate('Devices')} />
+        <ListRow testID="settings-export" title={tx.exportData.title} sub={exported ? tx.exportData.ready : tx.exportData.hint} onPress={() => call(async () => { await exportData(); setExported(true); })} />
         <ListRow testID="logout" title={tx.settings.logout} onPress={() => call(async () => { await api('POST', '/auth/logout').catch(() => {}); await clearSession(); signOut(); })} />
         <ListRow title={tx.settings.logoutAll} onPress={() => call(async () => { await api('POST', '/auth/logout_all'); await clearSession(); signOut(); })} />
         <ListRow title={tx.settings.delete} danger onPress={() => setDel('')} />
@@ -170,6 +188,15 @@ export function SettingsScreen({ navigation }: { navigation: Nav }) {
             <Button kind="danger" title={tx.settings.delete} disabled={del !== 'DELETE'} onPress={() => call(async () => { await api('DELETE', '/account', { confirm: 'DELETE' }); await clearSession(); signOut(); })} />
           </View>
         ) : null}
+      </Section>
+
+      <Section title={tx.prefs.app}>
+        {choice(tx.prefs.units, pf.units, tx.prefs.unitOpts, (v) => setPrefs({ units: v as 'km' | 'mi' }).then(setPf))}
+        {Platform.OS !== 'web' ? tog(tx.prefs.haptics, pf.haptics, (v) => setPrefs({ haptics: v }).then(setPf)) : null}
+        {show(tx.prefs.language) ? <ListRow title={tx.prefs.language} sub={tx.prefs.languageSub} onPress={() => Linking.openSettings().catch(() => {})} /> : null}
+        {show(tx.prefs.privacy) ? <ListRow title={tx.prefs.privacy} onPress={() => Linking.openURL('https://thirstr.fun/privacy/')} /> : null}
+        {show(tx.prefs.licenses) ? <ListRow title={tx.prefs.licenses} onPress={() => setLic(!lic)} /> : null}
+        {lic ? <Text style={{ ...type.meta, color: color.fgSecondary }}>{tx.prefs.licensesBody}</Text> : null}
       </Section>
     </ScrollView>
   );

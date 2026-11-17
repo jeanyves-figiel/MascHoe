@@ -1,7 +1,7 @@
 import type { Me } from '../api/client';
 
 // F-02 flow (S-01…S-06). Pure logic, unit tested.
-export type Screen = 'welcome' | 'create' | 'inbox' | 'basics' | 'underage' | 'location' | 'photo' | 'verify' | 'explore';
+export type Screen = 'welcome' | 'create' | 'inbox' | 'basics' | 'underage' | 'location' | 'photo' | 'verify' | 'explore' | 'link';
 
 export function screenFor(me: Me | null): Screen {
   if (!me) return 'welcome';

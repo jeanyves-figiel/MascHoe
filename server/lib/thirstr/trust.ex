@@ -125,8 +125,6 @@ defmodule Thirstr.Trust do
     end
   end
 
-  def linked_accounts(_profile_id, _audience), do: []
-
   @doc false
   def repo, do: Repo
 end
