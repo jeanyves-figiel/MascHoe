@@ -5,6 +5,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+- Release scripts `bin/migrate` and `bin/server` committed without the executable bit, so the Fly release command failed on the first staging deploy.
+
 ### Changed
 - api.md: account & onboarding endpoints, logout, delete confirmation, session shape, install header.
 - data-model.md: passkeys, refresh_tokens, cities tables; account birthdate/onboarding fields; H3 cells stored as bigint.
