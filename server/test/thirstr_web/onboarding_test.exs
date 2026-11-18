@@ -22,6 +22,8 @@ defmodule ThirstrWeb.OnboardingTest do
 
     assert me["onboarding_step"] == "photo"
     assert me["location"]["level"] == "area"
+    # R-04.13: own coarse cell returned for map centring.
+    assert me["location"]["cell_r5"] =~ ~r/^85[0-9a-f]{13}$/
 
     pid = me["profile"]["id"]
 

@@ -13,7 +13,7 @@ import { ProfileTile } from './Card';
 import { defaultFilters, Filters, loadGrid, loadMap, loadTray } from './explore';
 import { ExploreMap } from './ExploreMap';
 import { FiltersSheet } from './FiltersSheet';
-import { lastKnown, syncLocation } from './location';
+import { devicePosition, lastKnown, LatLng, locateDevice, onDevicePosition, syncLocation } from './location';
 import { LocationSheet } from './LocationSheet';
 
 type View_ = 'map' | 'grid';
@@ -41,6 +41,10 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
   const [quick, setQuick] = useState<Card | null>(null);
   const bbox = useRef<[number, number, number, number] | null>(null);
   const [locTick, setLocTick] = useState(0);
+  const [device, setDevice] = useState<LatLng | null>(devicePosition());
+  const [recenter, setRecenter] = useState(0);
+
+  useEffect(() => onDevicePosition(setDevice), []);
 
   useEffect(() => {
     AsyncStorage.getItem(VIEW_KEY).then((v) => (v === 'grid' || v === 'map') && setView(v));
@@ -61,7 +65,10 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
           setLocTick((t) => t + 1);
         })
         .catch(() => {});
-    sync();
+    // R-04.13: ask once + get the device fix first, so the map can centre on it.
+    locateDevice()
+      .catch(() => null)
+      .then(sync);
     const id = setInterval(sync, 5 * 60_000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -104,7 +111,9 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
 
   const open = useCallback((c: Card) => navigation.navigate('Profile', { id: c.id }), [navigation]);
 
-  const center = (() => {
+  // R-04.13: own device position first (any level, incl. Hidden/City), then pin, last area cell, own coarse cell.
+  const dot: LatLng | null = (() => {
+    if (device) return device;
     const pin = me.location?.pin;
     if (pin) return { lat: pin.lat, lng: pin.lng };
     const lk = lastKnown();
@@ -114,6 +123,21 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
     }
     return null;
   })();
+  const center: { lat: number; lng: number; zoom?: number } | null = (() => {
+    if (dot) return dot;
+    const r5 = me.location?.cell_r5;
+    if (r5) {
+      const [lat, lng] = cellToLatLng(r5);
+      return { lat, lng, zoom: 10 };
+    }
+    return null;
+  })();
+
+  async function locateMe() {
+    const p = await locateDevice().catch(() => null);
+    if (!p && !center) return setShowLocation(true);
+    setRecenter((n) => n + 1);
+  }
 
   const level = me.location?.level ?? 'city';
   const locLabel = me.incognito ? tx.location.incognito : (tx.location.levels[level] ?? tx.location.levels.city)[0];
@@ -194,8 +218,19 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
   else if (view === 'map')
     body = (
       <View style={{ flex: 1 }}>
-        <ExploreMap center={center} me={center} data={mapData} accent={accent} onRegion={onRegion} onSelect={open} />
+        <ExploreMap center={center} me={dot} data={mapData} accent={accent} recenter={recenter} onRegion={onRegion} onSelect={open} />
         <View style={{ position: 'absolute', left: 0, right: 0, bottom: 96 }}>
+          <View style={{ alignItems: 'flex-end', paddingHorizontal: space.l, paddingBottom: space.s }}>
+            <Pressable
+              testID="locate-me"
+              accessibilityRole="button"
+              accessibilityLabel={tx.explore.locateMe}
+              onPress={locateMe}
+              style={({ pressed }) => [iconBtn, { borderWidth: 1, borderColor: color.line }, pressed && { opacity: 0.8 }]}
+            >
+              <Icon.Locate c={color.trust} />
+            </Pressable>
+          </View>
           <View style={{ flexDirection: 'row', alignItems: 'baseline', paddingHorizontal: space.l, paddingBottom: space.s, gap: space.s }}>
             <Text style={{ ...type.headline, color: color.fgPrimary, flex: 1 }}>{tx.explore.activeNow(tray.length)}</Text>
             <Text style={{ ...type.meta, color: color.fgSecondary }}>{tx.explore.nearestFirst}</Text>

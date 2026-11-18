@@ -9,7 +9,9 @@ import { cellLabels, cellsGeoJSON, initial, MapProps, START_ZOOM, STYLE_URL } fr
 maplibregl.setWorkerUrl('/maplibre/maplibre-gl-worker.mjs');
 
 // S-10 map on the web build (DEV tool). Same data, maplibre-gl.
-export function ExploreMap({ center, me, data, accent, onRegion, onSelect }: MapProps) {
+export function ExploreMap({ center, me, data, accent, recenter, onRegion, onSelect }: MapProps) {
+  const centred = useRef(!!center);
+  const touched = useRef(false);
   const host = useRef<HTMLDivElement | null>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const markers = useRef<maplibregl.Marker[]>([]);
@@ -20,7 +22,7 @@ export function ExploreMap({ center, me, data, accent, onRegion, onSelect }: Map
       container: host.current,
       style: STYLE_URL,
       center: center ? [center.lng, center.lat] : [8.54, 47.37],
-      zoom: center ? START_ZOOM : 2,
+      zoom: center ? (center.zoom ?? START_ZOOM) : 2,
       attributionControl: false,
       pitchWithRotate: false,
     });
@@ -29,6 +31,8 @@ export function ExploreMap({ center, me, data, accent, onRegion, onSelect }: Map
       onRegion([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]);
     };
     m.on('moveend', emit);
+    m.on('dragstart', () => (touched.current = true));
+    m.on('zoomstart', (e) => e.originalEvent && (touched.current = true));
     m.on('load', () => {
       m.addSource('cells', { type: 'geojson', data: cellsGeoJSON(null) });
       m.addLayer({ id: 'cells-fill', type: 'fill', source: 'cells', paint: { 'fill-color': accent, 'fill-opacity': ['get', 'w'] } });
@@ -75,9 +79,17 @@ export function ExploreMap({ center, me, data, accent, onRegion, onSelect }: Map
     }
   }, [data, me, accent, onSelect]);
 
+  // R-04.13: centre once when the first position arrives (unless the user moved), and on Locate me.
   useEffect(() => {
-    if (center && map.current) map.current.jumpTo({ center: [center.lng, center.lat] });
+    if (!center || !map.current || centred.current || touched.current) return;
+    centred.current = true;
+    map.current.jumpTo({ center: [center.lng, center.lat], zoom: center.zoom ?? START_ZOOM });
   }, [center?.lat, center?.lng]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!recenter || !center || !map.current) return;
+    centred.current = true;
+    map.current.easeTo({ center: [center.lng, center.lat], zoom: center.zoom ?? START_ZOOM, duration: 600 });
+  }, [recenter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return <View style={{ flex: 1 }}>{React.createElement('div', { ref: host, style: { position: 'absolute', inset: 0 } })}</View>;
 }

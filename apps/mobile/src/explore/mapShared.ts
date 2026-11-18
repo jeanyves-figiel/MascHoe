@@ -6,8 +6,11 @@ import type { Card, MapData } from '../api/types';
 export const STYLE_URL = API_BASE + '/tiles/style.json';
 
 export type MapProps = {
-  center: { lat: number; lng: number } | null;
+  /** Where to centre (R-04.13); zoom defaults to START_ZOOM. */
+  center: { lat: number; lng: number; zoom?: number } | null;
   me: { lat: number; lng: number } | null;
+  /** Bump to recentre on `center` (Locate me). */
+  recenter: number;
   data: MapData | null;
   accent: string;
   onRegion: (bbox: [number, number, number, number]) => void;

@@ -28,6 +28,7 @@ const en = {
     filters: 'Filters',
     activeNow: (n: number) => `Active now · ${n}`,
     nearestFirst: 'Nearest first',
+    locateMe: 'Locate me',
     further: 'Further away',
     empty: 'Nobody visible here yet',
     emptyBody: 'Try widening your filters, or check back tonight.',

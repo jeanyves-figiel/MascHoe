@@ -14,11 +14,48 @@ function metres(a: { lat: number; lng: number }, b: { lat: number; lng: number }
   return 2 * r * Math.asin(Math.sqrt(h));
 }
 
-export async function currentPosition(): Promise<{ lat: number; lng: number } | null> {
+export type LatLng = { lat: number; lng: number };
+
+// Device position for the viewer's own map only (R-04.13). Never sent: only cells leave the device.
+let device: LatLng | null = null;
+const listeners = new Set<(p: LatLng) => void>();
+function setDevice(p: LatLng) {
+  device = p;
+  listeners.forEach((l) => l(p));
+}
+export function devicePosition() {
+  return device;
+}
+export function onDevicePosition(l: (p: LatLng) => void) {
+  listeners.add(l);
+  return () => {
+    listeners.delete(l);
+  };
+}
+
+/** Asks for "When in use" once, if never asked (R-04.13). Returns whether granted. */
+export async function ensurePermission(): Promise<boolean> {
+  const perm = await ExpoLocation.getForegroundPermissionsAsync();
+  if (perm.status === 'granted') return true;
+  if (perm.status !== 'undetermined' || !perm.canAskAgain) return false;
+  return (await ExpoLocation.requestForegroundPermissionsAsync()).status === 'granted';
+}
+
+/** Last known fix first (instant), then a fresh one. Updates devicePosition(). */
+export async function locateDevice(): Promise<LatLng | null> {
+  if (!(await ensurePermission())) return null;
+  const quick = await ExpoLocation.getLastKnownPositionAsync({ maxAge: 10 * 60_000 }).catch(() => null);
+  if (quick && !device) setDevice({ lat: quick.coords.latitude, lng: quick.coords.longitude });
+  return currentPosition();
+}
+
+export async function currentPosition(): Promise<LatLng | null> {
   const perm = await ExpoLocation.getForegroundPermissionsAsync();
   if (perm.status !== 'granted') return null;
   const pos = await ExpoLocation.getCurrentPositionAsync({ accuracy: ExpoLocation.Accuracy.Balanced });
-  return { lat: pos.coords.latitude, lng: pos.coords.longitude };
+  const p = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+  setDevice(p);
+  return p;
 }
 
 /** Sends the current r9 cell if needed. Returns updated Me, or null when nothing was sent. */
