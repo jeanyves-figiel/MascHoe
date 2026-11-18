@@ -13,7 +13,7 @@ Mockup (approved 2026-11-17): [onboarding v2 canvas](https://claude.ai/artifact/
 | 1 | S-03a Name | name 1–30 | no | → S-03b |
 | 2 | S-03b Birthday | date, age ≥ 18 | no | → S-03c, under 18 → S-03x |
 | 3 | S-03c I am | one option (+ text for "Something else") | no | auto-advance 380 ms after a pick (not for "Something else") → S-03d |
-| 4 | S-03d Here for | ≥ 1 tile | defaults Hookup + Tonight | Continue = `PUT /me/basics` → S-04 |
+| 4 | S-03d Here for | ≥ 1 tile | nothing pre-selected (Continue disabled until ≥ 1) | Continue = `PUT /me/basics` → S-04 |
 | 5 | S-04 Location | level + OS prompt (or city) | deny → city picker | → S-05 |
 | 6 | S-05 Main photo | 1 photo passing main check | extras skippable | → S-06 |
 | 7 | S-06 Verify | — | "Later" | → S-07 |
@@ -30,10 +30,10 @@ Mockup (approved 2026-11-17): [onboarding v2 canvas](https://claude.ai/artifact/
 - R-02.1g S-07: "You're in, {name}." with the profile card as others will see it (main photo, name + age, verified tick, location level chip, Here-for chips) and CTA "See who's around".
 - R-02.2 Welcome shows live blurred activity: server returns counts per r7 cell around an **approximate** IP-geolocated city (no permission needed); text "N guys around you." (N = active accounts in the area, not people online now, so no "right now"; thousands separated per locale). N rounded down to nearest 10 if < 100.
 - R-02.3 Birthday under 18 → stop: "You need to be 18+". Account deleted, device flagged 30 d.
-- R-02.4 "I am": Man · Trans man · Non-binary · Other (free text 20). Required.
-- R-02.5 "Here for": multi-select Hookup, Tonight, Chat, Friends, Sport. Pre-selected Hookup + Tonight. Sets default Explore mode and creates Sport/Friends profiles lazily when first used.
+- R-02.4 "I am": Man · Trans man · Non-binary · Other (free text 20) · Prefer not to say (stored `unspecified`). **Optional** ([RF-3](../required-fields.md)); not shown on the profile.
+- R-02.5 "Here for": multi-select Hookup, Tonight, Chat, Friends, Sport. Nothing pre-selected; at least 1 required ([RF-4](../required-fields.md)). Sets default Explore mode and creates Sport/Friends profiles lazily when first used.
 - R-02.6 Location step explains before OS prompt. Default level Area (~200 m) with a sunflower "Default" badge. Hidden and Exact options disabled with a lock and "Verify first" for unverified accounts (AC-05.4; the server refuses both with 403 not_verified). A map preview (168 pt, radius 28) shows the chosen level live: City = large dashed teal zone, Area = ~200 m teal zone + pin, Exact = small ring + pin, caption chip in teal. Footer: "Your coordinates never leave your phone." CTA teal: "Allow location" (City: "Pick my city").
-- R-02.7 Main photo: 4:5 frame (radius 32) is the picker itself; extras are 4 small slots beside it, enabled once the main passes. While checking, a teal scan line runs over the frame; pass = teal border + "Main" badge. Camera or library; on-device pre-check then server classifier (F-15 R-15.10). Result inline < 3 s: ok / "needs to be less explicit for your main photo" / "we need to see a person". 4 extra slots offered, skippable.
+- R-02.7 Main photo: 4:5 frame (radius 32) is the picker itself; extras are 4 small slots beside it, enabled once the main passes. While checking, a teal scan line runs over the frame; pass = teal border + "Main" badge. Camera or library; on-device pre-check then server classifier (F-15 R-15.10). Result inline < 3 s: ok / "needs to be less explicit for your main photo" / "we need to see a person". 4 extra slots offered, skippable. Faceless main photos allowed. "Add it later" skips the step (`POST /me/onboarding/photo_later`); the account stays invisible until a main photo passes ([RF-6](../required-fields.md)).
 - R-02.8 S-06 intro sells the payoff (verified badge, unlocks Hidden, checked on the phone) with teal "Verify now" and text "Later". Liveness view: face oval with teal progress ring, one large prompt, 3 step pips. Verify "Later": user lands on Explore browse-only; banner "Verify to be seen and message first" persistent until done.
 - R-02.9 Push permission is **not** asked in onboarding; asked on first incoming message/tap.
 - R-02.10 Safe Mode country detected (F-14) → flow becomes: Welcome (neutral copy) → Create account → **App lock + disguised icon** → Basics → Location (City default, Exact disabled) → Photo → Verify (mandatory before visible).

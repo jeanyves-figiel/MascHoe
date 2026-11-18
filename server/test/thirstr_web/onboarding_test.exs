@@ -71,6 +71,46 @@ defmodule ThirstrWeb.OnboardingTest do
              |> json_response(403)
   end
 
+  describe "required-fields.md (owner decisions 2026-11-18)" do
+    test "RF-1 name max 20", %{c: c} do
+      assert %{"error" => %{"fields" => %{"display_name" => _}}} =
+               c |> basics(%{display_name: String.duplicate("a", 21)}) |> json_response(422)
+
+      assert c
+             |> recycle_authed()
+             |> basics(%{display_name: String.duplicate("a", 20)})
+             |> json_response(200)
+    end
+
+    test "RF-3 I am is optional: skipped or prefer not to say = unspecified", %{c: c} do
+      me = c |> basics(%{gender: nil}) |> json_response(200)
+      assert me["profile"]["gender"] == "unspecified"
+
+      me = c |> recycle_authed() |> basics(%{gender: "unspecified"}) |> json_response(200)
+      assert me["profile"]["gender"] == "unspecified"
+    end
+
+    test "RF-6 main photo later: moves on, invisible, ring counts basics (RF-12)", %{c: c} do
+      me = c |> basics() |> json_response(200)
+      assert me["profile"]["completeness"] == 20
+
+      c
+      |> recycle_authed()
+      |> put("/v1/me/location", %{level: "area", cell_r9: zurich_r9()})
+      |> json_response(200)
+
+      me = c |> recycle_authed() |> post("/v1/me/onboarding/photo_later") |> json_response(200)
+      assert me["onboarding_step"] == "verify"
+      assert me["profile"]["photos"] == []
+
+      assert %{"error" => %{"code" => "conflict"}} =
+               c
+               |> recycle_authed()
+               |> post("/v1/me/onboarding/photo_later")
+               |> json_response(409)
+    end
+  end
+
   test "basics validation (R-02.4)", %{c: c} do
     assert %{"error" => %{"fields" => f}} =
              c |> basics(%{gender: "other", display_name: ""}) |> json_response(422)

@@ -34,9 +34,12 @@ export function isoBirthday(year: number, month0: number, day: number): string {
   return `${year}-${String(month0 + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 }
 
+/** RF-1 (required-fields.md): display name 1–20. */
+export const NAME_MAX = 20;
+
 export function nameValid(name: string): boolean {
   const n = name.trim();
-  return n.length >= 1 && n.length <= 30;
+  return n.length >= 1 && n.length <= NAME_MAX;
 }
 
 export function ageOn(birthdate: Date, today: Date): number {
@@ -68,7 +71,7 @@ export function basicsValid(b: BasicsInput): boolean {
   const name = b.display_name.trim();
   if (name.length < 1 || name.length > 30) return false;
   if (!parseBirthday(b.birthdate)) return false;
-  if (!['man', 'trans_man', 'non_binary', 'other'].includes(b.gender)) return false;
+  if (!['man', 'trans_man', 'non_binary', 'other', 'unspecified'].includes(b.gender)) return false;
   if (b.gender === 'other' && (b.gender_other.trim().length < 1 || b.gender_other.length > 20)) return false;
   return b.here_for.length > 0;
 }

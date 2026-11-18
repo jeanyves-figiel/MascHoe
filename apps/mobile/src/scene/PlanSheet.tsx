@@ -94,7 +94,7 @@ export function PlanSheet({ visible, onClose, onDone, mode }: { visible: boolean
         </Chips>
       </View>
       <ErrorText text={err} />
-      <Button testID="plan-post" title={tx.tonight.publish} busy={busy} disabled={!text.trim()} onPress={post} />
+      <Button testID="plan-post" title={tx.tonight.publish} busy={busy} onPress={post} />
     </Sheet>
   );
 }

@@ -6,7 +6,7 @@ import { api, ApiError, Me, Photo } from '../api/client';
 import { o } from '../i18n/onboarding';
 import { t } from '../i18n/strings';
 import { STEP_OF } from '../onboarding/flow';
-import { k, StepShell } from '../onboarding/kit';
+import { BigButton, k, StepShell } from '../onboarding/kit';
 import { color, font, radius, space, tiles } from '../theme/tokens';
 
 type Upload = { photo_id: string; put_url: string; content_type: string };
@@ -48,6 +48,16 @@ export function PhotoScreen({ me, onDone }: { me: Me; onDone: (me: Me) => void }
     }
   }
 
+  // RF-5 (required-fields.md): the main photo can wait; the account stays invisible until it passes.
+  async function later() {
+    setErr(null);
+    try {
+      onDone(await api<Me>('POST', '/me/onboarding/photo_later'));
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : t.errors.generic);
+    }
+  }
+
   const checking = busy === 0;
   const ok = main?.status === 'ok_main';
   const reason = main?.status === 'rejected' ? ((t.photo as Record<string, string>)[main.reject_reason ?? ''] ?? t.errors.generic) : null;
@@ -61,6 +71,7 @@ export function PhotoScreen({ me, onDone }: { me: Me; onDone: (me: Me) => void }
       sub={o.photo.sub}
       scroll
       cta={{ title: ok ? o.cont : checking ? o.photo.checkingCta : o.photo.choose, testID: ok ? 'photo-continue' : 'pick-main', busy: checking, onPress: ok ? () => onDone(account) : () => pick(0) }}
+      below={ok || checking ? undefined : <BigButton testID="photo-later" kind="text" title={o.photo.later} onPress={later} />}
     >
       <View style={p.row}>
         <Pressable

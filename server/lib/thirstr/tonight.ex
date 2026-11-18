@@ -125,7 +125,12 @@ defmodule Thirstr.Tonight do
          :ok <- Nearby.require_profile(ctx),
          :ok <- Nearby.require_point(ctx),
          :ok <- check(ctx.kind != "sport", :mode, "use activities in Sport mode"),
-         :ok <- check(text != "" and String.length(text) <= 140, :text, "1–140 characters"),
+         :ok <-
+           check(
+             String.length(text) <= 140,
+             :text,
+             "max 140 characters (optional, required-fields.md RF-13)"
+           ),
          :ok <-
            check(
              not (Text.contact_details?(text) or Text.link?(text)),

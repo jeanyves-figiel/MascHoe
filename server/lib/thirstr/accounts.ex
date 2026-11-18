@@ -38,6 +38,28 @@ defmodule Thirstr.Accounts do
     end
   end
 
+  @doc """
+  RF-7: attach a confirmed sign-in email. If another account already uses it, nothing
+  changes (no enumeration); the link still signs the owner back into their own account.
+  """
+  def attach_email(account_id, hash) do
+    case Repo.get(Account, account_id) do
+      %Account{status: s} when s in ~w(banned deleted) ->
+        {:error, :forbidden}
+
+      %Account{} = a ->
+        if Repo.get_by(Account, email_hash: hash) do
+          {:ok, a, :existing}
+        else
+          with {:ok, a} <- a |> Ecto.Changeset.change(email_hash: hash) |> Repo.update(),
+               do: {:ok, a, :existing}
+        end
+
+      nil ->
+        {:error, :unauthorized}
+    end
+  end
+
   @doc "R-01.9: profiles hidden everywhere, chats kept."
   def pause(%Account{} = a),
     do:

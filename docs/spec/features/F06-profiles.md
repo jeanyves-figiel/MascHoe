@@ -4,13 +4,13 @@ Field catalogue and defaults: [concept/profile-and-settings.md](../../concept/pr
 
 ## Rules
 - R-06.1 Up to 3 profiles per account: Now (created at onboarding), Sport, Friends (created lazily on first use of mode). Each has its own id, photos, fields. Viewers can't link them; server never returns account_id; block applies across all.
-- R-06.2 Required to be visible: display name, age, gender, main photo (ok_main).
+- R-06.2 Required to be visible: display name, age, main photo (ok_main) ([RF-10](../required-fields.md)). Every other field is optional.
 - R-06.3 Photos: 5 public max; slot 0 main (strict check), 1–4 public (permissive). Sport profile: all slots strict (SFW). Reorder by drag; main must stay ok_main.
 - R-06.4 Per-field visibility: public / verified / chats / only_me. Server enforces for SV fields; for `chats` and `only_me` fields the server stores nothing — client sends values E2EE when a chat starts (R-06.6).
 - R-06.5 Hookup fields (position, practices, hosting, groups, limits) default `verified`; health default `chats`, never `public` (UI disables it).
 - R-06.6 Chat-shared fields: when a chat is created or a field changes, client sends an E2EE `profile.private` message to chat partners allowed by visibility; receiver caches locally.
 - R-06.7 "Preview as": stranger / verified / chats — client renders own profile using the same visibility logic.
-- R-06.8 Completeness ring = weighted % (photos 30, bio 15, body 10, looking for 10, hookup 15, prompt 10, languages 10).
+- R-06.8 Completeness ring = weighted % (basics 20, main photo 20, extras 10, bio 10, body 10, looking for 5, hookup or sport 10, prompt 5, languages 10), see [RF-12](../required-fields.md).
 - R-06.9 Private notes & tags on others' profiles: device-only, synced E2EE across own devices; max 500 chars + 10 tags; shown on S-20 in yellow dashed card.
 - R-06.10 Profile view (S-20): hero photos (swipe), name/age/verified, distance, status line, tags, prompt, bio, mode-specific sections, linked accounts (I-01), vouches count, private note, actions: Tap · Message · ⋯ (block, report, hide, vouch).
 - R-06.11 Edits propagate within 5 s; photo changes trigger re-check and possibly re-verify (F-03 R-03.7).

@@ -209,21 +209,28 @@ defmodule Thirstr.Profiles.Fields do
     {shown, nil}
   end
 
-  @doc "R-06.8 completeness ring (weights sum to 100)."
+  @doc """
+  R-06.8 completeness ring (weights sum to 100). Onboarding basics count (owner decision
+  2026-11-18, required-fields.md RF-12): name, age, I am and Here for = 20, main photo = 20,
+  so a profile fresh out of onboarding reads 40 %, not 6 %.
+  """
   def completeness(%{fields: f, photo_ids: photos, kind: kind}) do
     f = f || %{}
     has = &(Map.has_key?(f, &1) and f[&1] not in [nil, "", []])
+    n_photos = length(photos || [])
 
     hookup_keys =
       if kind == "sport", do: ~w(sports sport_level schedule), else: ~w(position hosting)
 
     [
-      {30, min(length(photos || []), 5) / 5},
-      {15, if(has.("bio"), do: 1, else: 0)},
+      {20, 1},
+      {20, min(n_photos, 1)},
+      {10, min(max(n_photos - 1, 0), 4) / 4},
+      {10, if(has.("bio"), do: 1, else: 0)},
       {10, Enum.count(~w(height_cm build), has) / 2},
-      {10, if(has.("looking_for") or has.("sport_intent"), do: 1, else: 0)},
-      {15, Enum.count(hookup_keys, has) / length(hookup_keys)},
-      {10, if(has.("prompt_a"), do: 1, else: 0)},
+      {5, if(has.("looking_for") or has.("sport_intent"), do: 1, else: 0)},
+      {10, Enum.count(hookup_keys, has) / length(hookup_keys)},
+      {5, if(has.("prompt_a"), do: 1, else: 0)},
       {10, if(has.("languages"), do: 1, else: 0)}
     ]
     |> Enum.map(fn {w, share} -> w * share end)

@@ -23,6 +23,8 @@ const VIEW_KEY = 'thirstr.exploreView';
 // S-10 / S-11 Explore (F-04). AC-04.1: cold start → profile → Message in ≤ 3 taps.
 export function ExploreScreen({ navigation }: { navigation: { navigate: (s: string, p?: object) => void } }) {
   const { me, setMe, mode, setMode } = useSession();
+  // RF-5: no main photo yet = invisible; nudge before the verify banner.
+  const hasMain = !!me.profile?.photos.some((x) => x.slot === 0 && x.status === 'ok_main');
   const accent = useAccent();
   const insets = useSafeAreaInsets();
   const [view, setView] = useState<View_>('map');
@@ -177,7 +179,11 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
           })}
         </View>
       </View>
-      {!me.verified ? <Banner text={tx.explore.verifyBanner} onPress={() => navigation.navigate('Verify')} /> : null}
+      {!hasMain ? (
+        <Banner testID="photo-banner" tone="warn" text={tx.explore.photoBanner} onPress={() => navigation.navigate('EditProfile')} />
+      ) : !me.verified ? (
+        <Banner text={tx.explore.verifyBanner} onPress={() => navigation.navigate('Verify')} />
+      ) : null}
       {me.safe_mode_active || me.safe_mode === 'on' ? <Banner tone="personal" text={tx.explore.safeMode} /> : null}
     </View>
   );

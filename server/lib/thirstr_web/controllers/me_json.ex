@@ -18,6 +18,9 @@ defmodule ThirstrWeb.MeJSON do
       incognito: a.incognito,
       hidden: a.hidden,
       member_since: a.inserted_at && Calendar.strftime(a.inserted_at, "%Y-%m"),
+      # RF-7: whether a sign-in email is on file (the address itself is never stored).
+      has_email: not is_nil(a.email_hash),
+      created_at: a.inserted_at,
       profile: main && profile(main),
       profiles: Enum.map(profiles, &profile/1),
       location: main && location(a, main.id),

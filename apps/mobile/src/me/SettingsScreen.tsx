@@ -8,6 +8,7 @@ import { customQuickReplies, setCustomQuickReplies } from '../chat/quick';
 import { tx } from '../i18n/app';
 import { v2 } from '../i18n/v2';
 import { exportData } from './exportData';
+import { SignInEmailSheet } from './SignInEmail';
 import { type Prefs, prefs, setPrefs } from './prefs';
 import { color, font, space, type } from '../theme/tokens';
 import { Banner, Button, Chip, Chips, ErrorText, Field, ListRow, Loading, RangeSlider, Section, Toggle } from '../ui';
@@ -28,6 +29,7 @@ export function SettingsScreen({ navigation }: { navigation: Nav }) {
   const [pf, setPf] = useState<Prefs>(prefs());
   const [exported, setExported] = useState(false);
   const [lic, setLic] = useState(false);
+  const [emailSheet, setEmailSheet] = useState(false);
   useEffect(() => {
     customQuickReplies().then(setQuick);
   }, []);
@@ -199,6 +201,7 @@ export function SettingsScreen({ navigation }: { navigation: Nav }) {
         ) : (
           <ListRow title={tx.settings.pause} onPress={() => call(async () => setMe(await api<Me>('POST', '/account/pause')))} />
         )}
+        <ListRow testID="settings-email" title={tx.signInEmail.row} sub={me.has_email ? undefined : tx.signInEmail.rowSub} right={me.has_email ? tx.signInEmail.added : undefined} onPress={me.has_email ? undefined : () => setEmailSheet(true)} />
         <ListRow testID="settings-devices" title={tx.devices.title} onPress={() => navigation.navigate('Devices')} />
         <ListRow testID="settings-export" title={tx.exportData.title} sub={exported ? tx.exportData.ready : tx.exportData.hint} onPress={() => call(async () => { await exportData(); setExported(true); })} />
         <ListRow testID="logout" title={tx.settings.logout} onPress={() => call(async () => { await api('POST', '/auth/logout').catch(() => {}); await clearSession(); signOut(); })} />
@@ -220,6 +223,7 @@ export function SettingsScreen({ navigation }: { navigation: Nav }) {
         {show(tx.prefs.licenses) ? <ListRow title={tx.prefs.licenses} onPress={() => setLic(!lic)} /> : null}
         {lic ? <Text style={{ ...type.meta, color: color.fgSecondary, paddingVertical: space.m }}>{tx.prefs.licensesBody}</Text> : null}
       </Section>
+      <SignInEmailSheet visible={emailSheet} onClose={() => setEmailSheet(false)} />
     </ScrollView>
   );
 }
