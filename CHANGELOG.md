@@ -7,6 +7,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 - Website legal notice / Impressum (#62, W-01): `/legal/`, `/fr/legal/`, `/de/legal/` + footer link, built from `web/site/legal.json` (operator data; page omitted until the file exists).
+- `hello@thirstr.fun` inbound mail (#62): GoDaddy MX → ImprovMX forwarding + SPF; records in `docs/runbooks/fly.md` › Domain.
 
 ### Changed
 - **App v2 main screens** (issue 58): map, grid, profile, chats, chat, Tonight and Me restyled to the approved App v2 mockup. New line icon set replaces emoji and text glyphs; pill tab bar with the active tab filled in the mode colour; map/grid icon toggle and location chip in the Explore header; photo cards with a soft scrim and online dot; profile photo pager with page bars, chips and a round Tap star; inbox filter (All, Unread, New) and E2EE footer; chat header with disappearing-timer chip, rounded bubbles and pill composer; Tonight window chips on top, party card and plan rows with a round message button, white Post button; Me completeness ring card. en/fr/de.
