@@ -76,7 +76,7 @@ Generated to TS (RN theme) by Style Dictionary in CI. Hard-coded colours/sizes i
 ### Key component rules (Pop)
 - Bottom nav: floating `bg.inverse` pill (16 pt side inset, 18 pt from bottom, 64 pt high); active tab is a filled pill in the current mode colour with `fg.onColor`; inactive tabs #4A4570. Unread badge `mode.hookup` with count.
 - Mode switch: segmented pill on `bg.raised`; each selected segment fills with its own mode colour.
-- Map/Grid toggle: segmented pill; selected = `bg.inverse` with `fg.onColor`.
+- Explore grid sheet (#100): `bg.base` fill, top radius lg (32), shadow elevation 2; handle 40×5 pill `line`, 28 pt touch row; title `type.title` + `type.meta` sub; tiles radius 18, 8 pt gap. Selected pin 58 px with mode-colour ring + white name chip (13/800 ink); selected tile 3 px mode-colour ring. Zoom chip: 30 pt pill, ink 86 %, `fg.secondary` 12/700. Quiet-state cards: `bg.raised`, radius 24, 44 pt round tinted icon, coral Post pill.
 - Location chip (header): `bg.raised` pill, `trust` pin icon + current level label.
 - Primary button: pill, fill = context colour (`mode.hookup` for Message, `trust` for Save in location/privacy), label `fg.onColor` 800.
 - Chat: own bubbles = mode colour of the conversation's origin mode (default Hookup), incoming = `bg.overlay`; E2EE line in `trust`; disappearing timer chip `personal`; shared exact-pin card `trust`.
@@ -84,7 +84,7 @@ Generated to TS (RN theme) by Style Dictionary in CI. Hard-coded colours/sizes i
 
 ### App v2 rules (issue 58, mockup approved 2026-11-17)
 - Bottom nav: icon on every tab; label only on the active tab, which grows (flex 1.6) and fills with the mode colour; inactive icons `navInactive`. Chats badge = coral count with a white ring.
-- Explore header: wordmark 27 pt left; location chip (`bg.raised`, teal pin icon, level label) and round filter icon button right; second row = mode switch (left) + Map/Grid icon toggle (right, selected = white). On the map the header sits on an ink-to-transparent scrim.
+- Explore header: wordmark 27 pt left; location chip (`bg.raised`, teal pin icon, level label) and round filter icon button right; second row = mode switch, full width (Map/Grid toggle removed in #100). On the map the header sits on an ink-to-transparent scrim.
 - Photo tiles and tray cards: bottom scrim from transparent to ink 85–90 %; name + age 800, distance `fg.secondary`; Now badge top-left in the person's mode colour; online dot = lime with ink ring; tray card outlined in mode colour when Now.
 - Tab-root titles are 34/38 800 (Tonight, Chats, Me); captions above in `fg.secondary` 13.
 - Profile actions: white round 44 pt buttons over photos; sticky bottom row = 58 pt round favourite + 58 pt coral Message pill.
@@ -108,7 +108,7 @@ Generated to TS (RN theme) by Style Dictionary in CI. Hard-coded colours/sizes i
 - Badges: verified (trust check), vouched (count), creator, host. Never colour-only: badge = icon + accessible label.
 
 ## Components (RN, `/apps/mobile/src/ui`)
-Button (primary/secondary/ghost/danger), Chip (toggle, filter, mode), Tile (grid profile), Pin (map: cell, exact, cluster, venue, party), Sheet, ListRow, Toggle, Segmented (Map/Grid, mode switch), Composer, MessageBubble, Badge, Skeleton, EmptyState, ErrorState, OfflineChip, Toast. Each has a story in Storybook with all states from [screens.md](screens.md).
+Button (primary/secondary/ghost/danger), Chip (toggle, filter, mode), Tile (grid profile), Pin (map: cell, exact, cluster, venue, party), Sheet, ListRow, Toggle, Segmented (mode switch), GridSheet (Explore), Composer, MessageBubble, Badge, Skeleton, EmptyState, ErrorState, OfflineChip, Toast. Each has a story in Storybook with all states from [screens.md](screens.md).
 
 ## Copy
 ### Voice

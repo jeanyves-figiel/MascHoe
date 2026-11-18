@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { cellToLatLng } from 'h3-js';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, ApiError } from '../api/client';
 import type { Card, MapData } from '../api/types';
@@ -12,13 +12,17 @@ import { Banner, EmptyState, ErrorState, Icon, Loading, Segmented, Sheet, Wordma
 import { ProfileTile } from './Card';
 import { defaultFilters, Filters, loadGrid, loadMap, loadTray } from './explore';
 import { ExploreMap } from './ExploreMap';
+import { GridSheet, Snap, snapHeight } from './GridSheet';
+import { fitCamera, isNear } from './mapShared';
+import { NowSheet } from '../me/NowSheet';
 import { FiltersSheet } from './FiltersSheet';
 import { devicePosition, lastKnown, LatLng, locateDevice, onDevicePosition, syncLocation } from './location';
 import { LocationSheet } from './LocationSheet';
 
-type View_ = 'map' | 'grid';
 const FILTER_KEY = (m: string) => 'thirstr.filters.' + m;
-const VIEW_KEY = 'thirstr.exploreView';
+const SNAP_KEY = 'thirstr.exploreSnap';
+/** Floating tab bar (16 pt inset + 64 pt + 18 pt) the sheet content must clear. */
+const TAB_SPACE = 96;
 
 // S-10 / S-11 Explore (F-04). AC-04.1: cold start → profile → Message in ≤ 3 taps.
 export function ExploreScreen({ navigation }: { navigation: { navigate: (s: string, p?: object) => void } }) {
@@ -27,7 +31,13 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
   const hasMain = !!me.profile?.photos.some((x) => x.slot === 0 && x.status === 'ok_main');
   const accent = useAccent();
   const insets = useSafeAreaInsets();
-  const [view, setView] = useState<View_>('map');
+  const [snap, setSnap] = useState<Snap>('half');
+  const [selected, setSelected] = useState<string | null>(null);
+  const [box, setBox] = useState<{ w: number; h: number } | null>(null);
+  const [fitM, setFitM] = useState<number | null>(null);
+  const [plans, setPlans] = useState(0);
+  const [showNow, setShowNow] = useState(false);
+  const list = useRef<FlatList<Card>>(null);
   const [filters, setFilters] = useState<Filters>(defaultFilters);
   const [items, setItems] = useState<Card[] | null>(null);
   const [next, setNext] = useState<string | null>(null);
@@ -47,7 +57,7 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
   useEffect(() => onDevicePosition(setDevice), []);
 
   useEffect(() => {
-    AsyncStorage.getItem(VIEW_KEY).then((v) => (v === 'grid' || v === 'map') && setView(v));
+    AsyncStorage.getItem(SNAP_KEY).then((v) => (v === 'peek' || v === 'half' || v === 'full') && setSnap(v));
   }, []);
 
   // Filters saved per mode (R-04.8).
@@ -82,6 +92,7 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
           setItems(g.items);
           setNext(g.next);
           setFurtherFrom(g.further_from);
+          setFitM(g.fit_m ?? null);
           setTray(t.items);
           if (m) setMapData(m);
         },
@@ -110,6 +121,23 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
   }
 
   const open = useCallback((c: Card) => navigation.navigate('Profile', { id: c.id, mode }), [navigation, mode]);
+  // R-04.14: first tap on a pin selects it (tile highlighted), a tap on the selected pin opens the profile.
+  const selectPin = useCallback(
+    (c: Card) => {
+      if (selected === c.id) return open(c);
+      setSelected(c.id);
+      setSnap((cur) => (cur === 'peek' ? 'half' : cur));
+    },
+    [selected, open],
+  );
+  const changeSnap = useCallback((v: Snap) => {
+    setSnap(v);
+    AsyncStorage.setItem(SNAP_KEY, v);
+  }, []);
+  useEffect(() => {
+    const i = selected && items ? items.findIndex((c) => c.id === selected) : -1;
+    if (i >= 0) list.current?.scrollToIndex({ index: Math.floor(i / 3), animated: true, viewPosition: 0.2 });
+  }, [selected, items]);
   // R-04.1: the viewer isn't shown in this mode → one tap turns it on (Sport opens its fields).
   const own = me.profile ?? me.profiles?.[0];
   const notShown = !!own && !(own.show_in ?? ['hookup']).includes(mode);
@@ -144,10 +172,21 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
     const r5 = me.location?.cell_r5;
     if (r5) {
       const [lat, lng] = cellToLatLng(r5);
-      return { lat, lng, zoom: 10 };
+      return { lat, lng };
     }
     return null;
   })();
+
+  // R-04.15: zoom to fit the nearest people above the sheet.
+  const sheetPx = box ? snapHeight(snap, box.h, TAB_SPACE) : 0;
+  const camera = center && box ? fitCamera(center, fitM, box.w, box.h, Math.min(sheetPx, box.h * 0.6)) : center;
+  const quiet = !!items && items.length > 0 && !items.some((c) => isNear(c.distance));
+  useEffect(() => {
+    if (!quiet) return;
+    api<{ plans: unknown[] }>('GET', `/tonight?mode=${mode}`)
+      .then((r) => setPlans(r.plans?.length ?? 0))
+      .catch(() => setPlans(0));
+  }, [quiet, mode]);
 
   async function locateMe() {
     const p = await locateDevice().catch(() => null);
@@ -158,13 +197,9 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
   const level = me.location?.level ?? 'city';
   const locLabel = me.incognito ? tx.location.incognito : (tx.location.levels[level] ?? tx.location.levels.city)[0];
 
-  const setViewSaved = (v: View_) => {
-    setView(v);
-    AsyncStorage.setItem(VIEW_KEY, v);
-  };
-  const iconBtn = { width: 40, height: 40, borderRadius: radius.pill, backgroundColor: color.bgRaised, alignItems: 'center' as const, justifyContent: 'center' as const };
+  const iconBtn = { width: 44, height: 44, borderRadius: radius.pill, backgroundColor: color.bgRaised, alignItems: 'center' as const, justifyContent: 'center' as const };
 
-  // App v2 header (design-system.md › App v2 rules): wordmark + location chip + filters; mode switch + Map/Grid icons.
+  // App v2 header (design-system.md › App v2 rules): wordmark + location chip + filters; mode switch (no Map/Grid toggle, #100).
   const header = (
     <View style={{ paddingTop: insets.top + space.s, paddingHorizontal: space.l, gap: space.m, paddingBottom: space.s }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.s }}>
@@ -199,25 +234,6 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
             ]}
           />
         </View>
-        <View accessibilityRole="tablist" accessibilityLabel="View" style={{ flexDirection: 'row', gap: 3, padding: 3, borderRadius: radius.pill, backgroundColor: color.bgRaised }}>
-          {(['map', 'grid'] as View_[]).map((v) => {
-            const on = view === v;
-            const I = v === 'map' ? Icon.Map : Icon.Grid;
-            return (
-              <Pressable
-                key={v}
-                testID={`view-${v}`}
-                accessibilityRole="tab"
-                accessibilityLabel={v === 'map' ? tx.explore.map : tx.explore.grid}
-                accessibilityState={{ selected: on }}
-                onPress={() => setViewSaved(v)}
-                style={{ width: 44, height: 38, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? color.bgInverse : 'transparent' }}
-              >
-                <I c={on ? color.onAccent : color.fgPrimary} />
-              </Pressable>
-            );
-          })}
-        </View>
       </View>
       {!hasMain ? (
         <Banner testID="photo-banner" tone="warn" text={tx.explore.photoBanner} onPress={() => navigation.navigate('EditProfile')} />
@@ -229,73 +245,128 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
     </View>
   );
 
+  const card = (icon: React.ReactNode, title: string, sub: string, action: string | null, onPress: () => void, testID: string, tint: string) => (
+    <Pressable
+      testID={testID}
+      accessibilityRole="button"
+      accessibilityLabel={`${title}. ${sub}`}
+      onPress={onPress}
+      style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', gap: space.m, padding: 14, borderRadius: radius.tray, backgroundColor: color.bgRaised, marginBottom: space.l }, pressed && { opacity: 0.85 }]}
+    >
+      <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: tint + '29', alignItems: 'center', justifyContent: 'center' }}>{icon}</View>
+      <View style={{ flex: 1 }}>
+        <Text style={{ ...type.headline, color: color.fgPrimary }}>{title}</Text>
+        <Text style={{ ...type.meta, color: color.fgSecondary }}>{sub}</Text>
+      </View>
+      {action ? (
+        <View style={{ height: 40, paddingHorizontal: space.l, borderRadius: radius.pill, backgroundColor: accent, justifyContent: 'center' }}>
+          <Text style={{ ...type.headline, fontSize: 14, color: color.onAccent }}>{action}</Text>
+        </View>
+      ) : (
+        <Icon.Next />
+      )}
+    </Pressable>
+  );
+  const postNow = () => (me.verified ? setShowNow(true) : navigation.navigate('Verify'));
+  const beFirst = card(<Icon.Bolt c={accent} />, tx.explore.beFirst, tx.explore.beFirstBody, tx.explore.post, postNow, 'post-now', accent);
+
+  // R-04.16: quiet area / unverified / nobody. Never invented counts.
+  const listHead =
+    items && items.length === 0 ? (
+      <View>
+        {!me.verified
+          ? card(<Icon.Shield c={color.trust} />, tx.explore.verifyToSee, tx.explore.verifyToSeeBody, null, () => navigation.navigate('Verify'), 'verify-to-see', color.trust)
+          : beFirst}
+        <EmptyState title={tx.explore.empty} body={tx.explore.emptyBody} action={tx.explore.filters} onAction={() => setShowFilters(true)} />
+      </View>
+    ) : quiet ? (
+      <View>
+        <Text style={{ ...type.meta, color: color.fgSecondary, marginBottom: space.l }}>{tx.explore.quietBody}</Text>
+        {beFirst}
+        {plans > 0 ? card(<Icon.Moon c={accent} />, tx.explore.tonightRow(plans), tx.tabs.tonight, null, () => navigation.navigate('Tonight'), 'tonight-row', accent) : null}
+        <Text style={{ ...type.caption, fontSize: 12, letterSpacing: 0.8, color: color.fgMuted, marginBottom: space.s }}>{tx.explore.further.toUpperCase()}</Text>
+      </View>
+    ) : null;
+
+  const sheetTitle = tray.length > 0 ? tx.explore.activeNow(tray.length) : quiet ? tx.explore.quietTitle : tx.explore.nearby;
+  const listPad = box ? TAB_SPACE + space.xxl + (box.h - sheetPx) : 120;
+
   let body: React.ReactNode;
   if (err && !items) body = <ErrorState text={err} retry={tx.common.retry} onRetry={reload} />;
-  else if (!items) body = <Loading />;
-  else if (view === 'map')
-    body = (
-      <View style={{ flex: 1 }}>
-        <ExploreMap center={center} me={dot} data={mapData} accent={accent} recenter={recenter} onRegion={onRegion} onSelect={open} />
-        <View style={{ position: 'absolute', left: 0, right: 0, bottom: 96 }}>
-          <View style={{ alignItems: 'flex-end', paddingHorizontal: space.l, paddingBottom: space.s }}>
-            <Pressable
-              testID="locate-me"
-              accessibilityRole="button"
-              accessibilityLabel={tx.explore.locateMe}
-              onPress={locateMe}
-              style={({ pressed }) => [iconBtn, { borderWidth: 1, borderColor: color.line }, pressed && { opacity: 0.8 }]}
-            >
-              <Icon.Locate c={color.trust} />
-            </Pressable>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'baseline', paddingHorizontal: space.l, paddingBottom: space.s, gap: space.s }}>
-            <Text style={{ ...type.headline, color: color.fgPrimary, flex: 1 }}>{tx.explore.activeNow(tray.length)}</Text>
-            <Text style={{ ...type.meta, color: color.fgSecondary }}>{tx.explore.nearestFirst}</Text>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingHorizontal: space.l }}>
-            {tray.map((c) => (
-              <ProfileTile key={c.id} card={c} tray onPress={() => open(c)} onLongPress={() => setQuick(c)} />
-            ))}
-          </ScrollView>
-        </View>
-      </View>
-    );
-  else if (items.length === 0)
-    body = <EmptyState title={tx.explore.empty} body={tx.explore.emptyBody} action={tx.explore.filters} onAction={() => setShowFilters(true)} />;
+  else if (!items || !box) body = <Loading />;
   else
     body = (
-      <FlatList
-        data={items}
-        numColumns={3}
-        keyExtractor={(c) => c.id}
-        columnWrapperStyle={{ gap: 6 }}
-        contentContainerStyle={{ gap: 6, padding: space.s, paddingBottom: 120 }}
-        onEndReached={more}
-        onEndReachedThreshold={0.5}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            tintColor={accent}
-            onRefresh={async () => {
-              setRefreshing(true);
-              await reload();
-              setRefreshing(false);
-            }}
+      <View style={{ flex: 1 }}>
+        <ExploreMap center={camera} me={dot} data={mapData} accent={accent} recenter={recenter} onRegion={onRegion} onSelect={selectPin} onClear={() => setSelected(null)} selected={selected} />
+        <GridSheet
+          h={box.h}
+          bottom={TAB_SPACE}
+          snap={snap}
+          onSnap={changeSnap}
+          title={sheetTitle}
+          right={items.length ? tx.explore.nearestFirst : undefined}
+          above={
+            <>
+              <View style={{ flex: 1, alignItems: 'flex-start' }}>
+                {fitM && snap !== 'full' ? (
+                  <View testID="fit-chip" style={{ height: 30, paddingHorizontal: space.m, borderRadius: radius.pill, backgroundColor: color.scrim, justifyContent: 'center' }}>
+                    <Text style={{ ...type.caption, fontSize: 12, color: color.fgSecondary }}>{fitM >= 5000 ? tx.explore.fitFar : tx.explore.fitNear}</Text>
+                  </View>
+                ) : null}
+              </View>
+              {snap !== 'full' ? (
+                <Pressable
+                  testID="locate-me"
+                  accessibilityRole="button"
+                  accessibilityLabel={tx.explore.locateMe}
+                  onPress={locateMe}
+                  style={({ pressed }) => [iconBtn, { backgroundColor: color.bgInverse }, pressed && { opacity: 0.8 }]}
+                >
+                  <Icon.Locate c={color.onAccent} />
+                </Pressable>
+              ) : null}
+            </>
+          }
+        >
+          <FlatList
+            ref={list}
+            data={items}
+            numColumns={3}
+            keyExtractor={(c) => c.id}
+            columnWrapperStyle={{ gap: space.s }}
+            contentContainerStyle={{ gap: space.s, paddingHorizontal: space.l, paddingBottom: listPad }}
+            ListHeaderComponent={listHead ?? undefined}
+            onEndReached={more}
+            onEndReachedThreshold={0.5}
+            onScrollToIndexFailed={(e) => list.current?.scrollToOffset({ offset: e.averageItemLength * e.index, animated: true })}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                tintColor={accent}
+                onRefresh={async () => {
+                  setRefreshing(true);
+                  await reload();
+                  setRefreshing(false);
+                }}
+              />
+            }
+            renderItem={({ item, index }) => (
+              <View style={{ flex: 1 / 3 }}>
+                {index === furtherFrom && !quiet ? <Text style={{ ...type.caption, color: color.fgSecondary, marginBottom: 4 }}>{tx.explore.further}</Text> : null}
+                <ProfileTile card={item} selected={item.id === selected} onPress={() => open(item)} onLongPress={() => setQuick(item)} />
+              </View>
+            )}
           />
-        }
-        renderItem={({ item, index }) => (
-          <View style={{ flex: 1 / 3 }}>
-            {index === furtherFrom ? <Text style={{ ...type.caption, color: color.fgSecondary, marginBottom: 4 }}>{tx.explore.further}</Text> : null}
-            <ProfileTile card={item} onPress={() => open(item)} onLongPress={() => setQuick(item)} />
-          </View>
-        )}
-      />
+        </GridSheet>
+      </View>
     );
 
   return (
     <View style={{ flex: 1, backgroundColor: color.bgBase }}>
       {header}
-      <View style={{ flex: 1, marginTop: space.s }}>{body}</View>
+      <View style={{ flex: 1, marginTop: space.s }} onLayout={(e) => setBox({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
+        {body}
+      </View>
       <FiltersSheet
         visible={showFilters}
         mode={mode}
@@ -308,6 +379,7 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
           setShowFilters(false);
         }}
       />
+      <NowSheet visible={showNow} onClose={() => setShowNow(false)} />
       <LocationSheet visible={showLocation} onClose={() => setShowLocation(false)} />
       <Sheet visible={!!quick} onClose={() => setQuick(null)} title={quick ? `${quick.display_name}, ${quick.age}` : ''} closeLabel={tx.common.close}>
         {quick ? <QuickActions card={quick} onDone={() => setQuick(null)} onOpen={() => open(quick)} onChanged={reload} /> : null}

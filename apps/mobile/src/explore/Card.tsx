@@ -6,7 +6,7 @@ import { color, radius, space, type } from '../theme/tokens';
 import { Photo, Scrim, useAccent, VerifiedTick } from '../ui';
 
 // R-04.5 grid card / R-04.4 tray card: photo, name, tick, online dot, distance, Now/Exact badge.
-export function ProfileTile({ card, onPress, onLongPress, tray }: { card: Card; onPress: () => void; onLongPress?: () => void; tray?: boolean }) {
+export function ProfileTile({ card, onPress, onLongPress, tray, selected }: { card: Card; onPress: () => void; onLongPress?: () => void; tray?: boolean; selected?: boolean }) {
   const accent = useAccent();
   const hot = !!card.now || card.exact;
   const label = `${card.display_name}, ${card.age}${card.verified ? ', verified' : ''}, ${distanceLabel(card.distance)}${card.now ? ', ' + tx.now[card.now.status] : ''}`;
@@ -15,12 +15,13 @@ export function ProfileTile({ card, onPress, onLongPress, tray }: { card: Card; 
       testID={`tile-${card.id}`}
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityState={{ selected: !!selected }}
       onPress={onPress}
       onLongPress={onLongPress}
       style={({ pressed }) => [
         tray
           ? { width: 132, height: 172, borderRadius: radius.tray, borderWidth: 2, borderColor: hot ? accent : 'transparent' }
-          : { flex: 1, aspectRatio: 3 / 4, borderRadius: 18 },
+          : { flex: 1, aspectRatio: 3 / 4, borderRadius: 18, borderWidth: selected ? 3 : 0, borderColor: accent },
         { overflow: 'hidden', backgroundColor: color.bgRaised },
         pressed && { transform: [{ scale: 0.97 }] },
       ]}
