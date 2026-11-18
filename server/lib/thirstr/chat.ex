@@ -166,36 +166,108 @@ defmodule Thirstr.Chat do
   @doc """
   POST /mls/messages. `envelopes` = [{to_profile_id, to_device_id, kind, key_package_id?,
   ciphertext}]. Blocked or gone recipients are dropped without saying why (F-07 edge case).
+
+  All-or-nothing (R-07.22): every envelope is stored in one transaction, events go out after
+  commit. `client_id` makes it idempotent (R-07.18): a repeat from the same device returns the
+  first result and stores / pushes nothing.
   """
   def send(%Account{} = a, device_id, params) do
     from = params["from_profile_id"]
     envs = List.wrap(params["envelopes"])
 
     with {:ok, _} <- own_profile(a, from),
+         {:ok, cid} <- client_id(params["client_id"]),
          {:ok, group} <- decode_b64(params["group_id"], 64, :group_id),
-         {:ok, envs} <- validate_envelopes(envs),
-         {:ok, _} <- Social.limit(a, "msg", 600, 3600) do
-      now = DateTime.utc_now()
+         {:ok, envs} <- validate_envelopes(envs) do
+      Repo.transaction(fn ->
+        case claim_client_id(device_id, cid) do
+          {:repeat, res} -> {res, []}
+          :new -> store_all(a, device_id, from, group, envs, params, cid)
+        end
+      end)
+      |> case do
+        {:ok, {res, events}} ->
+          Enum.each(events, fn acc -> Notify.event(acc, "message.new", %{}) end)
+          {:ok, res}
 
-      {delivered, undelivered} =
-        envs
-        |> Enum.group_by(& &1.to_profile_id)
-        |> Enum.reduce({[], []}, fn {to, list}, {ok, ko} ->
-          case deliver(a, device_id, from, to, group, list, now, params) do
-            :ok -> {[to | ok], ko}
-            :dropped -> {ok, [to | ko]}
-            {:error, _} = e -> throw(e)
-          end
-        end)
-
-      {:ok, %{delivered: delivered, undelivered: undelivered}}
+        {:error, _} = e ->
+          e
+      end
     end
-  catch
-    {:error, _} = e -> e
+  end
+
+  defp store_all(a, device_id, from, group, envs, params, cid) do
+    case Social.limit(a, "msg", 600, 3600) do
+      {:ok, _} -> store_ok(a, device_id, from, group, envs, params, cid)
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
+  defp store_ok(a, device_id, from, group, envs, params, cid) do
+    now = DateTime.utc_now()
+
+    {delivered, undelivered, events} =
+      envs
+      |> Enum.group_by(& &1.to_profile_id)
+      |> Enum.reduce({[], [], []}, fn {to, list}, {ok, ko, ev} ->
+        case deliver(a, device_id, from, to, group, list, now, params) do
+          {:ok, acc} -> {[to | ok], ko, if(acc, do: [acc | ev], else: ev)}
+          :dropped -> {ok, [to | ko], ev}
+          {:error, _} = e -> Repo.rollback(elem(e, 1))
+        end
+      end)
+
+    res = %{delivered: delivered, undelivered: undelivered}
+    save_client_id(device_id, cid, res)
+    {res, Enum.uniq(events)}
+  end
+
+  defp client_id(nil), do: {:ok, nil}
+
+  defp client_id(s) when is_binary(s) and byte_size(s) in 8..64 do
+    if s =~ ~r/\A[0-9A-Za-z_-]+\z/,
+      do: {:ok, s},
+      else: {:error, {:validation, %{client_id: ["invalid"]}}}
+  end
+
+  defp client_id(_), do: {:error, {:validation, %{client_id: ["invalid"]}}}
+
+  # Concurrent repeats block on the PK until the first commits, then see its result.
+  defp claim_client_id(_device, nil), do: :new
+
+  defp claim_client_id(device_id, cid) do
+    case Repo.query!(
+           """
+           INSERT INTO mls_send_keys (device_id, client_id, created_at) VALUES ($1, $2, now())
+           ON CONFLICT DO NOTHING RETURNING 1
+           """,
+           [dump(device_id), cid]
+         ).num_rows do
+      1 ->
+        :new
+
+      0 ->
+        %{rows: [[res]]} =
+          Repo.query!(
+            "SELECT result FROM mls_send_keys WHERE device_id = $1 AND client_id = $2",
+            [dump(device_id), cid]
+          )
+
+        {:repeat, res || %{delivered: [], undelivered: []}}
+    end
+  end
+
+  defp save_client_id(_device, nil, _res), do: :ok
+
+  defp save_client_id(device_id, cid, res) do
+    Repo.query!(
+      "UPDATE mls_send_keys SET result = $3 WHERE device_id = $1 AND client_id = $2",
+      [dump(device_id), cid, res]
+    )
   end
 
   # AC-15.1 shadow quarantine: the sender sees a normal 200, nothing is stored or delivered.
-  defp deliver(%Account{status: "quarantined"}, _d, _f, _t, _g, _e, _n, _p), do: :ok
+  defp deliver(%Account{status: "quarantined"}, _d, _f, _t, _g, _e, _n, _p), do: {:ok, nil}
 
   defp deliver(a, _device_id, from, to, group, envs, now, params) do
     case Social.target(a, to) do
@@ -224,8 +296,7 @@ defmodule Thirstr.Chat do
           Repo.insert_all("mls_messages", rows)
           if app?, do: count_contact(from, to, now)
           store_franking(params["franking_tag"], from, to, now)
-          Notify.event(t.account_id, "message.new", %{})
-          :ok
+          {:ok, t.account_id}
         end
 
       _ ->
@@ -331,6 +402,19 @@ defmodule Thirstr.Chat do
 
   defp validate_envelopes(_), do: {:error, {:validation, %{envelopes: ["max 200"]}}}
 
+  @doc "R-07.22: app messages swept unread for this device since the last pull (reported once)."
+  def take_expired(device_id) do
+    Repo.query!(
+      """
+      DELETE FROM mls_expired WHERE to_device_id = $1
+      RETURNING group_id, count
+      """,
+      [dump(device_id)]
+    ).rows
+    |> Enum.group_by(fn [g, _] -> g end, fn [_, n] -> n end)
+    |> Enum.map(fn {g, ns} -> %{group_id: Base.encode64(g), count: Enum.sum(ns)} end)
+  end
+
   @doc "Pending ciphertext for this device (fallback pull; realtime only says 'something new')."
   def pull(%Account{} = a, device_id, after_id) do
     Repo.query!(
@@ -361,16 +445,51 @@ defmodule Thirstr.Chat do
   def ack(%Account{}, device_id, ids) when is_list(ids) do
     ids = Enum.filter(ids, &is_integer/1)
 
-    {n, _} =
+    {n, ats} =
       from(m in "mls_messages",
-        where: m.id in ^ids and m.to_device_id == type(^device_id, :binary_id)
+        where: m.id in ^ids and m.to_device_id == type(^device_id, :binary_id),
+        select: m.created_at
       )
       |> Repo.delete_all()
 
+    record_latency(ats)
     {:ok, n}
   end
 
   def ack(_, _, _), do: {:error, {:validation, %{ids: ["must be a list"]}}}
+
+  # R-07.24: aggregate insert → ack histogram per day. Upper bounds in ms; last = slower.
+  @buckets [250, 500, 1000, 5000, 60_000, 3_600_000]
+  def latency_buckets, do: @buckets
+
+  defp record_latency([]), do: :ok
+
+  defp record_latency(ats) do
+    now = DateTime.utc_now()
+
+    ats
+    |> Enum.map(fn at -> bucket(DateTime.diff(now, Thirstr.Explore.utc_any(at), :millisecond)) end)
+    |> Enum.frequencies()
+    |> Enum.each(fn {b, n} ->
+      Repo.query!(
+        """
+        INSERT INTO chat_delivery_stats (day, bucket, n) VALUES (current_date, $1, $2)
+        ON CONFLICT (day, bucket) DO UPDATE SET n = chat_delivery_stats.n + $2
+        """,
+        [b, n]
+      )
+    end)
+  end
+
+  defp bucket(ms), do: Enum.find(@buckets, 0, &(ms <= &1))
+
+  @doc "Admin: histogram rows for the last `days` days → [{day, bucket, n}] (bucket 0 = slower)."
+  def delivery_stats(days \\ 14) do
+    Repo.query!(
+      "SELECT day, bucket, n FROM chat_delivery_stats WHERE day > current_date - $1::int ORDER BY day DESC, bucket",
+      [days]
+    ).rows
+  end
 
   # ------------------------------------------------------------------ media blobs (F-08)
 
@@ -441,9 +560,20 @@ defmodule Thirstr.Chat do
   @doc "Retention sweep (R-07.12, R-08.10)."
   def sweep do
     Repo.query!(
-      "DELETE FROM mls_messages WHERE created_at < now() - make_interval(days => $1)",
+      """
+      WITH gone AS (
+        DELETE FROM mls_messages WHERE created_at < now() - make_interval(days => $1)
+        RETURNING to_device_id, group_id, kind
+      )
+      INSERT INTO mls_expired (to_device_id, group_id, count, created_at)
+      SELECT to_device_id, group_id, count(*), now() FROM gone WHERE kind = 'app'
+      GROUP BY to_device_id, group_id
+      """,
       [@retention_d]
     )
+
+    Repo.query!("DELETE FROM mls_send_keys WHERE created_at < now() - interval '7 days'")
+    Repo.query!("DELETE FROM mls_expired WHERE created_at < now() - interval '90 days'")
 
     Repo.query!("DELETE FROM franking_tags WHERE created_at < now() - interval '90 days'")
 

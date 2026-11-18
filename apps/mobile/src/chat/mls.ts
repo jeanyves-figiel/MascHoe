@@ -200,13 +200,14 @@ export async function seal(groupId: string, plaintext: Uint8Array): Promise<{ wi
   return { wire, members: members(r.newState) };
 }
 
-/** Decrypts an application message, or applies a commit (returns null then). */
+/** Decrypts an application message, or applies a commit (returns null then). Throws if it can't (yet). */
 export async function open(groupId: string, wire: Uint8Array): Promise<Uint8Array | null> {
   const impl = await suite();
   const state = await load(groupId);
-  if (!state) return null;
+  // Unknown group: may arrive before its welcome (R-07.20), so the caller keeps it.
+  if (!state) throw new Error('no_group');
   const msg = decodeMlsMessage(wire, 0)?.[0] as { wireformat: string; privateMessage: never } | undefined;
-  if (!msg || msg.wireformat !== 'mls_private_message') return null;
+  if (!msg || msg.wireformat !== 'mls_private_message') throw new Error('malformed');
   const r = await processPrivateMessage(state, msg.privateMessage, emptyPskIndex, impl);
   await save(groupId, r.newState);
   return r.kind === 'applicationMessage' ? (r.message as Uint8Array) : null;

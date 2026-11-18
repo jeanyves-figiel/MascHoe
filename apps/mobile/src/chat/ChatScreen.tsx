@@ -16,6 +16,22 @@ type Nav = { navigate: (s: string, p?: object) => void; goBack: () => void; setO
 type Params = { cid?: string; profileId?: string; name?: string };
 
 const REACTIONS = ['🔥', '❤️', '😂', '👍', '😮'];
+const HIDDEN = new Set<E.Payload['t']>(['reaction', 'read', 'delivered', 'resync', 'profile.private']);
+
+function statusText(m: E.Msg, group: boolean): string {
+  switch (m.status) {
+    case 'failed':
+      return tx.chat.failed;
+    case 'sending':
+      return tx.chat.sending;
+    case 'read':
+      return group && m.readBy?.length ? tx.chat.readBy(m.readBy.length) : tx.chat.read;
+    case 'delivered':
+      return tx.chat.delivered;
+    default:
+      return tx.chat.sent;
+  }
+}
 
 function errorText(e: unknown): string {
   if (e instanceof ApiError) {
@@ -65,6 +81,23 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
   }, [cid, me, mode, route.params.profileId, route.params.name]);
 
   const tick = useTopics('convs', cid ? 'msgs:' + cid : 'none', cid ? 'typing:' + cid : 'none2');
+  // R-07.19: chip only after 3 s offline, so a quick reconnect doesn't flash it.
+  const [offline, setOffline] = useState(false);
+  useEffect(() => {
+    let t: ReturnType<typeof setTimeout> | null = null;
+    const check = () => {
+      if (t) clearTimeout(t);
+      t = null;
+      if (E.isOnline()) setOffline(false);
+      else t = setTimeout(() => setOffline(!E.isOnline()), Math.max(0, 3000 - (Date.now() - E.offlineSince())));
+    };
+    const off = E.on('net', check);
+    t = setTimeout(check, 0);
+    return () => {
+      off();
+      if (t) clearTimeout(t);
+    };
+  }, []);
   const conv = cid ? E.getConv(cid) : undefined;
 
   useEffect(() => {
@@ -94,7 +127,7 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
     const reactions: Record<string, string[]> = {};
     for (const m of list) if (m.p.t === 'reaction') (reactions[m.p.to] ??= []).push(m.p.emoji);
     return list
-      .filter((m) => m.p.t !== 'reaction' && m.p.t !== 'read' && m.p.t !== 'profile.private')
+      .filter((m) => !HIDDEN.has(m.p.t))
       .map((m) => ({ m, r: reactions[m.id] ?? [] }))
       .reverse();
   }, [list]);
@@ -152,7 +185,14 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
               </Text>
               {conv.verified ? <VerifiedTick size={13} /> : null}
             </View>
-            {typing ? <Text style={{ ...type.meta, color: accent }}>{tx.chat.typing}</Text> : null}
+            {offline ? (
+              <View testID="chat-offline" style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: color.fgMuted }} />
+                <Text style={{ ...type.meta, color: color.fgMuted }}>{tx.chat.waiting}</Text>
+              </View>
+            ) : typing ? (
+              <Text style={{ ...type.meta, color: accent }}>{tx.chat.typing}</Text>
+            ) : null}
           </View>
         </Pressable>
         {conv.ttl !== 'never' ? (
@@ -178,6 +218,14 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
           </View>
         }
         renderItem={({ item: { m, r } }) => {
+          if (m.p.t === 'notice') {
+            return (
+              <View testID={`notice-${m.p.kind}`} style={{ alignSelf: 'center', maxWidth: '86%', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: space.m, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: color.bgRaised, marginVertical: space.s }}>
+                <Icon.Lock />
+                <Text style={{ ...type.caption, color: color.fgSecondary, flexShrink: 1 }}>{m.p.kind === 'expired' ? tx.chat.expired(m.p.n ?? 1) : tx.chat.undecryptable}</Text>
+              </View>
+            );
+          }
           if (m.p.t === 'disappearing') {
             return (
               <Text style={{ ...type.meta, color: color.fgMuted, textAlign: 'center', marginVertical: space.s }}>
@@ -212,7 +260,7 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
               {r.length ? <Text style={{ ...type.meta, marginTop: -4 }}>{r.join('')}</Text> : null}
               {mine && (m.id === lastMine || m.status === 'failed') ? (
                 <Text style={{ ...type.caption, color: m.status === 'failed' ? color.danger : color.fgMuted, marginTop: 2 }}>
-                  {m.status === 'failed' ? tx.chat.failed : m.status === 'read' ? tx.chat.read : m.status === 'sending' ? tx.chat.sending : tx.chat.sent}
+                  {statusText(m, group)}
                 </Text>
               ) : null}
             </View>
@@ -322,6 +370,13 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
           />
         </View>
         <View>
+          <Toggle
+            label={tx.chat.chatReceipts}
+            sub={me.settings?.read_receipts === false ? tx.chat.chatReceiptsGlobalOff : tx.chat.chatReceiptsSub}
+            value={me.settings?.read_receipts !== false && conv.receipts !== 'off'}
+            disabled={me.settings?.read_receipts === false}
+            onChange={(v) => E.setConv(conv.id, { receipts: v ? undefined : 'off' })}
+          />
           <ListRow title={conv.muted ? tx.chat.unmute : tx.chat.mute} onPress={() => E.setConv(conv.id, { muted: !conv.muted })} />
           {!group ? (
             <>

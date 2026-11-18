@@ -180,6 +180,78 @@ defmodule ThirstrWeb.ChatTest do
     assert_push "typing", %{from_profile_id: _}
   end
 
+  defp send_raw(from, body), do: from.c |> recycle_authed() |> post("/v1/mls/messages", body)
+
+  defp env(to, ct),
+    do: %{to_profile_id: to.pid, to_device_id: to.dev, kind: "app", ciphertext: b64(ct)}
+
+  @tag ac: "AC-07.6"
+  test "client_id: a repeated send stores and pushes nothing, returns the first result",
+       %{alice: a, bob: b} do
+    body = %{
+      client_id: "abcdef0123456789abcdef01",
+      from_profile_id: a.pid,
+      group_id: b64("g"),
+      envelopes: [env(b, "once")]
+    }
+
+    first = send_raw(a, body) |> json_response(200)
+    assert first["delivered"] == [b.pid]
+    assert send_raw(a, body) |> json_response(200) == first
+    assert [%{"ciphertext" => ct}] = pull(b)["messages"]
+    assert Base.decode64!(ct) == "once"
+
+    assert send_raw(a, %{body | client_id: "x"}) |> json_response(422)
+  end
+
+  @tag ac: "R-07.22"
+  test "send is all-or-nothing: one bad recipient stores nothing", %{alice: a, bob: b, conn: conn} do
+    u = onboarded(conn, basics: [display_name: "Cleo"])
+    u = Map.put(u, :dev, device_of(u))
+
+    res =
+      send_raw(a, %{
+        client_id: "atomic0000000001",
+        from_profile_id: a.pid,
+        group_id: b64("g"),
+        context: nil,
+        envelopes: [env(b, "ok"), %{env(u, "bad") | to_device_id: b.dev}]
+      })
+
+    assert json_response(res, 422)
+    assert pull(b)["messages"] == []
+
+    # The failed client_id is not burned: a corrected retry goes through.
+    assert %{"delivered" => [_, _]} =
+             send_raw(a, %{
+               client_id: "atomic0000000001",
+               from_profile_id: a.pid,
+               group_id: b64("g"),
+               envelopes: [env(b, "ok"), env(u, "ok")]
+             })
+             |> json_response(200)
+  end
+
+  @tag ac: "R-07.22"
+  test "sweep reports swept-unread counts once; ack records latency", %{alice: a, bob: b} do
+    send_msg(a, b)
+    send_msg(a, b)
+    [m | _] = pull(b)["messages"]
+
+    b.c
+    |> recycle_authed()
+    |> post("/v1/mls/messages/ack", %{ids: [m["id"]]})
+    |> json_response(200)
+
+    assert [[_, _, 1]] = Thirstr.Chat.delivery_stats()
+
+    Thirstr.Repo.query!("UPDATE mls_messages SET created_at = now() - interval '31 days'")
+    Thirstr.Chat.sweep()
+    assert %{"messages" => [], "expired" => [%{"count" => 1, "group_id" => g}]} = pull(b)
+    assert g == b64("group-1")
+    assert pull(b)["expired"] == []
+  end
+
   defp access_of(u) do
     [auth] = Plug.Conn.get_req_header(u.c, "authorization")
     {:ok, String.replace_prefix(auth, "Bearer ", "")}

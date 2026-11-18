@@ -95,7 +95,14 @@ async function refresh(): Promise<boolean> {
   return true;
 }
 
-export async function api<T = unknown>(method: string, path: string, body?: unknown, retry = true): Promise<T> {
+/** Thrown when a request gets no answer in time: the result is unknown (R-07.19). */
+export class TimeoutError extends Error {
+  constructor() {
+    super('timeout');
+  }
+}
+
+export async function api<T = unknown>(method: string, path: string, body?: unknown, retry = true, timeoutMs?: number): Promise<T> {
   const headers: Record<string, string> = {
     'content-type': 'application/json',
     'x-thirstr-install': await installId(),
@@ -104,8 +111,18 @@ export async function api<T = unknown>(method: string, path: string, body?: unkn
   const access = await secure.get(K.access);
   if (access) headers.authorization = 'Bearer ' + access;
 
-  const res = await fetch(BASE + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
-  if (res.status === 401 && retry && access && (await refresh())) return api<T>(method, path, body, false);
+  const ctl = timeoutMs ? new AbortController() : null;
+  const timer = ctl ? setTimeout(() => ctl.abort(), timeoutMs) : null;
+  let res: Response;
+  try {
+    res = await fetch(BASE + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), signal: ctl?.signal });
+  } catch (e) {
+    if (ctl?.signal.aborted) throw new TimeoutError();
+    throw e;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+  if (res.status === 401 && retry && access && (await refresh())) return api<T>(method, path, body, false, timeoutMs);
   if (res.status === 204) return undefined as T;
   if (res.status === 202) return (await res.json().catch(() => undefined)) as T;
   const json = await res.json().catch(() => ({}));

@@ -95,6 +95,7 @@ defmodule ThirstrWeb.Router do
     get "/appeals", AdminController, :appeals
     post "/appeals/:id", AdminController, :appeal_decision
     get "/audit", AdminController, :audit_log
+    get "/delivery", AdminController, :delivery
   end
 
   # iOS passkeys / universal links (I-03). Apple fetches this without auth.
