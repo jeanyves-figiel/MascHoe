@@ -18,6 +18,8 @@ async function open() {
   return d;
 }
 
+const like = (prefix: string) => prefix.replace(/[\\%_]/g, (c) => '\\' + c) + '%';
+
 export const kv = {
   async get<T>(k: string): Promise<T | null> {
     const r = await (await open()).getFirstAsync<{ v: string }>('SELECT v FROM kv WHERE k = ?', k);
@@ -30,8 +32,16 @@ export const kv = {
     await (await open()).runAsync('DELETE FROM kv WHERE k = ?', k);
   },
   async keys(prefix: string): Promise<string[]> {
-    const rows = await (await open()).getAllAsync<{ k: string }>('SELECT k FROM kv WHERE k LIKE ?', prefix + '%');
+    const rows = await (await open()).getAllAsync<{ k: string }>("SELECT k FROM kv WHERE k LIKE ? ESCAPE '\\'", like(prefix));
     return rows.map((r) => r.k);
+  },
+  /** All values whose key starts with `prefix`, in one query (per-message rows, R-07.21). */
+  async getPrefix<T>(prefix: string): Promise<T[]> {
+    const rows = await (await open()).getAllAsync<{ v: string }>("SELECT v FROM kv WHERE k LIKE ? ESCAPE '\\'", like(prefix));
+    return rows.map((r) => JSON.parse(r.v) as T);
+  },
+  async delPrefix(prefix: string) {
+    await (await open()).runAsync("DELETE FROM kv WHERE k LIKE ? ESCAPE '\\'", like(prefix));
   },
   async wipe() {
     await (await open()).runAsync('DELETE FROM kv');

@@ -24,6 +24,17 @@ export const kv = {
     }
     return out;
   },
+  async getPrefix<T>(prefix: string): Promise<T[]> {
+    const out: T[] = [];
+    for (const k of await this.keys(prefix)) {
+      const v = await this.get<T>(k);
+      if (v !== null) out.push(v);
+    }
+    return out;
+  },
+  async delPrefix(prefix: string) {
+    for (const k of await this.keys(prefix)) localStorage.removeItem(P + k);
+  },
   async wipe() {
     for (const k of await this.keys('')) localStorage.removeItem(P + k);
   },

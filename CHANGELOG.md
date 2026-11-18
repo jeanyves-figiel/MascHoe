@@ -6,6 +6,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Fixed
+- **Chat works on bad networks** (app, #76, #79): every outgoing message, reaction and receipt goes to an encrypted on-device outbox before sending and is retried automatically (1 s → 60 s backoff), also after the app is killed. Reconnect, launch and foreground send at once. Gives up after 24 h with "Not sent. Tap to retry." (same message, never a duplicate). Requests time out (15 s send, 10 s pull/ack) and the chat header shows "Waiting for network" when the connection is down.
+- **No duplicates on retry** (app, #78): the message is encrypted once; retries resend the same ciphertext with `client_id`.
+- **No silently lost messages** (app, #80): a message that can't be decrypted yet is kept up to 24 h and retried after each welcome/commit (e.g. it arrived before its chat setup); then a "couldn't be decrypted" notice is shown and the 1:1 chat re-syncs its keys. Messages expired on the server while away show a notice with the count. Pull acks only after everything is saved; re-deliveries after a kill aren't processed twice.
+- **Chats keep all messages** (app, #81): one encrypted row per message instead of one blob capped at 500; writes to a chat are serialized so a send and a receive at the same time can't overwrite each other. Existing chats migrate on first open. Messages sort by sender time clamped to server time.
+
+### Added
+- **Delivered ticks and per-chat read receipts** (app, #82): Sending → Sent → Delivered → Read (ticks only move forward; groups show "Read by N"). Read receipts off (Settings or the new per-chat toggle in chat ⋯) stops sending Delivered, Read and typing and hides them from others too.
+- **Delivery tests** (#84): AC-07.5 – AC-07.10 in `apps/mobile/__tests__/delivery.test.ts` (offline + kill, lost response, kill before ack, message before welcome, undecryptable notice, receipts on/off, 2,500 messages + migration).
+
+### Fixed
 - **Chat send can't duplicate or half-deliver** (server, #78): `POST /mls/messages` takes `client_id`; a repeat from the same device within 7 d returns the first result and stores/pushes nothing. All envelopes of one call are stored in one transaction (all-or-nothing); `message.new` goes out after commit.
 
 ### Added
