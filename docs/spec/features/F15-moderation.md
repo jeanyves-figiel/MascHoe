@@ -3,7 +3,7 @@
 ## Anti-bot gate
 - R-15.1 Verification required to be visible and to initiate (F-03).
 - R-15.2 Device attestation on every session; emulator/rooted/jailbroken without attestation → read-only.
-- R-15.3 Max 1 active account per verified human; max 3 profiles.
+- R-15.3 Max 1 active account per verified human; 1 profile per account (F-06 R-06.1).
 - R-15.4 Rate limits (api.md). New accounts (< 7 d): halved limits.
 - R-15.5 Signals (metadata only): identical first-message hash across ≥ 5 recipients (client sends salted hash of first message, not content), link attempts in first messages, reply ratio < 5 % over 50 sends, 24/7 activity, location velocity, cell-hopping, copy-paste bios (server-side similarity on public bios).
 - R-15.6 Score ≥ threshold → **shadow quarantine**: user sees normal UI, outbound taps/messages/visibility delivered to nobody. Review within 24 h.
@@ -12,7 +12,7 @@
 
 ## Content moderation
 - R-15.9 Report flow (S-50): reason (spam/bot, scam/extortion, underage, harassment, non-consensual content, hate, impersonation, other) + optional franked messages/media + note. Block offered automatically.
-- R-15.10 Public photo classifier (self-hosted): labels nudity levels; main photo must be "clothed/shirtless"; slots 1–4 allow underwear/suggestive, reject genitals/sex acts; Sport profile strict. Borderline → human queue (SLA 12 h).
+- R-15.10 Public photo classifier (self-hosted): labels nudity levels; main photo must be "clothed/shirtless"; slots 1–4 allow underwear/suggestive, reject genitals/sex acts; Each photo also gets `main_ok` (strict pass); only those show in Friends and Sport (F-06 R-06.3). Borderline → human queue (SLA 12 h).
 - R-15.11 Hash matching (CSAM list) on all public photos; positive → account banned + legal reporting.
 - R-15.12 Bio/text: discriminatory phrases → write-time nudge; post-publish flag → hide field + warning.
 - R-15.13 Human moderators: closed beta = owner only, EN/FR/DE. Public launch: regional coverage (EN, FR, DE, ES, PT, IT, AR, RU, TR). SLAs: underage/CSAM/violence 1 h, extortion 4 h, others 24 h. Beta compensating control: content auto-hidden on classifier match or ≥ 2 independent reports for severe reasons until reviewed.

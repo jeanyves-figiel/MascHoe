@@ -55,15 +55,13 @@ Blind signature (R-03.4, Chaum RSA-FDH): client picks random `token` and `r`, se
 
 ### Profiles (F-06)
 | GET | /profile-options | {options:{field:[values]}, defaults:{field:{visibility, kinds}}, health:[…]} (field catalogue) |
-| GET | /me/profiles | {profiles:[MyProfile]} |
-| POST | /me/profiles | {kind: sport\|friends} → 201 MyProfile; 409 if it exists (Now profile is created at onboarding) |
-| PATCH | /me/profiles/{id} | {display_name?, fields?, visibility_map?} → MyProfile. Values whose visibility is `chats`/`only_me` are dropped (kept on device, R-06.6); health fields can't be `public`; bio/text checked for contact details and links (R-06.10) |
-| DELETE | /me/profiles/{id} | 204; the Now profile can't be deleted |
+| GET | /me/profiles | {profiles:[MyProfile]} (always exactly one; MyProfile has `show_in`, photos have `main_ok`) |
+| PATCH | /me/profiles/{id} | {display_name?, fields?, visibility_map?, show_in?} (show_in ≥ 1 else 422 `show_in_empty`) → MyProfile. Values whose visibility is `chats`/`only_me` are dropped (kept on device, R-06.6); health fields can't be `public`; bio/text checked for contact details and links (R-06.10) |
 | POST | /me/profiles/{id}/photos | {slot, content_type} → {photo_id, put_url} |
 | POST | /me/profiles/{id}/photos/{photo_id}/check | inline classifier → {photo, account} (status ok_main / ok_public / pending / rejected) |
 | DELETE | /me/profiles/{id}/photos/{photo_id} | 204; main photo can't be removed |
 | PUT | /me/profiles/{id}/photos/order | {order:[photo_id]} → MyProfile; first must have `main_ok` |
-| GET | /profiles/{id} | ProfileView, viewer-filtered (stranger: public; verified: public+verified). 404 when blocked/unavailable. 300 views/h |
+| GET | /profiles/{id}?mode | ProfileView through the viewer's lens (F-06 R-06.1b; default hookup) and audience (stranger: public; verified: public+verified). 404 when blocked/unavailable or mode not in the profile's `show_in`. 300 views/h |
 | POST | /profiles/{id}/tap | verified only; 100/day (50 for accounts < 7 days) → {mutual} |
 | POST | /profiles/{id}/block | account-level, silent |
 | POST · DELETE | /profiles/{id}/hide | hide from Explore |
@@ -72,7 +70,7 @@ Blind signature (R-03.4, Chaum RSA-FDH): client picks random `token` and `r`, se
 | POST | /profiles/{id}/report | {reason, franked_payload?} (B4) |
 
 ### Location (F-05)
-| PUT | /me/location | {level, cell_r9? \| cell_r5? \| city_id?, safe_mode_override?} (client computes cells; never lat/lng). Account-wide: all profiles move together |
+| PUT | /me/location | {level, cell_r9? \| cell_r5? \| city_id?, safe_mode_override?} (client computes cells; never lat/lng). Account-wide |
 | PUT | /me/pin | {lat, lng, ttl_s: 1800\|3600\|7200\|14400, audience: verified\|chats\|everyone, confirm: true, safe_mode_override?} → Me. RAM only, jittered 10–20 m. Verified only; Safe Mode needs override |
 | DELETE | /me/pin | → Me |
 | PATCH | /me/visibility | {incognito?, hide_from_hidden?} → Me (incognito verified-only) |
@@ -112,7 +110,7 @@ Party: `{id, title, host: card, starts_at, ends_at, capacity, seats_taken, rules
 
 ### Activities & clubs (F-11) — Sport profile
 | GET | /activities?sports= | → {posts: [post]} nearby, not expired |
-| POST | /activities | {sport, title, place_text?, venue_id?, starts_at, capacity?, intent, club_id?} (verified, Sport profile else 409 `sport_profile_required`, ≤ 3 live; expires start + 3 h) |
+| POST | /activities | {sport, title, place_text?, venue_id?, starts_at, capacity?, intent, club_id?} (verified, `sport` in `show_in` else 409 `sport_off`, ≤ 3 live; expires start + 3 h) |
 | DELETE | /activities/{id} | host |
 | POST | /activities/{id}/rsvp | {going: bool} (capacity checked in a transaction) |
 | GET | /activities/{id}/members · DELETE /activities/{id}/members/{profile_id} | host and going members only · host removes |

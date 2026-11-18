@@ -3,8 +3,8 @@
 | Term | Meaning |
 |---|---|
 | Account | One human. Holds 1 verification credential, 1–3 profiles, devices, settings. |
-| Profile | A public persona of an account: **Now** (hookup), **Sport**, **Friends**. Unlinkable to viewers. |
-| Mode | Explore lens: Hookup · Sport · Friends. Selects which profiles are shown and recolours UI. |
+| Profile | The one public profile of an account, shown through lenses (see Mode). |
+| Mode | Lens: Hookup · Friends · Sport. As viewer: whom you browse and what you see of them (Friends/Sport: safe photos, no hookup/health). As owner: `show_in` picks where you appear. Recolours UI. |
 | Verified | Account passed liveness + photo match (F-03); holds anonymous credential. |
 | Location level | Hidden · City · Area · Exact (F-05). |
 | Cell | H3 hexagon. Res 9 ≈ 200 m (Area default), res 8 ≈ 500 m, res 7 ≈ 1.2 km, res 5 ≈ city. |

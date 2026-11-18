@@ -68,7 +68,7 @@ Tab bar (4): **Explore** S-10 · **Tonight** S-13 · **Chats** S-40 · **Me** S-
 | S-55 | App lock / decoy | F-13 | PIN pad | unlock / duress | — |
 
 ## Me & settings
-| S-60 | Me [v2 Me] | F-06 | 34 pt title, profile switcher chips (mode colours), card with completeness ring + next step, Edit profile (white) / Preview, grouped rows with coloured dots and values, quick toggles, field list | edit field → S-62 | — |
+| S-60 | Me [v2 Me] | F-06 | 34 pt title, card with completeness ring + next step, Edit profile (white) / Preview, **Show me in** group (Hookup / Friends / Sport switches, mode-coloured dot + one-line caption of what shows), **See yourself in** lens segment + live preview card (F-06 R-06.7, [mockup](https://claude.ai/artifact/Jx1QeJRnPrq9EvZxgaAjvt)), grouped rows with coloured dots and values, quick toggles, field list | edit field → S-62 | — |
 | S-61 | Settings [Settings] | F-17 | search, grouped rows | navigate | — |
 | S-62 | Edit field sheet | F-06 | value input, visibility selector | save | validation errors |
 | S-63 | Linked accounts | I-01 | list, add, proof steps | verify | proof failed |

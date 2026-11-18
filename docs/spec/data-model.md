@@ -41,9 +41,10 @@ Principle: store the minimum; anything audience-restricted is E2EE or coarse-fla
 ### profiles
 | Column | Type | Notes |
 |---|---|---|
-| id | uuid | public handle id (random, unlinkable across profiles) |
+| id | uuid | public handle id (random) |
 | account_id | uuid | **never exposed in API** |
-| kind | enum(now, sport, friends) | |
+| kind | enum(now) | legacy, always `now`; one profile per account (unique on account_id) |
+| show_in | text[] ⊆ {hookup, friends, sport}, ≥ 1 | lenses the profile appears in (F-06 R-06.1a) |
 | display_name, age, gender (+ gender_other), here_for[], pronouns, orientation, languages[] | SV | Public fields (age stored as int, refreshed from birthdate) |
 | bio, prompt_q, prompt_a | SV | |
 | body (height_cm, weight_kg, build, hair, beard), tribes[] | SV | |
@@ -56,7 +57,7 @@ Principle: store the minimum; anything audience-restricted is E2EE or coarse-fla
 | photo_ids | uuid[5] | ordered; [0] = main |
 | completeness | smallint | |
 | fields | jsonb (GIN) | catalogue values whose visibility is public/verified (`Thirstr.Profiles.Fields`); filters query it |
-| public_updated_at | timestamptz | fuzzed ±1 h so edits can't be correlated across profiles |
+| public_updated_at | timestamptz | fuzzed ±1 h |
 | updated_at | timestamptz | |
 
 B1 stores the SV fields in the `fields` jsonb rather than one column each; `hookup_flags` is not used (jsonb filters instead).
@@ -64,7 +65,7 @@ B1 stores the SV fields in the `fields` jsonb rather than one column each; `hook
 Audience-restricted values (health, socials, limits, boundaries card) are **not** stored here; they are sent E2EE to chat partners (F-06 R-06.6).
 
 ### photos
-| id · profile_id · slot (0–4) · storage_key · status enum(pending, ok_main, ok_public, rejected) · reject_reason · review_state · classifier_score jsonb (`main_ok` flag) · created_at |
+| id · profile_id · slot (0–4) · storage_key · status enum(pending, ok_main, ok_public, rejected) · reject_reason · review_state · classifier_score jsonb (`main_ok` = passes strict check; only these show in Friends/Sport) · created_at |
 
 ### location_cells (one row per visible profile, overwritten)
 | profile_id pk · level enum(city, area, exact) · cell_r9 · cell_r8 · cell_r7 · cell_r5 (bigint = `h3index::bigint`; City stores r5 only) · updated_at · hide_from_hidden bool · display_res smallint (9/8/7/5: k-anonymity, widened each minute when < 5 people share the cell) |

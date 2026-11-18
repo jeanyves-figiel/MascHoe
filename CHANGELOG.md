@@ -25,6 +25,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `hello@thirstr.fun` inbound mail (#62): GoDaddy MX → ImprovMX forwarding + SPF; records in `docs/runbooks/fly.md` › Domain.
 
 ### Changed
+- **Spec: one profile, three lenses** (#96): replaces the separate Now / Sport / Friends profiles. One profile; "Show me in" Hookup / Friends / Sport on Me; Friends and Sport only show safe photos and never hookup or health details; Explore mode is the viewer's lens. Updated F-06, F-04, F-02, F-11, F-15, data model, API, screens, glossary, concept docs; decision D-15.
 - **Chat delivery spec** (F-07 R-07.16–R-07.24, AC-07.5–AC-07.10; api.md, data-model.md, F-17 R-17.5): Sending → Sent → Delivered → Read states; persistent outbox with automatic retry and backoff; idempotent `client_id` send (no duplicates on retry) and all-or-nothing server write; request timeouts and "Waiting for network" chip; no silent drop of undecryptable messages; per-message local store without the 500-message cap; read receipts cover Delivered and typing, enforced both ways, with a per-chat override. Issues #76, #78–#82, #84.
 - **Required vs optional fields** (owner decisions 2026-11-18, [docs/spec/required-fields.md](docs/spec/required-fields.md)):
   - Display name max 20 characters (was 30).

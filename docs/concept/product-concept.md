@@ -82,7 +82,7 @@ Cross-app pain points (user reviews):
 - **Group & party hosting**: "3 hosting tonight, 2 spots left"; host sets capacity, rules, audience; RSVP verified-only; address revealed only to accepted guests, E2EE.
 - **Private notes & tags on profiles**: "met 03/11", "flaky"; stored on device only, synced E2EE across own devices.
 - **Disappearing chats by default**: per-chat timer 24 h / 7 d / never; default 7 d (user-changeable).
-- **Multiple profiles**: e.g. Now profile + Friends/Activities profile; unlinkable to viewers; one verification covers all.
+- **One profile, three lenses** (replaces multiple profiles, 2026-11-18, #96): choose where you show up (Hookup / Friends / Sport); Friends and Sport show only safe photos and no hookup details.
 - **Venue check-in**: sauna, bar, party, gym; "who's here" visible only to others checked in who opted in; auto check-out on leaving geofence / after 4 h.
 - **Tonight board**: plans for later today (not just now): "free after 22:00, hosting", expiring at end of night; own tab on home.
 
@@ -300,7 +300,7 @@ Free (forever):
 - Unlimited grid/map scroll, all filters, unlimited messages, private albums (limited count), video calls, incognito, Safe Mode, verification, read receipts, 1 active travel plan, events.
 
 **Plus** (target €4.99–6.99/mo, PPP regional pricing, lifetime option):
-- Multiple/scheduled travel plans; bigger album storage + longer media history; multiple profiles (e.g. Friends vs. Now); themes/icons; advanced chat organization; early features; supporter badge (optional).
+- Multiple/scheduled travel plans; bigger album storage + longer media history; themes/icons; advanced chat organization; early features; supporter badge (optional).
 - **No** visibility boosts that degrade free users' experience. If boosts exist: capped, labeled, one per user/day.
 
 Other revenue:
@@ -329,7 +329,7 @@ In:
 - Share link / QR to own profile (for bios on other apps, see §15).
 - Moderation console v0.
 - **Home = map first** + Active-now tray, Map/Grid toggle, Tonight tab.
-- **Social hookup features** (owner: all in v1): party hosting, private notes, disappearing chats (default 7 d), multiple profiles, venue check-in, Tonight board.
+- **Social hookup features** (owner: all in v1): party hosting, private notes, disappearing chats (default 7 d), profile lenses (Hookup/Friends/Sport), venue check-in, Tonight board.
 - **Activities**: intent, SFW activity profile, activity posts, open-to-more flag, clubs & teams, gym check-in.
 
 Out (v2+): groups, video calls, events, travel planner, health module, vouching, Plus billing, multi-device, duress PIN.

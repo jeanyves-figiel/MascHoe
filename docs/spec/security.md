@@ -16,7 +16,7 @@ Method: STRIDE per asset + attacker profiles. Owner: security lead. Review befor
 ## Attackers
 | ID | Attacker | Goal | Key mitigations |
 |---|---|---|---|
-| A1 | Stalker / ex-partner | locate a person | cell-only location, k-anon, jitter, TTL pins, hide-from-hidden, block across profiles, velocity checks |
+| A1 | Stalker / ex-partner | locate a person | cell-only location, k-anon, jitter, TTL pins, hide-from-hidden, account-level block, velocity checks |
 | A2 | Police in hostile country | identify/entrap gay users | Safe Mode, verified-only visibility, no server country lists, duress PIN, disguised icon, minimal server data |
 | A3 | Bot/scam operator | mass spam, extortion | verification, attestation, quarantine, rate limits, first-message link block |
 | A4 | Data broker / advertiser | harvest data | zero SDKs, no ads, no IDs in logs, anti-scrape (attested clients, rate limits) |
