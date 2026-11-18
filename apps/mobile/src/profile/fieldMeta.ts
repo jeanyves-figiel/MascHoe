@@ -1,5 +1,3 @@
-import type { Kind } from '../api/types';
-
 // Client mirror of Thirstr.Profiles.Fields types (server validates; this drives inputs).
 export type FieldType = 'enum' | 'multi' | 'text' | 'int' | 'bool' | 'month';
 
@@ -29,7 +27,3 @@ export const GROUPS: { group: Group; keys: string[] }[] = [
   { group: 'health', keys: ['prep', 'hiv', 'last_tested'] },
   { group: 'sport', keys: ['sports', 'sport_level', 'gym', 'schedule', 'sport_intent', 'clubs_visible'] },
 ];
-
-export function availableFor(kinds: Kind[] | 'all' | undefined, kind: Kind) {
-  return kinds === 'all' || (Array.isArray(kinds) && kinds.includes(kind));
-}

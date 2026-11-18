@@ -31,13 +31,13 @@ defmodule Thirstr.Tonight do
           FROM tonight_plans t
           JOIN profiles p ON p.id = t.profile_id
           JOIN accounts a ON a.id = p.account_id
-          WHERE t.cell_r5 = ANY($1) AND t.expires_at > now() AND p.kind = $2
+          WHERE t.cell_r5 = ANY($1) AND t.expires_at > now() AND $2::text = ANY(p.show_in)
             AND t.window_start < $4 AND t.window_end > $3
             AND a.status = 'active' AND a.id <> $5
           ORDER BY t.window_start
           LIMIT 500
           """,
-          [Nearby.area(ctx, 2), ctx.kind, from, to, Nearby.dump(ctx.account.id)]
+          [Nearby.area(ctx, 2), ctx.lens, from, to, Nearby.dump(ctx.account.id)]
         ).rows
         |> Nearby.utc()
         |> Nearby.utc()

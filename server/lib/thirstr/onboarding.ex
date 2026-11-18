@@ -48,14 +48,25 @@ defmodule Thirstr.Onboarding do
       profile
       |> Profile.basics_changeset(attrs)
       |> Ecto.Changeset.put_change(:age, age)
-      |> Ecto.Changeset.put_change(
-        :completeness,
-        Thirstr.Profiles.Fields.completeness(%{
-          fields: profile.fields,
-          photo_ids: profile.photo_ids,
-          kind: profile.kind
-        })
+      # R-06.1a: Here for sets the initial lenses.
+      |> then(
+        &Ecto.Changeset.put_change(
+          &1,
+          :show_in,
+          Profile.lenses_for(Ecto.Changeset.get_field(&1, :here_for))
+        )
       )
+      |> then(fn cs ->
+        Ecto.Changeset.put_change(
+          cs,
+          :completeness,
+          Thirstr.Profiles.Fields.completeness(%{
+            fields: profile.fields,
+            photo_ids: profile.photo_ids,
+            show_in: Ecto.Changeset.get_field(cs, :show_in)
+          })
+        )
+      end)
 
     with {:ok, p} <- Repo.insert_or_update(changeset),
          {:ok, a} <- a |> Account.changeset(%{birthdate: birthdate}) |> Repo.update() do

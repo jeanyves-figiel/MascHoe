@@ -208,11 +208,11 @@ defmodule ThirstrWeb.SceneTest do
   end
 
   describe "Activities & clubs (F-11)" do
-    defp sport!(u) do
-      req(u, :post, "/v1/me/profiles", %{kind: "sport"}) |> json_response(201)
+    defp sport!(u, show_in \\ ["hookup", "sport"]) do
+      req(u, :patch, "/v1/me/profiles/#{u.pid}", %{show_in: show_in}) |> json_response(200)
     end
 
-    test "post needs a sport profile; RSVP joins the group chat", %{host: h, guest: g} do
+    test "post needs Sport turned on; RSVP joins the group chat", %{host: h, guest: g} do
       body = %{
         sport: "climbing",
         title: "Bouldering session",
@@ -221,7 +221,7 @@ defmodule ThirstrWeb.SceneTest do
         mode: "sport"
       }
 
-      assert %{"error" => %{"code" => "sport_profile_required"}} =
+      assert %{"error" => %{"code" => "sport_off"}} =
                req(h, :post, "/v1/activities", body) |> json_response(409)
 
       sport!(h)
@@ -239,7 +239,7 @@ defmodule ThirstrWeb.SceneTest do
     end
 
     @tag ac: "AC-11.2"
-    test "Sport feed never returns hookup profiles", %{host: h, guest: g} do
+    test "Sport feed only shows people shown in Sport", %{host: h, guest: g} do
       sport!(h)
       sport!(g)
 
@@ -251,14 +251,10 @@ defmodule ThirstrWeb.SceneTest do
       |> json_response(201)
 
       %{"posts" => [p]} = req(g, :get, "/v1/activities") |> json_response(200)
-      refute p["host"]["id"] == h.pid
+      assert p["host"]["id"] == h.pid
 
-      [[kind]] =
-        Thirstr.Repo.query!("SELECT kind FROM profiles WHERE id = $1", [
-          Ecto.UUID.dump!(p["host"]["id"])
-        ]).rows
-
-      assert kind == "sport"
+      sport!(h, ["hookup"])
+      assert %{"posts" => []} = req(g, :get, "/v1/activities") |> json_response(200)
     end
 
     test "clubs: 30-day rule, open join, request + approve", %{host: h, guest: g} do

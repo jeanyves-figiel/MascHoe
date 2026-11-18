@@ -160,9 +160,7 @@ defmodule ThirstrWeb.Router do
       # F-06 profiles
       get "/profile-options", ProfileController, :options
       get "/me/profiles", ProfileController, :index
-      post "/me/profiles", ProfileController, :create
       patch "/me/profiles/:id", ProfileController, :update
-      delete "/me/profiles/:id", ProfileController, :delete
       post "/me/profiles/:profile_id/photos", ProfileController, :create_photo
       post "/me/profiles/:profile_id/photos/:photo_id/check", ProfileController, :check_photo
       delete "/me/profiles/:profile_id/photos/:photo_id", ProfileController, :delete_photo

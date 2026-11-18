@@ -1,7 +1,7 @@
 // Device-only app preferences (F-17 R-17.9, concept §3 › App): units, haptics, media auto-delete.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export type Prefs = { units: 'km' | 'mi'; haptics: boolean; autoDelete: boolean; emailNudgeDone?: boolean };
+export type Prefs = { units: 'km' | 'mi'; haptics: boolean; autoDelete: boolean; emailNudgeDone?: boolean; lensNoticeDone?: boolean };
 const KEY = 'thirstr.prefs';
 let cur: Prefs = { units: 'km', haptics: true, autoDelete: false };
 

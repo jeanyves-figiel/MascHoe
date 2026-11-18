@@ -21,9 +21,11 @@ type Nav = {
 
 const errText = (e: unknown) => (e instanceof ApiError ? (Object.values(e.fields ?? {})[0]?.[0] ?? e.message) : tx.common.error);
 
+/** F-11 R-11.1: the one profile, when Sport is turned on (show_in). */
 function useSportProfile() {
   const { me } = useSession();
-  return (me.profiles ?? []).find((p) => p.kind === 'sport') ?? null;
+  const p = me.profile ?? me.profiles?.[0] ?? null;
+  return p && (p.show_in ?? []).includes('sport') ? p : null;
 }
 
 /** Opens a group chat for an activity/club; the host (or club owner) keeps the MLS group in sync. */
@@ -195,7 +197,7 @@ export function ActivityNewScreen({ navigation }: { navigation: Nav }) {
       keyboardShouldPersistTaps="handled"
     >
       <Text style={{ ...type.display, color: color.fgPrimary }}>{tx.sport.post}</Text>
-      {!mine ? <Banner tone="warn" text={tx.sport.needProfile} /> : null}
+      {!mine ? <Banner tone="warn" text={tx.sport.needProfile} onPress={() => navigation.navigate('Tabs', { screen: 'Me' })} /> : null}
       <SectionLabel>{tx.sport.sportPick}</SectionLabel>
       <Chips>
         {(options?.options.sports ?? []).map((s) => (

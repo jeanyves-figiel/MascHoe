@@ -26,7 +26,8 @@ defmodule Thirstr.Profiles.Fields do
   @prompts ~w(perfect_night ask_me_about green_flag weekend looking_for_someone_who)
   @languages ~w(en fr de it es pt nl pl tr ru ar he ja zh id th hi sv da no fi cs el hu ro uk)
 
-  # key => {type, opts}; default visibility; kinds the field belongs to; filter flag
+  # key => {type, opts}; default visibility; lenses that show it besides Hookup (F-06 R-06.1b):
+  # :all = every lens, "friends" = Friends and Sport, "sport" = Sport only, "now" = Hookup only.
   @catalogue %{
     "pronouns" => {{:text, 20}, "public", :all},
     "orientation" => {{:enum, @orientations}, "public", :all},
@@ -43,7 +44,7 @@ defmodule Thirstr.Profiles.Fields do
     "looking_for" => {{:multi, @looking_for, 7}, "public", ~w(now friends)},
     "relationship" => {{:enum, @relationship}, "public", ~w(now friends)},
     "creator" => {:bool, "public", ~w(now)},
-    # hookup (Now profile), default Verified (R-06.5)
+    # hookup, default Verified (R-06.5); Hookup lens only
     "position" => {{:enum, @positions}, "verified", ~w(now)},
     "practices" => {{:multi, @practices, 10}, "verified", ~w(now)},
     "limits" => {{:multi, @practices, 10}, "verified", ~w(now)},
@@ -54,7 +55,7 @@ defmodule Thirstr.Profiles.Fields do
     "prep" => {{:enum, @prep}, "chats", ~w(now)},
     "hiv" => {{:enum, @hiv}, "chats", ~w(now)},
     "last_tested" => {{:month}, "chats", ~w(now)},
-    # sport profile (F-11)
+    # sport (F-11)
     "sports" => {{:multi, @sports, 8}, "public", ~w(sport)},
     "sport_level" => {{:enum, @levels}, "public", ~w(sport)},
     "gym" => {{:text, 60}, "verified", ~w(sport)},
@@ -64,10 +65,49 @@ defmodule Thirstr.Profiles.Fields do
   }
 
   @health ~w(prep hiv last_tested)
+  @lenses ~w(hookup friends sport)
+  # looking_for values never shown outside the Hookup lens (R-06.1b)
+  @hookup_looking_for ~w(hookup now tonight)
   @visibilities ~w(public verified chats only_me)
 
   def catalogue, do: @catalogue
   def health, do: @health
+  def lenses, do: @lenses
+
+  @doc """
+  F-06 R-06.1b: what a lens shows of already audience-filtered fields. Hookup shows everything;
+  Friends shows identity/social fields; Sport adds the sport fields. Never hookup or health.
+  """
+  def lens(fields, "hookup"), do: fields
+
+  def lens(fields, mode) when mode in ~w(friends sport) do
+    fields
+    |> Enum.filter(fn {k, _} -> in_lens?(k, mode) end)
+    |> Map.new()
+    |> then(fn f ->
+      case f["looking_for"] do
+        l when is_list(l) ->
+          case l -- @hookup_looking_for do
+            [] -> Map.delete(f, "looking_for")
+            rest -> Map.put(f, "looking_for", rest)
+          end
+
+        _ ->
+          f
+      end
+    end)
+  end
+
+  def lens(fields, _), do: lens(fields, "hookup")
+
+  defp in_lens?(k, mode) do
+    case Map.get(@catalogue, k) do
+      {_, _, :all} -> true
+      {_, _, kinds} -> "friends" in kinds or (mode == "sport" and "sport" in kinds)
+      nil -> false
+    end
+  end
+
   def visibilities, do: @visibilities
 
   def sports, do: @sports
@@ -104,11 +144,11 @@ defmodule Thirstr.Profiles.Fields do
   Validates a PATCH. Returns {:ok, fields, visibility_map} with chats/only_me values removed,
   or {:error, {:validation, errors}}.
   """
-  def apply(kind, current_fields, current_vis, params_fields, params_vis) do
+  def apply(current_fields, current_vis, params_fields, params_vis) do
     params_fields = params_fields || %{}
     params_vis = params_vis || %{}
 
-    with :ok <- check_keys(kind, Map.keys(params_fields) ++ Map.keys(params_vis)),
+    with :ok <- check_keys(Map.keys(params_fields) ++ Map.keys(params_vis)),
          {:ok, vis} <- merge_visibility(current_vis || %{}, params_vis),
          {:ok, fields} <- merge_values(current_fields || %{}, params_fields) do
       # Drop values the server must not hold (R-06.4).
@@ -123,19 +163,12 @@ defmodule Thirstr.Profiles.Fields do
     end
   end
 
-  defp check_keys(kind, keys) do
-    bad =
-      Enum.reject(keys, fn k ->
-        case Map.get(@catalogue, k) do
-          {_, _, :all} -> true
-          {_, _, kinds} -> kind in kinds
-          nil -> false
-        end
-      end)
+  defp check_keys(keys) do
+    bad = Enum.reject(keys, &Map.has_key?(@catalogue, &1))
 
     if bad == [],
       do: :ok,
-      else: {:error, {:validation, Map.new(bad, &{&1, ["not available on this profile"]})}}
+      else: {:error, {:validation, Map.new(bad, &{&1, ["unknown field"]})}}
   end
 
   defp merge_visibility(current, params) do
@@ -214,13 +247,16 @@ defmodule Thirstr.Profiles.Fields do
   2026-11-18, required-fields.md RF-12): name, age, I am and Here for = 20, main photo = 20,
   so a profile fresh out of onboarding reads 40 %, not 6 %.
   """
-  def completeness(%{fields: f, photo_ids: photos, kind: kind}) do
+  def completeness(%{fields: f, photo_ids: photos} = p) do
     f = f || %{}
     has = &(Map.has_key?(f, &1) and f[&1] not in [nil, "", []])
     n_photos = length(photos || [])
 
+    # Mode-specific step: hookup details when shown in Hookup, else sport details.
     hookup_keys =
-      if kind == "sport", do: ~w(sports sport_level schedule), else: ~w(position hosting)
+      if "hookup" in (Map.get(p, :show_in) || ["hookup"]),
+        do: ~w(position hosting),
+        else: ~w(sports sport_level schedule)
 
     [
       {20, 1},

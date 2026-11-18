@@ -1,5 +1,5 @@
 defmodule Thirstr.Profiles.Profile do
-  @moduledoc "profiles table (F-06). One per kind (now, sport, friends), max 3 per account (R-06.1)."
+  @moduledoc "profiles table (F-06). One per account (R-06.1); `show_in` = lenses it appears in (R-06.1a)."
   use Ecto.Schema
   import Ecto.Changeset
 
@@ -19,6 +19,7 @@ defmodule Thirstr.Profiles.Profile do
     field :gender, :string
     field :gender_other, :string
     field :here_for, {:array, :string}, default: ["hookup", "tonight"]
+    field :show_in, {:array, :string}, default: ["hookup"]
     field :visibility_map, :map, default: %{}
     field :photo_ids, {:array, :binary_id}, default: []
     field :completeness, :integer, default: 0
@@ -29,8 +30,8 @@ defmodule Thirstr.Profiles.Profile do
     timestamps()
   end
 
-  @kinds ~w(now sport friends)
-  def kinds, do: @kinds
+  @lenses ~w(hookup friends sport)
+  def lenses, do: @lenses
   def genders, do: @genders
   def here_for_values, do: @here_for
 
@@ -49,6 +50,33 @@ defmodule Thirstr.Profiles.Profile do
     |> validate_gender_other()
     |> validate_subset(:here_for, @here_for)
     |> validate_length(:here_for, min: 1)
+  end
+
+  @doc "R-06.1a: Here for → initial lenses (Hookup/Tonight/Chat → hookup; Friends; Sport)."
+  def lenses_for(here_for) do
+    here_for = here_for || []
+
+    [
+      {"hookup", Enum.any?(~w(hookup tonight chat), &(&1 in here_for))},
+      {"friends", "friends" in here_for},
+      {"sport", "sport" in here_for}
+    ]
+    |> Enum.filter(&elem(&1, 1))
+    |> Enum.map(&elem(&1, 0))
+    |> case do
+      [] -> ["hookup"]
+      l -> l
+    end
+  end
+
+  @doc "R-06.1a: show_in ⊆ lenses, at least one."
+  def show_in_changeset(profile, show_in) do
+    profile
+    |> cast(%{show_in: show_in}, [:show_in])
+    |> validate_required([:show_in], message: "show_in_empty")
+    |> validate_subset(:show_in, @lenses)
+    |> validate_length(:show_in, min: 1, message: "show_in_empty")
+    |> update_change(:show_in, fn l -> Enum.filter(@lenses, &(&1 in l)) end)
   end
 
   # RF-3: the "I am" step is optional; skipped = "unspecified".

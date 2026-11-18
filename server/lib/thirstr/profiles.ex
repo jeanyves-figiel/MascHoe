@@ -1,8 +1,8 @@
 defmodule Thirstr.Profiles do
   @moduledoc """
-  F-06 Profiles: up to 3 per account (now, sport, friends), field catalogue with per-field
-  visibility, photos (5 public slots), completeness. Spec: docs/spec/features/F06-profiles.md.
-  The account id is never returned; profiles of one account are unlinkable (R-06.1, AC-06.3).
+  F-06 Profiles: one per account, shown through lenses (`show_in` Hookup/Friends/Sport,
+  R-06.1a/b), field catalogue with per-field visibility, photos (5 public slots), completeness.
+  Spec: docs/spec/features/F06-profiles.md. The account id is never returned.
   """
   import Ecto.Query
   alias Thirstr.{Repo, Storage}
@@ -16,7 +16,6 @@ defmodule Thirstr.Profiles do
     Repo.all(
       from p in Profile,
         where: p.account_id == ^id,
-        order_by: fragment("array_position(ARRAY['now','sport','friends'], ?)", p.kind),
         preload: [photos: ^@photos_q]
     )
   end
@@ -43,74 +42,21 @@ defmodule Thirstr.Profiles do
     )
   end
 
-  @doc "R-06.1 / R-11.1: Sport and Friends profiles are created lazily, copying identity basics."
-  def create(%Account{} = a, kind) when kind in ~w(sport friends) do
-    case get_by_kind(a, "now") do
-      nil ->
-        {:error, :basics_required}
+  @doc "R-06.1: the account's one profile."
+  def main(%Account{} = a), do: get_by_kind(a, "now")
 
-      now ->
-        if get_by_kind(a, kind), do: throw(:exists)
-
-        %Profile{
-          account_id: a.id,
-          kind: kind,
-          display_name: now.display_name,
-          age: now.age,
-          gender: now.gender,
-          gender_other: now.gender_other,
-          here_for: if(kind == "sport", do: ["sport"], else: ["friends"]),
-          fields: %{}
-        }
-        |> Repo.insert()
-        |> case do
-          {:ok, p} -> copy_location(a, p) && get_own(a, p.id)
-          other -> other
-        end
-    end
-  catch
-    :exists -> {:error, {:conflict, "You already have this profile"}}
-  end
-
-  def create(_, _), do: {:error, {:validation, %{kind: ["must be sport or friends"]}}}
-
-  defp copy_location(a, p) do
-    Repo.query!(
-      """
-      INSERT INTO location_cells (profile_id, level, cell_r9, cell_r8, cell_r7, cell_r5, hide_from_hidden, display_res, updated_at)
-      SELECT $1, lc.level, lc.cell_r9, lc.cell_r8, lc.cell_r7, lc.cell_r5, lc.hide_from_hidden, lc.display_res, now()
-      FROM location_cells lc JOIN profiles p ON p.id = lc.profile_id
-      WHERE p.account_id = $2 AND p.kind = 'now'
-      ON CONFLICT DO NOTHING
-      """,
-      [Ecto.UUID.dump!(p.id), Ecto.UUID.dump!(a.id)]
-    )
-
-    true
-  end
-
-  def delete(%Account{} = a, id) do
-    with {:ok, p} <- get_own(a, id),
-         true <- p.kind != "now" || {:error, {:conflict, "Your main profile can't be deleted"}} do
-      keys = Enum.map(p.photos, & &1.storage_key)
-      Repo.delete!(p)
-      Storage.delete_many(keys)
-      :ok
-    end
-  end
-
-  @doc "PATCH /me/profiles/:id: display_name, here_for, fields, visibility_map (R-06.4, R-06.12)."
+  @doc "PATCH /me/profiles/:id: display_name, here_for, show_in, fields, visibility_map (R-06.1a, R-06.4, R-06.12)."
   def update(%Account{} = a, id, params) do
     with {:ok, p} <- get_own(a, id),
          {:ok, fields, vis} <-
            Fields.apply(
-             p.kind,
              p.fields,
              p.visibility_map,
              params["fields"],
              params["visibility_map"]
            ),
-         :ok <- check_texts(a, fields) do
+         :ok <- check_texts(a, fields),
+         {:ok, show_in} <- show_in(p, params) do
       basics = Map.take(params, ~w(display_name here_for gender gender_other))
 
       p
@@ -122,15 +68,15 @@ defmodule Thirstr.Profiles do
       )
       |> Ecto.Changeset.put_change(:fields, fields)
       |> Ecto.Changeset.put_change(:visibility_map, vis)
+      |> Ecto.Changeset.put_change(:show_in, show_in)
       |> Ecto.Changeset.put_change(:public_updated_at, fuzzed_now())
       |> Ecto.Changeset.put_change(
         :completeness,
-        Fields.completeness(%{fields: fields, photo_ids: p.photo_ids, kind: p.kind})
+        Fields.completeness(%{fields: fields, photo_ids: p.photo_ids, show_in: show_in})
       )
       |> Repo.update()
       |> case do
         {:ok, p} ->
-          if Map.has_key?(basics, "display_name"), do: sync_name(a, p)
           broadcast_change(p)
           get_own(a, p.id)
 
@@ -140,12 +86,23 @@ defmodule Thirstr.Profiles do
     end
   end
 
-  # Name/gender are identity: kept equal across own profiles.
-  defp sync_name(a, p) do
-    Repo.update_all(from(x in Profile, where: x.account_id == ^a.id and x.id != ^p.id),
-      set: [display_name: p.display_name, gender: p.gender, gender_other: p.gender_other]
-    )
+  defp show_in(p, %{"show_in" => l}) when is_list(l) do
+    case Profile.show_in_changeset(p, l) do
+      %{valid?: true} = cs ->
+        {:ok, Ecto.Changeset.get_field(cs, :show_in)}
+
+      %{errors: errs} ->
+        if Keyword.has_key?(errs, :show_in) and
+             elem(errs[:show_in], 0) == "show_in_empty",
+           do: {:error, {:unprocessable, "show_in_empty", "Show yourself in at least one mode"}},
+           else: {:error, {:validation, %{show_in: ["must be hookup, friends or sport"]}}}
+    end
   end
+
+  defp show_in(_p, %{"show_in" => _}),
+    do: {:error, {:validation, %{show_in: ["must be a list"]}}}
+
+  defp show_in(p, _), do: {:ok, p.show_in}
 
   defp check_texts(a, fields) do
     links_ok? =
@@ -160,7 +117,7 @@ defmodule Thirstr.Profiles do
     end)
   end
 
-  # AC-06.3: updates of two profiles of one account can't be correlated by timestamp.
+  # Public edit time is fuzzed so edits can't be timed precisely.
   defp fuzzed_now,
     do: DateTime.add(DateTime.utc_now(), :rand.uniform(1200) - 600, :second)
 
@@ -184,8 +141,8 @@ defmodule Thirstr.Profiles do
   end
 
   @doc """
-  R-02.7 / R-15.10: classify after upload. Slot 0 must be `ok_main`; Sport profile is strict
-  on every slot (AC-11.1). Borderline → `pending` + review queue, hidden until reviewed.
+  R-02.7 / R-15.10: classify after upload. Slot 0 must be `ok_main`. Every photo carries
+  `main_ok` (strict pass): only those show in Friends/Sport (R-06.3). Borderline → `pending`.
   """
   def check_photo(%Account{} = a, profile_id, photo_id) do
     with {:ok, p} <- get_own(a, profile_id),
@@ -193,7 +150,7 @@ defmodule Thirstr.Profiles do
            Repo.get_by(Photo, id: photo_id, profile_id: p.id) || {:error, :not_found},
          {:ok, %{size: size}} when size > 0 and size <= 15_000_000 <- Storage.head(ph.storage_key) do
       {status, reason, score} =
-        case Classifier.impl().classify(ph.storage_key, ph.slot, p.kind) do
+        case Classifier.impl().classify(ph.storage_key, ph.slot, "now") do
           {:review, score} -> {"pending", nil, score}
           {ok, score} when ok in [:ok_main, :ok_public] -> {Atom.to_string(ok), nil, score}
           {:rejected, why, score} -> {"rejected", Atom.to_string(why), score}
@@ -249,7 +206,8 @@ defmodule Thirstr.Profiles do
     Repo.update_all(from(x in Profile, where: x.id == ^profile_id),
       set: [
         photo_ids: ordered,
-        completeness: Fields.completeness(%{fields: p.fields, photo_ids: ordered, kind: p.kind})
+        completeness:
+          Fields.completeness(%{fields: p.fields, photo_ids: ordered, show_in: p.show_in})
       ]
     )
   end
@@ -278,7 +236,7 @@ defmodule Thirstr.Profiles do
           {:error, {:validation, %{order: ["must list every photo once"]}}}
 
         ids != [] and by_id[hd(ids)].status != "ok_main" and
-            not main_ok?(by_id[hd(ids)], p.kind) ->
+            not main_ok?(by_id[hd(ids)]) ->
           {:error, {:validation, %{order: ["your main photo must pass the main-photo check"]}}}
 
         true ->
@@ -304,8 +262,7 @@ defmodule Thirstr.Profiles do
   def reorder_photos(_, _, _), do: {:error, {:validation, %{order: ["must be a list"]}}}
 
   # A public photo can become main only if its score meets the main threshold.
-  defp main_ok?(%Photo{classifier_score: s}, _kind),
-    do: Map.get(s || %{}, "main_ok", false) == true
+  def main_ok?(%Photo{classifier_score: s}), do: Map.get(s || %{}, "main_ok", false) == true
 
   # ------------------------------------------------------------- visibility helpers
 

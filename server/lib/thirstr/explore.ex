@@ -24,6 +24,10 @@ defmodule Thirstr.Explore do
 
   def kind_for_mode(mode), do: Map.get(@modes, mode)
 
+  @doc "F-06 R-06.1b: the viewer's lens for a mode param (unknown → hookup)."
+  def lens(mode) when mode in ["hookup", "friends", "sport"], do: mode
+  def lens(_), do: "hookup"
+
   # ------------------------------------------------------------------ viewer
 
   @doc "Everything the queries need to know about the viewer."
@@ -36,6 +40,7 @@ defmodule Thirstr.Explore do
     %{
       account: a,
       mode: mode,
+      lens: lens(mode),
       kind: kind,
       verified: Account.verified?(a),
       new: Account.new?(a),
@@ -43,7 +48,8 @@ defmodule Thirstr.Explore do
       safe_mode: Account.safe_mode_on?(a),
       settings: Settings.get(a),
       point: Location.viewer_point(a),
-      profile_id: Enum.find_value(own, fn [id, k, _] -> if k == kind, do: id end),
+      # R-06.1: one profile per account, whatever the mode.
+      profile_id: Enum.find_value(own, fn [id, _, _] -> id end),
       age: Enum.find_value(own, fn [_, k, age] -> if k == "now", do: age end) || 30
     }
   end
@@ -212,7 +218,7 @@ defmodule Thirstr.Explore do
       v.point.lng,
       v.point.lat,
       dump(v.account.id),
-      v.kind,
+      v.lens,
       v.verified,
       v.hidden,
       v.new,
@@ -234,9 +240,9 @@ defmodule Thirstr.Explore do
     JOIN accounts a ON a.id = p.account_id
     CROSS JOIN LATERAL (SELECT (CASE lc.display_res WHEN 9 THEN lc.cell_r9 WHEN 8 THEN lc.cell_r8
                           WHEN 7 THEN lc.cell_r7 ELSE lc.cell_r5 END)::h3index AS dcell) d
-    LEFT JOIN now_status ns ON ns.profile_id = p.id AND ns.expires_at > now() AND p.kind <> 'sport'
+    LEFT JOIN now_status ns ON ns.profile_id = p.id AND ns.expires_at > now() AND $4::text <> 'sport'
     LEFT JOIN photos ph ON ph.id = p.photo_ids[1]
-    WHERE p.kind = $4
+    WHERE $4::text = ANY(p.show_in)
       AND ($9 = 0 OR lc.cell_r5 IN (SELECT h3_grid_disk(vp.r5, $9)::bigint))
       AND a.id <> $3
       AND a.status = 'active' AND NOT a.incognito AND NOT a.hidden
@@ -427,8 +433,9 @@ defmodule Thirstr.Explore do
     sport_intent: {"sport_intent", :enum},
     orientation: {"orientation", :enum}
   }
-  # hookup filters only for verified viewers (R-04.8)
+  # hookup filters only for verified viewers (R-04.8) and only in the Hookup lens (R-06.1b)
   @verified_only ~w(position hosting)a
+  @hookup_only ~w(position hosting)a
 
   @doc "Parses query params into a filter map (all filters free, never HIV/ethnicity)."
   def parse_filters(params) do
@@ -524,7 +531,7 @@ defmodule Thirstr.Explore do
           vals in [nil, []] ->
             acc
 
-          k in @verified_only and not v.verified ->
+          not filter_allowed?(k, v) ->
             acc
 
           true ->
@@ -550,12 +557,18 @@ defmodule Thirstr.Explore do
     {where, params}
   end
 
+  defp filter_allowed?(k, v) do
+    not (k in @verified_only and not v.verified) and
+      not (k in @hookup_only and Map.get(v, :lens, "hookup") != "hookup")
+  end
+
   # ------------------------------------------------------------------ cards
 
   @doc "Card JSON (R-04.5). No account id, no raw coordinates (pins added by the caller)."
   def card(r, v) do
     viewer = if v.verified, do: :verified, else: :stranger
     {fields, _} = Thirstr.Profiles.Fields.visible(r.fields || %{}, r.vis || %{}, viewer)
+    fields = Thirstr.Profiles.Fields.lens(fields, Map.get(v, :lens, "hookup"))
 
     %{
       id: r.id,

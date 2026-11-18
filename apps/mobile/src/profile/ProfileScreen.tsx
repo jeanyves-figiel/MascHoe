@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Dimensions, FlatList, Linking, Pressable, ScrollView, Share, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, ApiError } from '../api/client';
-import type { MyProfile, ProfileView, Visibility } from '../api/types';
+import type { Mode, MyProfile, ProfileView, Visibility } from '../api/types';
 import { useSession } from '../app/session';
 import { distanceLabel, tx } from '../i18n/app';
 import { color, radius, space, type } from '../theme/tokens';
@@ -11,12 +11,13 @@ import { getLocal } from '../me/localFields';
 import { FieldList } from './FieldList';
 import { PrivateNote } from './PrivateNote';
 import { getConvs } from '../chat/engine';
+import { lensFields, lensPhoto } from './lens';
 
 type Nav = { navigate: (s: string, p?: object) => void; goBack: () => void };
-type Params = { id: string; preview?: 'stranger' | 'verified' | 'chats' };
+type Params = { id: string; preview?: 'stranger' | 'verified' | 'chats'; mode?: Mode };
 
-/** Preview-as (R-06.9): own profile filtered the way the chosen audience sees it. */
-export function previewOf(p: MyProfile, as: 'stranger' | 'verified' | 'chats', local: Record<string, unknown>, verified: boolean): ProfileView {
+/** Preview-as (R-06.7): own profile filtered the way the chosen audience sees it through a lens. */
+export function previewOf(p: MyProfile, as: 'stranger' | 'verified' | 'chats', local: Record<string, unknown>, verified: boolean, mode: Mode = 'hookup'): ProfileView {
   const allowed: Visibility[] = as === 'stranger' ? ['public'] : as === 'verified' ? ['public', 'verified'] : ['public', 'verified', 'chats'];
   const all = { ...p.fields, ...(as === 'chats' ? local : {}) };
   const fields: Record<string, unknown> = {};
@@ -24,6 +25,7 @@ export function previewOf(p: MyProfile, as: 'stranger' | 'verified' | 'chats', l
     const vis = p.visibility_map[k] ?? 'public';
     if (allowed.includes(vis)) fields[k] = v;
   }
+  const shown = lensFields(fields, mode);
   return {
     id: p.id,
     kind: p.kind,
@@ -31,8 +33,8 @@ export function previewOf(p: MyProfile, as: 'stranger' | 'verified' | 'chats', l
     age: p.age,
     gender: p.gender,
     gender_other: p.gender_other,
-    fields,
-    photos: p.photos.filter((x) => x.url && x.status !== 'rejected').map((x) => x.url!),
+    fields: shown,
+    photos: p.photos.filter((x) => x.url && x.status !== 'rejected' && lensPhoto(x, mode)).map((x) => x.url!),
     verified,
     verified_since: null,
     member_since: new Date().toISOString(),
@@ -50,7 +52,9 @@ export function previewOf(p: MyProfile, as: 'stranger' | 'verified' | 'chats', l
 // S-20 profile view (F-06). R-04.9: blocked / unavailable → "Not available".
 export function ProfileScreen({ route, navigation }: { route: { params: Params }; navigation: Nav }) {
   const { id, preview } = route.params;
-  const { me } = useSession();
+  const { me, mode: appMode } = useSession();
+  // F-06 R-06.1b: others are seen through the current mode's lens.
+  const mode = route.params.mode ?? appMode;
   const accent = useAccent();
   const insets = useSafeAreaInsets();
   const [remote, setP] = useState<ProfileView | null>(null);
@@ -67,13 +71,13 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
   const [nowTs] = useState(() => Date.now());
   const [local, setLocal] = useState<Record<string, unknown>>({});
   const own = preview ? (me.profiles ?? []).find((x) => x.id === id) : undefined;
-  const previewView = useMemo(() => (own && preview ? previewOf(own, preview, local, me.verified) : null), [own, preview, local, me.verified]);
+  const previewView = useMemo(() => (own && preview ? previewOf(own, preview, local, me.verified, mode) : null), [own, preview, local, me.verified, mode]);
 
   const load = useCallback(
     () =>
       preview
         ? getLocal(id).then(setLocal)
-        : api<ProfileView>('GET', `/profiles/${id}`).then(
+        : api<ProfileView>('GET', `/profiles/${id}?mode=${mode}`).then(
             (v) => {
               setErr(null);
               setP(v);
@@ -83,7 +87,7 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
               else setErr(e instanceof ApiError ? e.message : tx.common.error);
             },
           ),
-    [id, preview],
+    [id, preview, mode],
   );
 
   useEffect(() => {

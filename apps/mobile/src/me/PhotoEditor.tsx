@@ -117,6 +117,11 @@ export function PhotoEditor({ profile, accent, onChange }: { profile: MyProfile;
                   style={{ position: 'absolute', ...f, borderRadius: i === 0 ? 22 : 18, borderWidth: 3, borderColor: sel === ph.id ? accent : 'transparent', overflow: 'hidden' }}
                 >
                   <Photo uri={ph.url} id={ph.id} label="" style={{ width: '100%', height: '100%' }} />
+                  {i > 0 && ph.status !== 'pending' && ph.main_ok === false ? (
+                    <View style={{ position: 'absolute', left: 6, bottom: 6, height: 22, paddingHorizontal: 8, borderRadius: radius.pill, backgroundColor: color.hookup, justifyContent: 'center' }}>
+                      <Text numberOfLines={1} style={{ ...type.caption, color: color.onAccent }}>{tx.edit.hookupOnly}</Text>
+                    </View>
+                  ) : null}
                   {i === 0 || ph.status === 'pending' ? (
                     <View style={{ position: 'absolute', left: 8, bottom: 8, height: 24, paddingHorizontal: 10, borderRadius: radius.pill, backgroundColor: ph.status === 'pending' ? color.personal : color.bgInverse, justifyContent: 'center' }}>
                       <Text style={{ ...type.caption, color: color.onAccent }}>{ph.status === 'pending' ? tx.edit.pending : tx.edit.photoMain}</Text>

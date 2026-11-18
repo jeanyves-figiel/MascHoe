@@ -15,6 +15,8 @@ export type MyProfile = {
   gender: string;
   gender_other: string | null;
   here_for: string[];
+  /** F-06 R-06.1a: lenses this profile appears in. */
+  show_in: Mode[];
   fields: Record<string, unknown>;
   visibility_map: Record<string, Visibility>;
   completeness: number;
@@ -94,7 +96,7 @@ export type Settings = {
 
 export type ProfileOptions = {
   options: Record<string, string[]>;
-  defaults: Record<string, { visibility: Visibility; kinds: Kind[] | 'all' }>;
+  defaults: Record<string, { visibility: Visibility; kinds: Kind[] | 'all'; lenses?: Mode[] }>;
   health: string[];
 };
 

@@ -53,6 +53,7 @@ defmodule ThirstrWeb.MeJSON do
       gender: p.gender,
       gender_other: p.gender_other,
       here_for: p.here_for,
+      show_in: p.show_in,
       fields: p.fields || %{},
       visibility_map: p.visibility_map || %{},
       completeness: p.completeness,

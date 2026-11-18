@@ -14,13 +14,16 @@ defmodule Thirstr.Activities do
   @intents ~w(just_sport open_to_more)
   @audiences ~w(verified everyone)
 
+  # R-11.1: activities need Sport turned on (show_in), F-06 R-06.1a.
   defp sport_profile(ctx) do
-    case Profiles.get_by_kind(ctx.account, "sport") do
-      nil ->
-        {:error, {:conflict_code, "sport_profile_required", "Set up your Sport profile first"}}
+    case Profiles.main(ctx.account) do
+      %{show_in: show_in} = p when is_list(show_in) ->
+        if "sport" in show_in,
+          do: {:ok, p.id},
+          else: {:error, {:conflict_code, "sport_off", "Turn on Sport in Me first"}}
 
-      p ->
-        {:ok, p.id}
+      _ ->
+        {:error, :basics_required}
     end
   end
 
@@ -45,7 +48,7 @@ defmodule Thirstr.Activities do
                  (SELECT count(*) FROM activity_rsvps r WHERE r.post_id = ap.id AND r.state = 'joined'),
                  (SELECT r.state FROM activity_rsvps r WHERE r.post_id = ap.id AND r.profile_id = ANY($2))
           FROM activity_posts ap
-          JOIN profiles p ON p.id = ap.profile_id AND p.kind = 'sport'
+          JOIN profiles p ON p.id = ap.profile_id AND 'sport' = ANY(p.show_in)
           LEFT JOIN clubs c ON c.id = ap.club_id
           LEFT JOIN venues v ON v.id = ap.venue_id
           WHERE ap.cell_r5 = ANY($1) AND ap.expires_at > now()
