@@ -25,6 +25,10 @@ const en = {
     body: 'We sent you a sign-in link. It works once and expires in 15 minutes.',
     devHint: 'DEV: open Mailpit at https://localhost:7443/mail',
     back: 'Use another method',
+    sentTo: 'Sent to',
+    resend: 'Send it again',
+    resendIn: (n: number) => `Send again in ${n} s`,
+    resent: 'Sent again. Check spam too.',
   },
   basics: {
     title: 'The basics',
@@ -100,7 +104,7 @@ const fr: Strings = {
   create: { ...en.create, title: 'Crée ton compte', passkey: 'Continuer avec une clé d’accès', apple: 'Continuer avec Apple', google: 'Continuer avec Google', email: 'Continuer avec un e-mail', adult: "J'ai 18 ans ou plus", adultRequired: 'Confirme que tu as 18 ans ou plus', noPhone: 'Ni téléphone, ni mot de passe.', sendLink: 'Envoyer le lien' },
   basics: { ...en.basics, title: 'L’essentiel', name: 'Prénom', birthday: 'Date de naissance', iam: 'Je suis', herefor: 'Ici pour', continue: 'Continuer', genders: { man: 'Homme', trans_man: 'Homme trans', non_binary: 'Non-binaire', other: 'Autre' }, namePh: 'Comment les mecs t’appellent', birthdayHint: 'Seul ton âge est affiché.', otherPh: 'Tes mots (20 max)', hereFor: { hookup: 'Plan', tonight: 'Ce soir', chat: 'Discuter', friends: 'Amis', sport: 'Sport' } },
   underage: { title: 'Tu dois avoir 18 ans', body: 'Thirstr est réservé aux adultes. Ton compte a été supprimé.' },
-  inbox: { ...en.inbox, title: 'Regarde tes e-mails', body: 'On t’a envoyé un lien de connexion. Il marche une fois et expire dans 15 minutes.', back: 'Utiliser une autre méthode' },
+  inbox: { ...en.inbox, title: 'Regarde tes e-mails', body: 'On t’a envoyé un lien de connexion. Il marche une fois et expire dans 15 minutes.', back: 'Utiliser une autre méthode', sentTo: 'Envoyé à', resend: 'Renvoyer', resendIn: (n: number) => `Renvoyer dans ${n} s`, resent: 'Renvoyé. Regarde aussi les spams.' },
   location: {
     ...en.location,
     title: 'Avec quelle précision les mecs te voient ?',
@@ -137,7 +141,7 @@ const de: Strings = {
   create: { ...en.create, title: 'Konto erstellen', passkey: 'Mit Passkey fortfahren', apple: 'Mit Apple fortfahren', google: 'Mit Google fortfahren', email: 'Mit E-Mail fortfahren', adult: 'Ich bin 18 oder älter', adultRequired: 'Bestätige, dass du 18 oder älter bist', noPhone: 'Keine Telefonnummer, kein Passwort.', sendLink: 'Link senden' },
   basics: { ...en.basics, title: 'Das Wichtigste', name: 'Name', birthday: 'Geburtstag', iam: 'Ich bin', herefor: 'Hier für', continue: 'Weiter', genders: { man: 'Mann', trans_man: 'Trans Mann', non_binary: 'Nicht-binär', other: 'Anderes' }, namePh: 'Wie dich Typen nennen', birthdayHint: 'Nur dein Alter wird angezeigt.', otherPh: 'Deine Worte (max. 20)', hereFor: { hookup: 'Sex', tonight: 'Heute Nacht', chat: 'Chat', friends: 'Freunde', sport: 'Sport' } },
   underage: { title: 'Du musst 18+ sein', body: 'Thirstr ist nur für Erwachsene. Dein Konto wurde gelöscht.' },
-  inbox: { ...en.inbox, title: 'Schau in dein Postfach', body: 'Wir haben dir einen Anmeldelink geschickt. Er funktioniert einmal und läuft in 15 Minuten ab.', back: 'Andere Methode nutzen' },
+  inbox: { ...en.inbox, title: 'Schau in dein Postfach', body: 'Wir haben dir einen Anmeldelink geschickt. Er funktioniert einmal und läuft in 15 Minuten ab.', back: 'Andere Methode nutzen', sentTo: 'Gesendet an', resend: 'Nochmal senden', resendIn: (n: number) => `Nochmal senden in ${n} s`, resent: 'Nochmal gesendet. Schau auch im Spam nach.' },
   location: {
     ...en.location,
     title: 'Wie genau dürfen dich Typen sehen?',

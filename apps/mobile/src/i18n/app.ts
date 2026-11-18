@@ -2,6 +2,7 @@ import { getLocales } from 'expo-localization';
 import { inMiles } from '../me/prefs';
 import { de } from './de';
 import { fr } from './fr';
+import { LANGUAGE_NAMES, OPTION_LABELS } from './options';
 // Strings for the main app (beyond onboarding). en is the reference; fr/de override per key
 // and fall back to en (design-system.md › i18n, D-06).
 const en = {
@@ -101,6 +102,7 @@ const en = {
     tapped: 'Tapped',
     message: 'Message',
     tappedYou: 'Tapped you',
+    linkedVerified: 'verified',
     menu: 'More',
     block: 'Block',
     blockConfirm: 'Block this guy? He will not see you anywhere and cannot message you. He is not told.',
@@ -706,11 +708,18 @@ function pick(): AppStrings {
 export const tx = pick();
 export { en as txEn };
 
-/** Option label: "vers_top" → "Vers top". Per-locale option dictionaries can override. */
-export function opt(value: string): string {
+const OPT = OPTION_LABELS[getLocales()[0]?.languageCode ?? 'en'] ?? OPTION_LABELS.en;
+
+/** Option label in the app language ("vers_top" → "Vers top" / "Plutôt actif"); languages show their own name. */
+export function opt(value: string, field?: string): string {
+  if (field === 'languages') return LANGUAGE_NAMES[value] ?? value.toUpperCase();
+  if (OPT[value]) return OPT[value];
   const s = value.replace(/_/g, ' ');
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
+
+/** Field label without a unit suffix, for read-only display ("Height (cm)" → "Height"). */
+export const bareLabel = (label: string) => label.replace(/\s*\([^)]*\)\s*$/, '');
 
 export function distanceLabel(d: { kind: string; m?: number; bucket?: string; city?: string | null } | null): string {
   if (!d) return '';

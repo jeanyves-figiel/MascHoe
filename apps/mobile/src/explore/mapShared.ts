@@ -1,4 +1,4 @@
-import { cellToBoundary } from 'h3-js';
+import { cellToBoundary, cellToLatLng } from 'h3-js';
 import { API_BASE } from '../api/client';
 import type { Card, MapData } from '../api/types';
 
@@ -25,6 +25,21 @@ export function cellsGeoJSON(data: MapData | null): GeoJSON.FeatureCollection {
       geometry: { type: 'Polygon', coordinates: [cellToBoundary(c.cell, true)] },
     })),
   };
+}
+
+/** Start zoom: a few r7 cells fit on screen, so heat reads as areas, not one blob. */
+export const START_ZOOM = 12;
+
+/** Count labels at cell centres (max 40), shown where the server gives counts, not people. */
+export function cellLabels(data: MapData | null): { key: string; lat: number; lng: number; label: string }[] {
+  return (data?.cells ?? [])
+    .filter((c) => c.count > 0)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 40)
+    .map((c) => {
+      const [lat, lng] = cellToLatLng(c.cell);
+      return { key: c.cell, lat, lng, label: c.count > 999 ? `${Math.floor(c.count / 1000)}k+` : String(c.count) };
+    });
 }
 
 export function initial(name: string) {

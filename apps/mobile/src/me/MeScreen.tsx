@@ -18,10 +18,12 @@ const kindMode = { now: 'hookup', friends: 'friends', sport: 'sport' } as const;
 
 // S-40 Me (F-06, F-07): profile switcher, completeness, preview-as, quick toggles.
 export function MeScreen({ navigation }: { navigation: Nav }) {
-  const { me, setMe, refresh } = useSession();
+  const { me, setMe, refresh, mode, setMode } = useSession();
   const insets = useSafeAreaInsets();
   const profiles = me.profiles ?? (me.profile ? [me.profile] : []);
-  const [kind, setKind] = useState<Kind>('now');
+  // The switcher follows the app mode (tab colour, Explore) and changes it (R-04.1).
+  const kind: Kind = mode === 'hookup' ? 'now' : mode;
+  const setKind = (k: Kind) => setMode(kindMode[k]);
   const [loc, setLoc] = useState(false);
   const [now, setNow] = useState(false);
   const [busy, setBusy] = useState(false);

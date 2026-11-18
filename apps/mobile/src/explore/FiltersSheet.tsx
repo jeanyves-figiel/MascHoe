@@ -78,7 +78,7 @@ export function FiltersSheet({
                 <Label>{tx.edit.fields[key] ?? key}</Label>
                 <Chips>
                   {(options.options[key] ?? []).map((v) => (
-                    <Chip key={v} label={opt(v)} on={((f[key] as string[] | undefined) ?? []).includes(v)} onPress={() => toggleIn(key, v)} fill={fill} />
+                    <Chip key={v} label={opt(v, key)} on={((f[key] as string[] | undefined) ?? []).includes(v)} onPress={() => toggleIn(key, v)} fill={fill} />
                   ))}
                 </Chips>
               </View>

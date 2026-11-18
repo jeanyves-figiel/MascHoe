@@ -1,6 +1,6 @@
 import React from 'react';
 import { Text, View } from 'react-native';
-import { opt, tx } from '../i18n/app';
+import { bareLabel, opt, tx } from '../i18n/app';
 import { color, space, type } from '../theme/tokens';
 import { Chip, Chips, Label, Section } from '../ui';
 import { GROUPS } from './fieldMeta';
@@ -34,11 +34,11 @@ export function FieldList({ fields, accent }: { fields: Record<string, unknown>;
               const v = fields[k];
               return (
                 <View key={k} style={{ paddingVertical: space.s, gap: space.xs }}>
-                  <Text style={{ ...type.meta, color: color.fgSecondary }}>{tx.edit.fields[k] ?? k}</Text>
+                  <Text style={{ ...type.meta, color: color.fgSecondary }}>{bareLabel(tx.edit.fields[k] ?? k)}</Text>
                   {Array.isArray(v) ? (
                     <Chips>
                       {v.map((x) => (
-                        <Chip key={String(x)} label={opt(String(x))} on fill={accent} onPress={() => {}} />
+                        <Chip key={String(x)} label={opt(String(x), k)} on fill={accent} onPress={() => {}} />
                       ))}
                     </Chips>
                   ) : (

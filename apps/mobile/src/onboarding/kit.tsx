@@ -234,7 +234,7 @@ export const k = StyleSheet.create({
   foot: { paddingHorizontal: space.xxl, paddingTop: space.m, gap: space.xs },
   big: { minHeight: 58, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', paddingHorizontal: space.xl, flexDirection: 'row', gap: 10 },
   bigText: { minHeight: 48 },
-  bigLabel: { fontFamily: font.heavy, fontSize: 18 },
+  bigLabel: { fontFamily: font.heavy, fontSize: 18, textAlign: 'center' },
   bigLabelText: { fontFamily: font.bold, fontSize: 16 },
   off: { opacity: 0.35 },
   pressed: { transform: [{ scale: 0.97 }], opacity: 0.92 },
