@@ -26,6 +26,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `hello@thirstr.fun` inbound mail (#62): GoDaddy MX → ImprovMX forwarding + SPF; records in `docs/runbooks/fly.md` › Domain.
 
 ### Changed
+- **Spec: Explore blends map and grid** (#100, F-04 R-04.14–R-04.16, AC-04.6–AC-04.9): Map/Grid toggle replaced by the map with a pull-up grid sheet (peek / half / full); tapping a pin highlights its tile; the map zooms to fit your nearest people (`fit_m` on `GET /explore/grid`); quiet-area and unverified states without invented counts. Updated screens, design system, API.
 - **One profile, three lenses** (#96, D-15): the separate Now / Sport / Friends profiles are gone.
   - Me: "Show me in" switches for Hookup, Friends and Sport (at least one stays on), a "See yourself in" lens preview with hidden-photo count, and Preview as per lens. Turning Sport on without sports opens Edit profile at the sport fields. One-time notice for existing accounts.
   - Friends and Sport only show photos that pass the strict check and never hookup or health details (server-enforced on Explore, map, profile view; `GET /profiles/{id}?mode`, 404 when not shown in that mode). Edit profile tags photos "Hookup only" and labels which sections show where.

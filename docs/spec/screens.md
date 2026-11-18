@@ -26,8 +26,8 @@ Tab bar (4): **Explore** S-10 · **Tonight** S-13 · **Chats** S-40 · **Me** S-
 | S-07 | You're in [v2 You're in] | F-02 | profile card preview, See who's around | → S-10 | — |
 
 ## Explore
-| S-10 | Explore map [v2 Prototype] | F-04 | wordmark, location chip (teal pin + level), filter icon button, mode switch, Map/Grid icon toggle, map, pins, tray ("N guys nearby") | see F-04 table | Safe Mode: counts only |
-| S-11 | Explore grid [v2 Explore · grid] | F-04 | same header, "N nearby" title, 3-col tiles (radius 18, bottom scrim, Now badge, online dot, verified tick) | scroll, long-press quick actions | sparse → "Further away" section |
+| S-10 | Explore [blend mockup A, #100] | F-04 | wordmark, location chip (teal pin + level), filter icon button, mode switch (full width), map, pins, grid sheet (peek/half/full, R-04.14), Locate me + zoom chip above sheet | see F-04 table | Safe Mode: counts only; quiet area / unverified states R-04.16 |
+| S-11 | Explore grid = S-10 sheet in full state (#100) | F-04 | same header, "Active now · N" title, 3-col tiles (radius 18, bottom scrim, Now badge, online dot, verified tick) | scroll, long-press quick actions | sparse → "Further away" section |
 | S-12 | Filters sheet | F-04 R-04.8 | per-mode filter groups, reset, apply | apply closes + reloads | — |
 | S-20 | Profile (other) [v2 Profile] | F-06 | full-bleed photo (520 pt) with pager bars, white round back + ⋯, name 34 pt + verified, chips (distance teal, Online, Now, vouches), about, tags, private note (sunflower card), album row (violet "Ask to unlock"), sticky favourite (sunflower when on) + Message (coral), sections, linked accounts | swipe photos; Tap; Message; ⋯ menu | blocked/gone → generic "Not available" |
 | S-21 | Profile ⋯ menu | F-06, F-15, F-18 | Block, Report, Hide, Vouch, Share profile | each confirms | — |
