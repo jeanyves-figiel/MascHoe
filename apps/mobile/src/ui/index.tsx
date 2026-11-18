@@ -238,6 +238,16 @@ export function ListRow({ title, sub, onPress, right, danger, testID }: { title:
   );
 }
 
+/** Read-only tag (profile details, issue 71): not pressable, neutral unless a tone is given. */
+export function Tag({ label, tone }: { label: string; tone?: string }) {
+  const inCard = useContext(CardContext);
+  return (
+    <View style={{ height: 32, justifyContent: 'center', paddingHorizontal: space.m, borderRadius: radius.pill, backgroundColor: tone ? `${tone}26` : inCard ? color.bgOverlay : color.bgRaised }}>
+      <Text style={{ ...type.meta, fontFamily: font.bold, fontSize: 14, color: tone ?? color.fgPrimary }}>{label}</Text>
+    </View>
+  );
+}
+
 /** App v2 uppercase group label (issue 63). */
 export function SectionLabel({ children }: { children: React.ReactNode }) {
   return <Text style={s.sectionTitle}>{children}</Text>;
@@ -390,6 +400,51 @@ export function Hero({ fill, pill, title, meta, stats, testID }: { fill: string;
           ))}
         </View>
       ) : null}
+    </View>
+  );
+}
+
+/** App v2 two-thumb range slider (issue 71): ages in Filters and Settings › Hide me from. */
+export function RangeSlider({ min, max, low, high, onChange, fill, label, format = String }: { min: number; max: number; low: number; high: number; onChange: (low: number, high: number) => void; fill?: string; label: string; format?: (v: number) => string }) {
+  const ctx = useAccent();
+  const accent = fill ?? ctx;
+  const [w, setW] = React.useState(0);
+  const T = 30;
+  const span = Math.max(1, w - T);
+  const toX = (v: number) => ((v - min) / (max - min)) * span;
+  const [drag, setDrag] = React.useState<{ i: number; x0: number; v0: number } | null>(null);
+  const handlers = (i: number) => ({
+    onStartShouldSetResponder: () => true,
+    onMoveShouldSetResponder: () => true,
+    onResponderTerminationRequest: () => false,
+    onResponderGrant: (e: { nativeEvent: { pageX: number } }) => setDrag({ i, x0: e.nativeEvent.pageX, v0: i === 0 ? low : high }),
+    onResponderMove: (e: { nativeEvent: { pageX: number } }) => {
+      if (!drag || drag.i !== i) return;
+      const v = Math.max(min, Math.min(max, Math.round(drag.v0 + ((e.nativeEvent.pageX - drag.x0) / span) * (max - min))));
+      if (i === 0) onChange(Math.min(v, high - 1), high);
+      else onChange(low, Math.max(v, low + 1));
+    },
+    onResponderRelease: () => setDrag(null),
+  });
+  return (
+    <View style={{ gap: space.m }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <Text style={s.sectionTitle}>{label}</Text>
+        <Text style={{ ...type.title, fontSize: 20, color: color.fgPrimary }}>
+          {format(low)} – {format(high)}
+        </Text>
+      </View>
+      <View onLayout={(e) => setW(e.nativeEvent.layout.width)} style={{ height: T, justifyContent: 'center' }} accessible accessibilityRole="adjustable" accessibilityLabel={label} accessibilityValue={{ text: `${format(low)} – ${format(high)}` }}>
+        <View style={{ height: 6, borderRadius: 3, backgroundColor: color.line, marginHorizontal: T / 2 }} />
+        {w ? (
+          <>
+            <View style={{ position: 'absolute', height: 6, borderRadius: 3, backgroundColor: accent, left: toX(low) + T / 2, width: Math.max(0, toX(high) - toX(low)) }} />
+            {[low, high].map((v, i) => (
+              <View key={i} {...handlers(i)} hitSlop={12} style={{ position: 'absolute', left: toX(v), width: T, height: T, borderRadius: T / 2, backgroundColor: color.bgInverse, borderWidth: 3, borderColor: accent }} />
+            ))}
+          </>
+        ) : null}
+      </View>
     </View>
   );
 }

@@ -6,7 +6,7 @@ import { useOptions } from '../api/options';
 import { useSession } from '../app/session';
 import { distanceLabel, opt, tx } from '../i18n/app';
 import { color, radius, space, type } from '../theme/tokens';
-import { Banner, Button, Chip, Chips, EmptyState, Icon, ListRow, Loading, Photo, useAccent, VerifiedTick } from '../ui';
+import { Banner, Button, Chip, Chips, EmptyState, Icon, Loading, Photo, SectionLabel, Tag, useAccent, VerifiedTick } from '../ui';
 import { PlanSheet } from './PlanSheet';
 import type { Club, MyPlan, Party, Plan, Post, Venue } from './types';
 import { day, time } from './types';
@@ -340,8 +340,8 @@ export function TonightScreen({ navigation }: { navigation: Nav }) {
                   />
                   <Text style={{ ...type.body, fontSize: 17, lineHeight: 23, color: color.fgPrimary }}>{p.text}</Text>
                   <Chips>
-                    <Chip label={`${time(p.window_start)}–${time(p.window_end)}`} on={false} onPress={() => {}} />
-                    <Chip label={tx.tonight.tags[p.tag]} on fill={accent} onPress={() => {}} />
+                    <Tag label={`${time(p.window_start)}–${time(p.window_end)}`} tone={color.fgSecondary} />
+                    <Tag label={tx.tonight.tags[p.tag]} tone={accent} />
                   </Chips>
                 </View>
               ))
@@ -350,18 +350,30 @@ export function TonightScreen({ navigation }: { navigation: Nav }) {
         )}
 
         {venues.length ? (
-          <View>
-            <Text
-              style={{
-                ...type.headline,
-                color: color.fgPrimary,
-                marginBottom: space.xs,
-              }}
-            >
-              {tx.tonight.venues}
-            </Text>
+          <View style={{ gap: space.s }}>
+            <SectionLabel>{tx.tonight.venues}</SectionLabel>
             {venues.slice(0, 5).map((v) => (
-              <ListRow key={v.id} testID={`venue-${v.name}`} title={`${tx.venue.kinds[v.kind]} · ${v.name}`} sub={`${distanceLabel(v.distance)} · ${tx.venue.here(v.here)}`} onPress={() => navigation.navigate('Venue', { venue: v })} />
+              <Pressable
+                key={v.id}
+                testID={`venue-${v.name}`}
+                accessibilityRole="button"
+                onPress={() => navigation.navigate('Venue', { venue: v })}
+                style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: space.m, padding: space.m, borderRadius: 22, backgroundColor: color.bgRaised, opacity: pressed ? 0.85 : 1 })}
+              >
+                <View style={{ width: 48, height: 48, borderRadius: 16, backgroundColor: `${color.trust}26`, alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon.Pin c={color.trust} />
+                </View>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text numberOfLines={1} style={{ ...type.headline, color: color.fgPrimary }}>
+                    {v.name}
+                  </Text>
+                  <Text numberOfLines={1} style={{ ...type.meta, color: color.fgMuted }}>
+                    {[tx.venue.kinds[v.kind], distanceLabel(v.distance)].filter(Boolean).join(' · ')}
+                  </Text>
+                </View>
+                <Text style={{ ...type.meta, fontFamily: type.headline.fontFamily, color: color.trust }}>{tx.venue.here(v.here)}</Text>
+                <Icon.Next />
+              </Pressable>
             ))}
           </View>
         ) : null}
@@ -378,9 +390,13 @@ export function TonightScreen({ navigation }: { navigation: Nav }) {
         }}
       >
         <View style={{ flex: 1 }}>
-          <Button testID="tonight-post" title={sport ? tx.sport.post : tx.tonight.post} fill={color.fgPrimary} onPress={() => (sport ? navigation.navigate('ActivityNew') : setSheet(true))} disabled={!me.verified} />
+          {me.verified ? (
+            <Button testID="tonight-post" title={sport ? tx.sport.post : tx.tonight.post} fill={color.fgPrimary} onPress={() => (sport ? navigation.navigate('ActivityNew') : setSheet(true))} />
+          ) : (
+            <Button testID="tonight-verify" kind="trust" title={tx.me.verifyNow} onPress={() => navigation.navigate('Verify')} />
+          )}
         </View>
-        {mode === 'hookup' ? (
+        {mode === 'hookup' && me.verified ? (
           <View style={{ flex: 1 }}>
             <Button testID="tonight-host" kind="secondary" title={tx.tonight.host} onPress={() => navigation.navigate('PartyNew')} disabled={!me.verified} />
           </View>

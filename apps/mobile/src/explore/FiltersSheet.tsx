@@ -4,7 +4,7 @@ import { useOptions } from '../api/options';
 import type { Mode } from '../api/types';
 import { opt, tx } from '../i18n/app';
 import { modeColor, space } from '../theme/tokens';
-import { Banner, Button, Chip, Chips, Field, Label, Sheet, Toggle } from '../ui';
+import { Banner, Button, Chip, Chips, RangeSlider, Section, SectionLabel, Segmented, Sheet, Toggle } from '../ui';
 import { defaultFilters, Filters } from './explore';
 
 const DISTANCES = [1000, 5000, 10000, 25000, 50000];
@@ -45,37 +45,43 @@ export function FiltersSheet({
     const cur = (f[k] as string[] | undefined) ?? [];
     set(k, cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]);
   };
-  const num = (s: string) => (s.trim() === '' ? undefined : Number.parseInt(s, 10) || undefined);
 
   return (
     <Sheet visible={visible} onClose={onClose} title={tx.filters.title} closeLabel={tx.common.close}>
-      <Label>{tx.filters.age}</Label>
-      <View style={{ flexDirection: 'row', gap: space.s }}>
-        <View style={{ flex: 1 }}>
-          <Field label="Min" keyboardType="number-pad" value={f.age_min ? String(f.age_min) : ''} onChangeText={(s) => set('age_min', num(s))} placeholder="18" />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Field label="Max" keyboardType="number-pad" value={f.age_max ? String(f.age_max) : ''} onChangeText={(s) => set('age_max', num(s))} placeholder="99" />
-        </View>
+      <RangeSlider
+        label={tx.filters.age}
+        min={18}
+        max={99}
+        low={f.age_min ?? 18}
+        high={f.age_max ?? 99}
+        fill={fill}
+        format={(v) => (v === 99 ? '99+' : String(v))}
+        onChange={(lo, hi) => setF((cur) => ({ ...cur, age_min: lo === 18 ? undefined : lo, age_max: hi === 99 ? undefined : hi }))}
+      />
+      <View style={{ gap: space.s }}>
+        <SectionLabel>{tx.filters.distance} · km</SectionLabel>
+        <Segmented
+          grow
+          label={tx.filters.distance}
+          value={String(f.distance_max ?? 'any')}
+          onChange={(v) => set('distance_max', v === 'any' ? undefined : Number(v))}
+          fills={Object.fromEntries(['any', ...DISTANCES.map(String)].map((k) => [k, fill]))}
+          options={[{ value: 'any', label: tx.filters.any }, ...DISTANCES.map((d) => ({ value: String(d), label: String(d / 1000) }))]}
+        />
       </View>
-      <Label>{tx.filters.distance}</Label>
-      <Chips>
-        <Chip label={tx.filters.any} on={!f.distance_max} onPress={() => set('distance_max', undefined)} fill={fill} />
-        {DISTANCES.map((d) => (
-          <Chip key={d} label={`${d / 1000} km`} on={f.distance_max === d} onPress={() => set('distance_max', d)} fill={fill} />
-        ))}
-      </Chips>
+      <Section>
       <Toggle label={tx.filters.verifiedOnly} value={f.verified_only} onChange={(v) => set('verified_only', v)} tone={fill} />
       <Toggle label={tx.filters.onlineNow} value={f.online_now} onChange={(v) => set('online_now', v)} tone={fill} />
       {mode === 'hookup' ? <Toggle label={tx.filters.hasNow} value={f.has_now} onChange={(v) => set('has_now', v)} tone={fill} /> : null}
       <Toggle label={tx.filters.hideCreators} value={f.hide_creators} onChange={(v) => set('hide_creators', v)} tone={fill} />
       <Toggle label={tx.filters.newMembers} value={f.new_members} onChange={(v) => set('new_members', v)} tone={fill} />
+      </Section>
       {!verified && mode === 'hookup' ? <Banner tone="warn" text={tx.filters.verifiedHint} /> : null}
       {options
         ? GROUPS[mode].map(({ key, verifiedOnly }) =>
             verifiedOnly && !verified ? null : (
-              <View key={key} style={{ gap: space.xs }}>
-                <Label>{tx.edit.fields[key] ?? key}</Label>
+              <View key={key} style={{ gap: space.s }}>
+                <SectionLabel>{tx.edit.fields[key] ?? key}</SectionLabel>
                 <Chips>
                   {(options.options[key] ?? []).map((v) => (
                     <Chip key={v} label={opt(v, key)} on={((f[key] as string[] | undefined) ?? []).includes(v)} onPress={() => toggleIn(key, v)} fill={fill} />

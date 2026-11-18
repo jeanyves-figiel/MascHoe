@@ -6,10 +6,11 @@ import { useSession } from '../app/session';
 import { askPushPermission } from '../chat/engine';
 import { customQuickReplies, setCustomQuickReplies } from '../chat/quick';
 import { tx } from '../i18n/app';
+import { v2 } from '../i18n/v2';
 import { exportData } from './exportData';
 import { type Prefs, prefs, setPrefs } from './prefs';
 import { color, font, space, type } from '../theme/tokens';
-import { Banner, Button, Chip, Chips, ErrorText, Field, ListRow, Loading, Section, Toggle } from '../ui';
+import { Banner, Button, Chip, Chips, ErrorText, Field, ListRow, Loading, RangeSlider, Section, Toggle } from '../ui';
 
 const pad = { paddingVertical: space.m, gap: space.s };
 
@@ -35,7 +36,19 @@ export function SettingsScreen({ navigation }: { navigation: Nav }) {
     api<Settings>('GET', '/me/settings').then(setSt).catch(() => {});
   }, []);
 
+  // Age range drags locally; saved 600 ms after the last move.
+  const [ageDraft, setAgeDraft] = useState<[number, number] | null>(null);
+  useEffect(() => {
+    if (!ageDraft) return;
+    const t = setTimeout(() => {
+      api<Settings>('PATCH', '/me/settings', { hide_from_age_min: ageDraft[0] === 18 ? null : ageDraft[0], hide_from_age_max: ageDraft[1] === 99 ? null : ageDraft[1] }).then(setSt, () => setErr(tx.common.error));
+    }, 600);
+    return () => clearTimeout(t);
+  }, [ageDraft]);
+
   if (!st) return <Loading />;
+  const age: [number, number] = ageDraft ?? [st.hide_from_age_min ?? 18, st.hide_from_age_max ?? 99];
+  const setAge = setAgeDraft;
 
   const put = async (patch: Partial<Settings>) => {
     setErr(null);
@@ -84,14 +97,18 @@ export function SettingsScreen({ navigation }: { navigation: Nav }) {
       <Section title={tx.settings.visibility}>
         {tog(`${tx.settings.hideFrom}: ${tx.settings.hideUnverified}`, st.hide_from_unverified, (v) => put({ hide_from_unverified: v }))}
         {tog(`${tx.settings.hideFrom}: ${tx.settings.hideNew}`, st.hide_from_new, (v) => put({ hide_from_new: v }))}
-        {show(tx.settings.hideAgeMin, tx.settings.hideAgeMax) ? (
-          <View style={[pad, { flexDirection: 'row', gap: space.s }]}>
-            <View style={{ flex: 1 }}>
-              <Field label={`${tx.settings.hideFrom}: ${tx.settings.hideAgeMin}`} keyboardType="number-pad" defaultValue={st.hide_from_age_min ? String(st.hide_from_age_min) : ''} onEndEditing={(e) => put({ hide_from_age_min: Number.parseInt(e.nativeEvent.text, 10) || null })} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Field label={`${tx.settings.hideFrom}: ${tx.settings.hideAgeMax}`} keyboardType="number-pad" defaultValue={st.hide_from_age_max ? String(st.hide_from_age_max) : ''} onEndEditing={(e) => put({ hide_from_age_max: Number.parseInt(e.nativeEvent.text, 10) || null })} />
-            </View>
+        {show(tx.settings.hideAgeMin, tx.settings.hideAgeMax, v2.settings.visibleTo) ? (
+          <View style={pad}>
+            <RangeSlider
+              label={v2.settings.visibleTo}
+              fill={color.trust}
+              min={18}
+              max={99}
+              low={age[0]}
+              high={age[1]}
+              format={(v) => (v === 99 ? '99+' : String(v))}
+              onChange={(lo, hi) => setAge([lo, hi])}
+            />
           </View>
         ) : null}
         {tog(`${tx.settings.showIn}: ${tx.settings.showGrid}`, st.show_in_grid, (v) => put({ show_in_grid: v }))}
@@ -116,7 +133,8 @@ export function SettingsScreen({ navigation }: { navigation: Nav }) {
             {[0, 1, 2].map((i) => (
               <Field
                 key={i}
-                label={`${i + 1}`}
+                label={v2.settings.quick(i + 1)}
+                placeholder={tx.chat.quick[i]}
                 maxLength={40}
                 value={quick[i] ?? ''}
                 onChangeText={(v) => {

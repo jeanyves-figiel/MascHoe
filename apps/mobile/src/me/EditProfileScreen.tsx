@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, ApiError } from '../api/client';
 import { useOptions } from '../api/options';
@@ -7,8 +7,8 @@ import type { MyProfile, Visibility } from '../api/types';
 import { useSession } from '../app/session';
 import { opt, tx } from '../i18n/app';
 import { availableFor, fieldType, GROUPS, maxLen, optionKey } from '../profile/fieldMeta';
-import { color, modeColor, space, type } from '../theme/tokens';
-import { Banner, Button, Chip, Chips, ErrorText, Field, Icon, Loading, Section, SectionLabel, Segmented, StickyCta, Toggle } from '../ui';
+import { color, font, modeColor, radius, space, type } from '../theme/tokens';
+import { Banner, Button, Chip, Chips, ErrorText, Field, Icon, Loading, Section, SectionLabel, Sheet, StickyCta, Toggle } from '../ui';
 import { getLocal, setLocal } from './localFields';
 import { resharePrivate } from '../chat/engine';
 import { PhotoEditor } from './PhotoEditor';
@@ -31,6 +31,7 @@ export function EditProfileScreen({ route, navigation }: { route: { params: { id
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [fieldErr, setFieldErr] = useState<Record<string, string[]>>({});
+  const [visFor, setVisFor] = useState<string | null>(null);
   const accent = modeColor[kindMode[p.kind]];
 
   useEffect(() => {
@@ -115,25 +116,20 @@ export function EditProfileScreen({ route, navigation }: { route: { params: { id
     }
   };
 
-  const visRow = (k: string) => {
-    const health = options.health.includes(k);
-    return (
-      <View style={{ gap: space.xs }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: space.xs }}>
-          <Icon.Lock size={12} />
-          <Text style={{ ...type.caption, color: color.trust }}>{tx.edit.visibility}</Text>
-        </View>
-        <Segmented
-          grow
-          label={tx.edit.visibility}
-          value={visOf(k)}
-          onChange={(x) => setVis((cur) => ({ ...cur, [k]: x }))}
-          fills={{ public: color.trust, verified: color.trust, chats: color.trust, only_me: color.trust }}
-          options={VIS.filter((x) => !(health && x === 'public')).map((x) => ({ value: x, label: tx.edit.vis[x] }))}
-        />
-      </View>
-    );
-  };
+  // Compact "who sees this" pill; the choice opens in one shared sheet (issue 71).
+  const visRow = (k: string) => (
+    <Pressable
+      testID={`vis-${k}`}
+      accessibilityRole="button"
+      accessibilityLabel={`${tx.edit.visibility}: ${tx.edit.vis[visOf(k)]}`}
+      onPress={() => setVisFor(k)}
+      style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6, height: 32, paddingHorizontal: space.m, borderRadius: radius.pill, backgroundColor: `${color.trust}1A` }}
+    >
+      <Icon.Lock size={12} />
+      <Text style={{ ...type.meta, fontFamily: font.bold, color: color.trust }}>{tx.edit.vis[visOf(k)]}</Text>
+      <Icon.Next size={13} c={color.trust} />
+    </Pressable>
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: color.bgBase }}>
@@ -163,6 +159,31 @@ export function EditProfileScreen({ route, navigation }: { route: { params: { id
           );
         })}
         <ProfileLinks profileId={p.id} />
+        <Sheet visible={!!visFor} onClose={() => setVisFor(null)} title={tx.edit.visibility} closeLabel={tx.common.close}>
+          {visFor ? (
+            <Section>
+              {VIS.filter((x) => !(options.health.includes(visFor) && x === 'public')).map((x) => (
+                <Pressable
+                  key={x}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: visOf(visFor) === x }}
+                  onPress={() => {
+                    setVis((cur) => ({ ...cur, [visFor]: x }));
+                    setVisFor(null);
+                  }}
+                  style={{ flexDirection: 'row', alignItems: 'center', minHeight: 56 }}
+                >
+                  <Text style={{ ...type.headline, fontFamily: font.bold, color: color.fgPrimary, flex: 1 }}>{tx.edit.vis[x]}</Text>
+                  {visOf(visFor) === x ? (
+                    <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: color.trust, alignItems: 'center', justifyContent: 'center' }}>
+                      <Icon.Check size={14} />
+                    </View>
+                  ) : null}
+                </Pressable>
+              ))}
+            </Section>
+          ) : null}
+        </Sheet>
         <ErrorText text={err} />
       </ScrollView>
       <StickyCta>

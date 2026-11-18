@@ -2,12 +2,11 @@ import React from 'react';
 import { Text, View } from 'react-native';
 import { bareLabel, opt, tx } from '../i18n/app';
 import { color, space, type } from '../theme/tokens';
-import { Chip, Chips, Label, Section } from '../ui';
+import { Chips, Icon, Label, Section, Tag } from '../ui';
 import { GROUPS } from './fieldMeta';
 
 function fmt(k: string, v: unknown): string | null {
   if (v === null || v === undefined || v === '') return null;
-  if (typeof v === 'boolean') return v ? '✓' : null;
   if (k === 'height_cm') return `${v} cm`;
   if (k === 'weight_kg') return `${v} kg`;
   if (typeof v === 'string') return ['bio', 'prompt_a', 'boundaries', 'pronouns', 'gym', 'last_tested'].includes(k) ? v : opt(v);
@@ -33,14 +32,20 @@ export function FieldList({ fields, accent }: { fields: Record<string, unknown>;
             {rows.map((k) => {
               const v = fields[k];
               return (
-                <View key={k} style={{ paddingVertical: space.s, gap: space.xs }}>
-                  <Text style={{ ...type.meta, color: color.fgSecondary }}>{bareLabel(tx.edit.fields[k] ?? k)}</Text>
+                <View key={k} style={{ paddingVertical: space.m, gap: space.s }}>
+                  <Text style={{ ...type.meta, color: color.fgMuted }}>{bareLabel(tx.edit.fields[k] ?? k)}</Text>
                   {Array.isArray(v) ? (
                     <Chips>
                       {v.map((x) => (
-                        <Chip key={String(x)} label={opt(String(x), k)} on fill={accent} onPress={() => {}} />
+                        <Tag key={String(x)} label={opt(String(x), k)} tone={k === 'looking_for' ? accent : undefined} />
                       ))}
                     </Chips>
+                  ) : typeof v === 'boolean' ? (
+                    v ? (
+                      <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: color.trust, alignItems: 'center', justifyContent: 'center' }}>
+                        <Icon.Check size={12} />
+                      </View>
+                    ) : null
                   ) : (
                     <Text style={{ ...type.body, color: color.fgPrimary }}>{fmt(k, v)}</Text>
                   )}

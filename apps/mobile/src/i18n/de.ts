@@ -315,7 +315,7 @@ export const de: Partialize<AppStrings> = {
   tonight: {
     title: 'Heute Nacht',
     sportTitle: 'Aktivitäten',
-    window: { now2: 'Jetzt → +2 Std.', now4: 'Jetzt → +4 Std.', late: 'Bis 3:00' },
+    window: { now2: 'Jetzt → +2 Std.', now4: 'Jetzt → +4 Std.', late: 'Bis 3 Uhr' },
     empty: 'Noch keine Pläne in der Nähe',
     emptyBody: 'Poste deinen: Leute in der Nähe sehen ihn bis 6:00.',
     post: 'Deinen Plan posten',
