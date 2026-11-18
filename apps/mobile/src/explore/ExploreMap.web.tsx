@@ -2,6 +2,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import * as maplibregl from 'maplibre-gl';
 import React, { useEffect, useRef } from 'react';
 import { View } from 'react-native';
+import { distanceLabel } from '../i18n/app';
 import { color } from '../theme/tokens';
 import { cellLabels, cellsGeoJSON, initial, MapProps, START_ZOOM, STYLE_URL } from './mapShared';
 
@@ -9,7 +10,11 @@ import { cellLabels, cellsGeoJSON, initial, MapProps, START_ZOOM, STYLE_URL } fr
 maplibregl.setWorkerUrl('/maplibre/maplibre-gl-worker.mjs');
 
 // S-10 map on the web build (DEV tool). Same data, maplibre-gl.
-export function ExploreMap({ center, me, data, accent, recenter, onRegion, onSelect }: MapProps) {
+export function ExploreMap({ center, me, data, accent, recenter, onRegion, onSelect, onClear, selected }: MapProps) {
+  const clear = useRef(onClear);
+  useEffect(() => {
+    clear.current = onClear;
+  }, [onClear]);
   const centred = useRef(!!center);
   const touched = useRef(false);
   const host = useRef<HTMLDivElement | null>(null);
@@ -31,6 +36,7 @@ export function ExploreMap({ center, me, data, accent, recenter, onRegion, onSel
       onRegion([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]);
     };
     m.on('moveend', emit);
+    m.on('click', () => clear.current?.());
     m.on('dragstart', () => (touched.current = true));
     m.on('zoomstart', (e) => e.originalEvent && (touched.current = true));
     m.on('load', () => {
@@ -69,15 +75,30 @@ export function ExploreMap({ center, me, data, accent, recenter, onRegion, onSel
       }
     for (const c of people) {
       if (c.lat === undefined || c.lng === undefined) continue;
+      const on = selected === c.id;
+      const size = on ? 58 : 44;
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center';
       const el = document.createElement('button');
-      el.setAttribute('aria-label', `${c.display_name}, ${c.age}`);
-      el.style.cssText = `width:42px;height:42px;border-radius:21px;border:3px solid ${c.exact ? color.trust : c.now ? accent : color.bgBase};background:${accent} center/cover no-repeat;color:${color.onAccent};font:800 16px sans-serif;cursor:pointer;padding:0`;
+      el.setAttribute('aria-label', `${c.display_name}, ${c.age}, ${distanceLabel(c.distance)}`);
+      el.setAttribute('aria-pressed', String(on));
+      el.style.cssText = `width:${size}px;height:${size}px;border-radius:50%;border:3px solid ${on || c.now ? accent : c.exact ? color.trust : color.bgInverse};background:${accent} center/cover no-repeat;color:${color.onAccent};font:800 16px sans-serif;cursor:pointer;padding:0`;
       if (c.photo) el.style.backgroundImage = `url("${c.photo}")`;
       else el.textContent = initial(c.display_name);
-      el.onclick = () => onSelect(c);
-      add(c.lng, c.lat, el);
+      el.onclick = (e) => {
+        e.stopPropagation();
+        onSelect(c);
+      };
+      wrap.appendChild(el);
+      if (on) {
+        const chip = document.createElement('div');
+        chip.textContent = `${c.display_name}, ${c.age} · ${distanceLabel(c.distance)}`;
+        chip.style.cssText = `margin-top:6px;padding:5px 10px;border-radius:999px;background:${color.bgInverse};color:${color.onAccent};font:800 13px sans-serif;white-space:nowrap`;
+        wrap.appendChild(chip);
+      }
+      add(c.lng, c.lat, wrap);
     }
-  }, [data, me, accent, onSelect]);
+  }, [data, me, accent, onSelect, selected]);
 
   // R-04.13: centre once when the first position arrives (unless the user moved), and on Locate me.
   useEffect(() => {

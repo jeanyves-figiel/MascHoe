@@ -26,6 +26,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `hello@thirstr.fun` inbound mail (#62): GoDaddy MX → ImprovMX forwarding + SPF; records in `docs/runbooks/fly.md` › Domain.
 
 ### Changed
+- **Explore: map and grid in one screen** (#100): the Map/Grid toggle is gone. The map now has a grid sheet you drag up (peek, half, full; remembered). Tapping a pin grows it, shows name and distance, and highlights the same person in the grid; tap again to open the profile. The map zooms to fit your nearest people (above the sheet) instead of opening zoomed out. Quiet areas say "Quiet right here" with a Post a Now card, tonight's plans and who is further away; unverified users see a "Verify to see who's here" card. Server: `GET /explore/grid` returns `fit_m`.
 - **Spec: Explore blends map and grid** (#100, F-04 R-04.14–R-04.16, AC-04.6–AC-04.9): Map/Grid toggle replaced by the map with a pull-up grid sheet (peek / half / full); tapping a pin highlights its tile; the map zooms to fit your nearest people (`fit_m` on `GET /explore/grid`); quiet-area and unverified states without invented counts. Updated screens, design system, API.
 - **One profile, three lenses** (#96, D-15): the separate Now / Sport / Friends profiles are gone.
   - Me: "Show me in" switches for Hookup, Friends and Sport (at least one stays on), a "See yourself in" lens preview with hidden-photo count, and Preview as per lens. Turning Sport on without sports opens Edit profile at the sport fields. One-time notice for existing accounts.

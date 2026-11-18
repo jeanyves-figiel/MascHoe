@@ -62,7 +62,7 @@ defmodule Thirstr.Explore do
 
     case v.point do
       nil ->
-        %{items: [], next: nil, further_from: nil, reason: "no_location"}
+        %{items: [], next: nil, further_from: nil, reason: "no_location", fit_m: nil}
 
       _ ->
         all = candidates(v, filters, "show_in_grid") |> sorted()
@@ -74,9 +74,32 @@ defmodule Thirstr.Explore do
           items: Enum.map(page, &card(&1, v)),
           next: next,
           further_from: further_from && further_from - offset,
-          reason: nil
+          reason: nil,
+          fit_m: fit_m(all, v)
         }
     end
+  end
+
+  @fit_steps [500, 1_000, 2_000, 5_000, 10_000, 25_000, 50_000, 100_000]
+  @fit_n 12
+
+  @doc """
+  R-04.15 auto-fit radius: distance to the 12th nearest visible person (or the furthest, if
+  fewer), rounded up to a coarse step so it tells no more than the distance buckets.
+  Unverified viewers: at least 2 km (R-04.10). nil when nobody is visible.
+  """
+  def fit_m([], _v), do: nil
+
+  def fit_m(rows, v) do
+    d =
+      rows
+      |> Enum.map(& &1.dist_m)
+      |> Enum.sort()
+      |> Enum.take(@fit_n)
+      |> List.last()
+
+    step = Enum.find(@fit_steps, List.last(@fit_steps), &(&1 >= d))
+    if v.verified, do: step, else: max(step, 2_000)
   end
 
   @doc "GET /explore/tray (R-04.4): up to 20 active-now cards."

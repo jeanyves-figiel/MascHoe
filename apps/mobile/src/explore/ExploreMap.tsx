@@ -1,12 +1,13 @@
 import { Camera, CameraRef, GeoJSONSource, Layer, Map, Marker } from '@maplibre/maplibre-react-native';
 import React, { useEffect, useRef } from 'react';
 import { Image, Pressable, Text, View } from 'react-native';
+import { distanceLabel } from '../i18n/app';
 import { color, type } from '../theme/tokens';
 import { cellLabels, cellsGeoJSON, initial, MapProps, START_ZOOM, STYLE_URL } from './mapShared';
 
 // S-10 map (native, MapLibre). Avatars sit at server-chosen stable random points inside their
 // cell (R-05.3); exact pins are drawn only when the server returned them for this viewer.
-export function ExploreMap({ center, me, data, accent, recenter, onRegion, onSelect }: MapProps) {
+export function ExploreMap({ center, me, data, accent, recenter, onRegion, onSelect, onClear, selected }: MapProps) {
   const people = [...(data?.avatars ?? []), ...(data?.pins ?? [])];
   const camera = useRef<CameraRef>(null);
   // R-04.13: initialViewState only applies at mount, so centre once when the first position
@@ -31,6 +32,7 @@ export function ExploreMap({ center, me, data, accent, recenter, onRegion, onSel
       logo={false}
       compass={false}
       touchPitch={false}
+      onPress={() => onClear?.()}
       onRegionWillChange={(e) => {
         if (e.nativeEvent.userInteraction) touched.current = true;
       }}
@@ -55,29 +57,43 @@ export function ExploreMap({ center, me, data, accent, recenter, onRegion, onSel
           <View accessibilityLabel="You" style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: color.bgInverse, borderWidth: 6, borderColor: accent }} />
         </Marker>
       ) : null}
-      {people.map((c) =>
-        c.lat !== undefined && c.lng !== undefined ? (
+      {people.map((c) => {
+        if (c.lat === undefined || c.lng === undefined) return null;
+        const on = selected === c.id;
+        const size = on ? 58 : 44;
+        return (
           <Marker key={c.id} id={c.id} lngLat={[c.lng, c.lat]} anchor="center">
-            <Pressable accessibilityRole="button" accessibilityLabel={`${c.display_name}, ${c.age}`} onPress={() => onSelect(c)}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: on }}
+              accessibilityLabel={`${c.display_name}, ${c.age}, ${distanceLabel(c.distance)}`}
+              onPress={() => onSelect(c)}
+              style={{ alignItems: 'center' }}
+            >
               <View
                 style={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: 21,
+                  width: size,
+                  height: size,
+                  borderRadius: size / 2,
                   borderWidth: 3,
-                  borderColor: c.exact ? color.trust : c.now ? accent : color.bgBase,
+                  borderColor: on || c.now ? accent : c.exact ? color.trust : color.bgInverse,
                   backgroundColor: accent,
                   overflow: 'hidden',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                {c.photo ? <Image source={{ uri: c.photo }} style={{ width: 36, height: 36 }} /> : <Text style={{ ...type.headline, color: color.onAccent }}>{initial(c.display_name)}</Text>}
+                {c.photo ? <Image source={{ uri: c.photo }} style={{ width: size - 6, height: size - 6 }} /> : <Text style={{ ...type.headline, color: color.onAccent }}>{initial(c.display_name)}</Text>}
               </View>
+              {on ? (
+                <View style={{ marginTop: 6, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, backgroundColor: color.bgInverse }}>
+                  <Text style={{ ...type.caption, fontSize: 13, color: color.onAccent }}>{`${c.display_name}, ${c.age} · ${distanceLabel(c.distance)}`}</Text>
+                </View>
+              ) : null}
             </Pressable>
           </Marker>
-        ) : null,
-      )}
+        );
+      })}
     </Map>
   );
 }

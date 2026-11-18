@@ -47,7 +47,7 @@ export type Card = {
   lng?: number;
 };
 
-export type Grid = { items: Card[]; next: string | null; further_from: number | null; reason: string | null };
+export type Grid = { items: Card[]; next: string | null; further_from: number | null; reason: string | null; fit_m?: number | null };
 export type MapData = { cells: { cell: string; res: number; count: number }[]; pins: Card[]; avatars: Card[] };
 
 export type ProfileView = {

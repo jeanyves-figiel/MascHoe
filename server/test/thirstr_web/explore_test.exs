@@ -23,6 +23,21 @@ defmodule ThirstrWeb.ExploreTest do
     refute res |> Jason.encode!() =~ "account"
   end
 
+  @tag ac: "AC-04.7"
+  test "grid returns a bucketed auto-fit radius (R-04.15)", %{viewer: v} do
+    fit = grid(v.c)["fit_m"]
+    assert fit in [500, 1_000, 2_000, 5_000, 10_000, 25_000, 50_000, 100_000]
+
+    rows = fn ds -> Enum.map(ds, &%{dist_m: &1}) end
+    assert Thirstr.Explore.fit_m([], %{verified: true}) == nil
+    assert Thirstr.Explore.fit_m(rows.([120, 480]), %{verified: true}) == 500
+    assert Thirstr.Explore.fit_m(rows.([120, 480]), %{verified: false}) == 2_000
+    near = List.duplicate(300, 12) ++ [40_000]
+    assert Thirstr.Explore.fit_m(rows.(near), %{verified: true}) == 500
+    assert Thirstr.Explore.fit_m(rows.([3_100]), %{verified: true}) == 5_000
+    assert Thirstr.Explore.fit_m(rows.([250_000]), %{verified: true}) == 100_000
+  end
+
   @tag ac: "AC-04.3"
   test "Hidden and incognito users never appear", %{viewer: v, other: o} do
     o.c
