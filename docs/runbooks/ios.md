@@ -4,7 +4,7 @@ Beta testers install the real app from TestFlight. Builds point at **staging** (
 
 ## How it works
 - `.github/workflows/ios-testflight.yml` runs on every push to `main` touching `apps/mobile/**`, or manually (Actions → iOS TestFlight → Run workflow).
-- GitHub macOS runner (owner choice 2026-11-17: no Expo cloud): `npx expo prebuild -p ios` generates the native project (env `EXPO_PUBLIC_API_URL=https://staging.thirstr.fun`), `xcodebuild archive` signs with Xcode automatic signing (`-allowProvisioningUpdates` + App Store Connect API key, so Apple creates/keeps the distribution certificate and profile), then `xcodebuild -exportArchive` with `destination=upload` sends it to App Store Connect. Build number = run number + 100. Apple processes the build (~5–15 min) and it appears in TestFlight.
+- GitHub `macos-26` runner, newest non-beta Xcode (needs Xcode 27 / iOS 27 SDK for App Store Connect from April 2027, ITMS-90725, #73) (owner choice 2026-11-17: no Expo cloud): `npx expo prebuild -p ios` generates the native project (env `EXPO_PUBLIC_API_URL=https://staging.thirstr.fun`), `xcodebuild archive` signs with Xcode automatic signing (`-allowProvisioningUpdates` + App Store Connect API key, so Apple creates/keeps the distribution certificate and profile), then `xcodebuild -exportArchive` with `destination=upload` sends it to App Store Connect. Build number = run number + 100. Apple processes the build (~5–15 min) and it appears in TestFlight.
 - Without the secrets below the workflow skips with a warning; nothing fails.
 
 ## Current values (2026-11-17)

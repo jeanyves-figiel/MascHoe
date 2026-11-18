@@ -25,7 +25,8 @@ env:
 
 jobs:
   testflight:
-    runs-on: macos-latest
+    # macos-26 image carries Xcode 27 (iOS 27 SDK, required for uploads from April 2027, #73).
+    runs-on: macos-26
     timeout-minutes: 60
     defaults:
       run:
@@ -65,9 +66,12 @@ jobs:
         if: steps.gate.outputs.ok == 'true'
         working-directory: .
         run: |
-          x=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          ls -d /Applications/Xcode_*.app
+          # Betas can't upload to App Store Connect: newest release Xcode only.
+          x=$(ls -d /Applications/Xcode_*.app | grep -vi beta | sort -V | tail -1)
           sudo xcode-select -s "$x"
           xcodebuild -version
+          xcodebuild -showsdks | grep -i iphoneos
 
       - if: steps.gate.outputs.ok == 'true'
         run: npm ci
