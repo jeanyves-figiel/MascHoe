@@ -91,7 +91,8 @@ jobs:
       - name: Revoke CI development certificates (Apple caps their number)
         if: steps.gate.outputs.ok == 'true'
         working-directory: .
-        run: if [ -f .github/scripts/asc-revoke-ci-dev-certs.mjs ]; then node .github/scripts/asc-revoke-ci-dev-certs.mjs; else echo "older commit: no revoke script"; fi
+        run: |
+          if [ -f .github/scripts/asc-revoke-ci-dev-certs.mjs ]; then node .github/scripts/asc-revoke-ci-dev-certs.mjs; else echo "Older commit, no revoke script"; fi
 
       - name: Native project (expo prebuild)
         if: steps.gate.outputs.ok == 'true'
@@ -162,7 +163,8 @@ jobs:
       - name: Revoke this run's development certificate
         if: always() && steps.gate.outputs.ok == 'true'
         working-directory: .
-        run: if [ -f .github/scripts/asc-revoke-ci-dev-certs.mjs ]; then node .github/scripts/asc-revoke-ci-dev-certs.mjs; else echo "older commit: no revoke script"; fi
+        run: |
+          if [ -f .github/scripts/asc-revoke-ci-dev-certs.mjs ]; then node .github/scripts/asc-revoke-ci-dev-certs.mjs; else echo "Older commit, no revoke script"; fi
 
       - name: Remove key file
         if: always()
