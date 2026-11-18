@@ -19,6 +19,7 @@ Top: wordmark · Map/Grid toggle · location pill (current level, tap → S-30).
 - R-04.10 Unverified viewer: sees cards and buckets ≥ "1–2 km" only, no pins; tapping message shows verify prompt.
 - R-04.11 Performance: first grid paint < 300 ms p95 (cached last result shown instantly, refreshed in background); map tiles cached offline for last city.
 - R-04.12 Pull-to-refresh on grid; map updates live via `cell:{r7}` channel.
+- R-04.13 Map centring (#95). The map opens centred on the viewer's own device position at start zoom (12), whatever their location level (Hidden / City / Area / Exact) or incognito: how others see you never changes what you see. The raw position stays on the device; only cells are sent (R-05.1). Order: (1) device GPS (last known fix first for an instant start, then a fresh fix), (2) own Exact pin, (3) last sent area cell, (4) own stored cell (`location.cell_r5` from `GET /me`, zoom 10, City users without permission), (5) world view. When Explore opens and permission was never asked, ask once (iOS "When in use"). The map auto-centres once, when the first usable position arrives, unless the user has already panned or zoomed. A "Locate me" button (40 px, round, raised, crosshair icon, bottom-right above the tray) recentres with a 600 ms ease; if permission is off it opens the Location sheet. The own dot is drawn at the device position (falls back to the centre above).
 
 ## Interactions
 | Gesture | Result |
@@ -29,9 +30,10 @@ Top: wordmark · Map/Grid toggle · location pill (current level, tap → S-30).
 | Tap location pill | Location sheet S-30 |
 | Tap Filters | Filters sheet S-12 |
 | Map pan/zoom | Join/leave `cell:{r7}` topics for viewport (max 12) |
+| Tap Locate me | Recentre on own position (R-04.13) |
 
 ## Edge cases
-- No location permission → city level; map centred on chosen city; banner to enable.
+- No location permission → city level; map centred on chosen city (R-04.13 fallback 4); banner to enable.
 - Offline → cached grid with "Offline" chip; actions queued.
 - Viewer in Safe Mode → map shows only city-level counts, no pins, grid only verified.
 
@@ -40,3 +42,4 @@ Top: wordmark · Map/Grid toggle · location pill (current level, tap → S-30).
 - AC-04.2 No API response contains another user's raw coordinates unless they're an Exact pin allowed for the viewer.
 - AC-04.3 Hidden users never appear in any Explore response.
 - AC-04.4 Mode switch recolours all surfaces incl. tab bar within 250 ms.
+- AC-04.5 Fresh install, permission granted, any location level: Explore map shows the viewer's own position at zoom 12 within 3 s of opening, without user action.

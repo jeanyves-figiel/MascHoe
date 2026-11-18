@@ -10,6 +10,7 @@ export const de: Partialize<AppStrings> = {
     filters: 'Filter',
     activeNow: (n: number) => `Gerade aktiv · ${n}`,
     nearestFirst: 'Nächste zuerst',
+    locateMe: 'Mich orten',
     further: 'Weiter weg',
     empty: 'Hier ist noch niemand sichtbar',
     emptyBody: 'Erweitere deine Filter oder schau heute Abend wieder rein.',

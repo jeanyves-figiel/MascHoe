@@ -34,6 +34,8 @@ export type Me = {
     level: 'hidden' | 'city' | 'area' | 'exact' | null;
     pin?: null | { lat: number; lng: number; audience: string; expires_at: string };
     hide_from_hidden?: boolean;
+    /** Own coarse cell, only for centring the own map (R-04.13). */
+    cell_r5?: string | null;
   };
   now?: NowStatus | null;
   settings?: Settings;

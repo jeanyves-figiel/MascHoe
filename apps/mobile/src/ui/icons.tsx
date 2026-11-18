@@ -36,6 +36,13 @@ export const Icon = {
       <Circle cx={10} cy={17} r={2} {...base(c, w)} />
     </Svg>
   ),
+  Locate: ({ size = 20, c = color.fgPrimary, w = 2.1 }: P) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Circle cx={12} cy={12} r={7} {...base(c, w)} />
+      <Circle cx={12} cy={12} r={2.5} {...base(c, w)} />
+      <Path d="M12 2v3M12 19v3M2 12h3M19 12h3" {...base(c, w)} />
+    </Svg>
+  ),
   Map: ({ size = 18, c = color.fgPrimary, w = 2 }: P) => (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Path d="M9 4l-6 3v13l6-3 6 3 6-3V4l-6 3z" {...base(c, w)} />

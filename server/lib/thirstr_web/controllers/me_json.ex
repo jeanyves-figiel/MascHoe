@@ -61,19 +61,21 @@ defmodule ThirstrWeb.MeJSON do
   end
 
   defp location(a, profile_id) do
-    level =
+    # cell_r5: caller's own coarse cell, only for centring their own map (R-04.13).
+    {level, cell_r5} =
       case Repo.query!(
-             "SELECT level, hide_from_hidden FROM location_cells WHERE profile_id = $1",
+             "SELECT level, cell_r5::h3index::text FROM location_cells WHERE profile_id = $1",
              [
                Ecto.UUID.dump!(profile_id)
              ]
            ).rows do
-        [[level, _]] -> level
-        _ -> if a.hidden, do: "hidden"
+        [[level, cell]] -> {level, cell}
+        _ -> {if(a.hidden, do: "hidden"), nil}
       end
 
     %{
       level: level,
+      cell_r5: cell_r5,
       pin: Location.own_pin_info(a),
       hide_from_hidden: Location.hide_from_hidden?(a)
     }

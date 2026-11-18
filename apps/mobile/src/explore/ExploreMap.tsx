@@ -1,13 +1,28 @@
-import { Camera, GeoJSONSource, Layer, Map, Marker } from '@maplibre/maplibre-react-native';
-import React from 'react';
+import { Camera, CameraRef, GeoJSONSource, Layer, Map, Marker } from '@maplibre/maplibre-react-native';
+import React, { useEffect, useRef } from 'react';
 import { Image, Pressable, Text, View } from 'react-native';
 import { color, type } from '../theme/tokens';
 import { cellLabels, cellsGeoJSON, initial, MapProps, START_ZOOM, STYLE_URL } from './mapShared';
 
 // S-10 map (native, MapLibre). Avatars sit at server-chosen stable random points inside their
 // cell (R-05.3); exact pins are drawn only when the server returned them for this viewer.
-export function ExploreMap({ center, me, data, accent, onRegion, onSelect }: MapProps) {
+export function ExploreMap({ center, me, data, accent, recenter, onRegion, onSelect }: MapProps) {
   const people = [...(data?.avatars ?? []), ...(data?.pins ?? [])];
+  const camera = useRef<CameraRef>(null);
+  // R-04.13: initialViewState only applies at mount, so centre once when the first position
+  // arrives (unless the user already moved the map), and again on each Locate me.
+  const centred = useRef(!!center);
+  const touched = useRef(false);
+  useEffect(() => {
+    if (!center || centred.current || touched.current) return;
+    centred.current = true;
+    camera.current?.jumpTo({ center: [center.lng, center.lat], zoom: center.zoom ?? START_ZOOM });
+  }, [center?.lat, center?.lng]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!recenter || !center) return;
+    centred.current = true;
+    camera.current?.easeTo({ center: [center.lng, center.lat], zoom: center.zoom ?? START_ZOOM, duration: 600 });
+  }, [recenter]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <Map
       style={{ flex: 1 }}
@@ -16,9 +31,12 @@ export function ExploreMap({ center, me, data, accent, onRegion, onSelect }: Map
       logo={false}
       compass={false}
       touchPitch={false}
+      onRegionWillChange={(e) => {
+        if (e.nativeEvent.userInteraction) touched.current = true;
+      }}
       onRegionDidChange={(e) => onRegion(e.nativeEvent.bounds)}
     >
-      <Camera initialViewState={center ? { center: [center.lng, center.lat], zoom: START_ZOOM } : { zoom: 2 }} />
+      <Camera ref={camera} initialViewState={center ? { center: [center.lng, center.lat], zoom: center.zoom ?? START_ZOOM } : { zoom: 2 }} />
       <GeoJSONSource id="cells" data={cellsGeoJSON(data)}>
         <Layer id="cells-fill" type="fill" paint={{ 'fill-color': accent, 'fill-opacity': ['get', 'w'] }} />
         <Layer id="cells-line" type="line" paint={{ 'line-color': accent, 'line-opacity': 0.45, 'line-width': 1 }} />
