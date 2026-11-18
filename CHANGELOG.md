@@ -26,6 +26,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `hello@thirstr.fun` inbound mail (#62): GoDaddy MX → ImprovMX forwarding + SPF; records in `docs/runbooks/fly.md` › Domain.
 
 ### Changed
+- **Me and Settings reorganised** (#102, S-60, S-61, S-64, S-66–S-70, F-17 R-17.10–R-17.13; [mockup](https://claude.ai/artifact/ARHgwzBiimAcTigGa2AA59)):
+  - Me: profile card with next step and Edit profile / Preview; "How you show up right now" with Location in one tap (Hidden / City / Area; Exact opens the pin sheet), Incognito and Now; "Show me in" as three lens tiles; Private albums and Date check-in. Gear and QR (share link) in the header. One banner at a time, most important first. Taps left Me (it is in Chats); the lens preview moved to its own screen.
+  - Settings is now a hub: Privacy & visibility, Chats & media, Notifications, Safety and Account, each showing your current values, plus App and About. Search finds any setting. Max two levels deep.
+  - Surfaces are called "Appear on" (no clash with the lens "Show me in"). Notifications are grouped (Chats, Plans, Account) and quiet hours use From / Until pickers. Safe Mode, app lock, verification, blocked and notices sit under Safety. Delete account has its own confirm screen (Face ID when available, then DELETE).
+- **Spec: Me and Settings v3** (#102): screens.md S-60, S-61, S-64 rewritten; new S-66 Lens preview, S-67 Privacy & visibility, S-68 Chats & media, S-69 Notifications, S-70 Safety settings; F-17 R-17.10–R-17.13, AC-17.3.
+
 - **Explore: map and grid in one screen** (#100): the Map/Grid toggle is gone. The map now has a grid sheet you drag up (peek, half, full; remembered). Tapping a pin grows it, shows name and distance, and highlights the same person in the grid; tap again to open the profile. The map zooms to fit your nearest people (above the sheet) instead of opening zoomed out. Quiet areas say "Quiet right here" with a Post a Now card, tonight's plans and who is further away; unverified users see a "Verify to see who's here" card. Server: `GET /explore/grid` returns `fit_m`.
 - **Spec: Explore blends map and grid** (#100, F-04 R-04.14–R-04.16, AC-04.6–AC-04.9): Map/Grid toggle replaced by the map with a pull-up grid sheet (peek / half / full); tapping a pin highlights its tile; the map zooms to fit your nearest people (`fit_m` on `GET /explore/grid`); quiet-area and unverified states without invented counts. Updated screens, design system, API.
 - **One profile, three lenses** (#96, D-15): the separate Now / Sport / Friends profiles are gone.

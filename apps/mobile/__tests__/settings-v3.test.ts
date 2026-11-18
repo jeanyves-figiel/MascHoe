@@ -1,3 +1,4 @@
+import { describe, expect, it } from '@jest/globals';
 import { v3De, v3En, v3Fr } from '../src/i18n/v3';
 
 // #102: Me + Settings v3 copy is complete in fr and de (no silent English fallback).
@@ -7,10 +8,6 @@ function keys(o: object, p = ''): string[] {
 
 describe('v3 strings', () => {
   const en = keys(v3En).sort();
-  it.each([
-    ['fr', v3Fr],
-    ['de', v3De],
-  ])('%s covers every en key', (_l, t) => {
-    expect(keys(t).sort()).toEqual(en);
-  });
+  it('fr covers every en key', () => expect(keys(v3Fr).sort()).toEqual(en));
+  it('de covers every en key', () => expect(keys(v3De).sort()).toEqual(en));
 });

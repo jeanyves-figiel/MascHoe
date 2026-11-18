@@ -245,7 +245,7 @@ export function SafetySettings({ navigation }: { navigation: Nav }) {
   const unseen = notices?.filter((n) => !n.seen).length ?? 0;
   return (
     <Page title={S.safety} err={err}>
-      <Group label={S.safeMode}>
+      <Group>
         <SegBlock
           testID="safe-mode"
           tone={color.sport}
@@ -271,7 +271,7 @@ export function SafetySettings({ navigation }: { navigation: Nav }) {
       </Group>
       <Group hint={S.checkinHint}>
         <Row testID="settings-applock" title={S.appLock} sub={S.appLockSub} value={lock ? v3.settings.sum.on : v3.me.off} onPress={() => navigation.navigate('AppLock')} />
-        <Row title={tx.prefs.verification} sub={me.verified ? tx.prefs.verified(me.verified_since ?? '') : tx.prefs.notVerified} value={me.verified ? tx.prefs.reverify : undefined} onPress={() => navigation.navigate('Verify')} />
+        <Row title={tx.prefs.verification} sub={me.verified ? tx.prefs.verified(me.verified_since ? new Date(me.verified_since).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }) : '') : tx.prefs.notVerified} value={me.verified ? tx.prefs.reverify : undefined} onPress={() => navigation.navigate('Verify')} />
         <Row testID="settings-blocked" title={S.blocked} value={blocked != null ? String(blocked) : undefined} onPress={() => navigation.navigate('Blocked')} />
         <Row testID="settings-notices" title={S.notices} sub={S.noticesSub} value={unseen ? String(unseen) : notices?.length ? undefined : S.none} onPress={() => navigation.navigate('Notices')} />
       </Group>
