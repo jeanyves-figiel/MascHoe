@@ -9,16 +9,40 @@ import { color, radius, space, type } from '../theme/tokens';
 import { Banner, Button, Chip, Chips, ErrorText, Field, Label, Sheet, Toggle } from '../ui';
 import { currentPosition, lastKnown } from './location';
 
-type Level = 'hidden' | 'city' | 'area' | 'exact';
+export type Level = 'hidden' | 'city' | 'area' | 'exact';
 type City = { id: number; name: string; country: string };
 const TTLS = [1800, 3600, 7200, 14400];
 
+async function position() {
+  const p = await currentPosition().catch(() => null);
+  if (p) return p;
+  const lk = lastKnown();
+  return lk ? { lat: lk.lat, lng: lk.lng } : null;
+}
+
+/**
+ * One-tap level change from Me (S-60, #102) for Hidden / City / Area. Returns null when it needs
+ * the full sheet (no position for City/Area: city search or permission), else the updated Me.
+ */
+export async function quickLevel(level: Exclude<Level, 'exact'>): Promise<Me | null> {
+  const p = await position();
+  if (!p) return null;
+  if (level === 'city') return api<Me>('PUT', '/me/location', { level: 'city', cell_r5: cellToParent(latLngToCell(p.lat, p.lng, 9), 5) });
+  return api<Me>('PUT', '/me/location', { level, cell_r9: areaCell(p.lat, p.lng) });
+}
+
 // S-30 Location sheet (F-05): 4 levels, Exact TTL + audience + confirm, Safe Mode second warning,
 // hide-from-hidden, incognito, "Others see" preview.
-export function LocationSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+// `initial` preselects a level (Me's location segment opens the sheet on Exact, #102).
+export function LocationSheet({ visible, onClose, initial }: { visible: boolean; onClose: () => void; initial?: Level }) {
   const { me, setMe } = useSession();
   const current = (me.location?.level ?? 'city') as Level;
-  const [level, setLevel] = useState<Level>(current);
+  const [level, setLevel] = useState<Level>(initial ?? current);
+  const [wasVisible, setWasVisible] = useState(visible);
+  if (visible !== wasVisible) {
+    setWasVisible(visible);
+    if (visible) setLevel(initial ?? current);
+  }
   const [ttl, setTtl] = useState(3600);
   const [audience, setAudience] = useState('verified');
   const [confirming, setConfirming] = useState(false);
@@ -42,13 +66,6 @@ export function LocationSheet({ visible, onClose }: { visible: boolean; onClose:
       setBusy(false);
     }
   };
-
-  async function position() {
-    const p = await currentPosition().catch(() => null);
-    if (p) return p;
-    const lk = lastKnown();
-    return lk ? { lat: lk.lat, lng: lk.lng } : null;
-  }
 
   async function apply(override = false) {
     if (level === 'exact') {
