@@ -1,7 +1,7 @@
 # F-11 Activities & clubs (Sport mode)
 
 ## Rules
-- R-11.1 Sport mode uses the Sport profile (SFW: all photos strict, no hookup fields shown). Created lazily on first switch with a 3-step mini-setup (sports, level, schedule, intent).
+- R-11.1 Sport mode is the Sport lens of the one profile (F-06 R-06.1b: `main_ok` photos only, no hookup fields). The first time the user turns on Sport (Me switch, Explore banner, or posting an activity): 3-step mini-setup (sports, level, schedule, intent), then `sport` is added to `show_in`.
 - R-11.2 Intent flag: "Just sport" / "Open to more" shown on cards + posts; filterable.
 - R-11.3 Activity post: sport, title 80, place text or venue, start time, optional capacity, audience (verified default / everyone), intent. Expires start + 3 h. Max 3 active.
 - R-11.4 RSVP: Join / Leave; joiners get group chat (MLS) for the post; host can remove.
@@ -12,5 +12,5 @@
 - R-11.9 Hookup content never surfaces in Sport mode: no Now pins, no hookup fields, no spicy photos.
 
 ## Acceptance criteria
-- AC-11.1 Sport profile photo upload rejects anything classifier marks above "swimwear".
-- AC-11.2 Sport mode API never returns `now` profiles or hookup fields.
+- AC-11.1 Sport lens never shows a photo the classifier marks above "swimwear" (no `main_ok`).
+- AC-11.2 Sport mode API never returns profiles without `sport` in `show_in`, or hookup fields.

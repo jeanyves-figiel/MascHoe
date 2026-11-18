@@ -7,7 +7,7 @@ Home tab. See who's around now, fastest path to a message.
 Top: wordmark · Map/Grid toggle · location pill (current level, tap → S-30). Row 2: mode switch **Hookup · Sport · Friends** + Filters button. Body: map or grid. Map has bottom tray "Active now · N" (horizontal cards). Tab bar: Explore · Tonight · Chats · Me.
 
 ## Rules
-- R-04.1 Mode selects which profile kind is shown (Hookup → `now` profiles; Sport → `sport`; Friends → `friends`) and recolours UI: Hookup `#FF7A33`, Sport `#C6F432`, Friends `#A98BFF`. Mode persists across launches.
+- R-04.1 Mode is the viewer's lens (F-06 R-06.1a/b): it shows profiles whose `show_in` includes the mode, rendered through that lens, and recolours UI (mode tokens, design-system). Mode persists across launches. Switching mode never changes the viewer's own profile. If the viewer isn't shown in the current mode: one-line banner "You're not shown in Friends · Show me" (turns it on; Sport runs the mini-setup first).
 - R-04.2 Map: MapLibre, dark style. Shows (a) cell heat for Area users at k-anon resolution, (b) avatars of Area users placed at random stable positions inside their cell (seed = profile_id + day), (c) exact pins for Exact users the viewer is allowed to see (F-05), (d) party/venue/activity markers by mode.
 - R-04.3 Pins: avatar 36 px, mode-colour ring; "door open"/"hosting" badge; countdown ring for TTL; pulse animation for Now status posted < 10 min ago (reduced-motion: static).
 - R-04.4 Tray: up to 20 cards, sorted: exact by metres → Now → area by cell distance → online recency. Tap card → S-20 profile. Swipe horizontally.

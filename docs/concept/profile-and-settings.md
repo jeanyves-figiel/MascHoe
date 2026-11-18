@@ -7,7 +7,7 @@ Principles:
 - **Every field has its own visibility**: Public · Verified only · My chats · Only me. Defaults below; user changes per field.
 - Sensitive fields (sex/health) never Public by default; never indexed server-side in plaintext beyond what's needed for filters (filterable values stored as coarse flags).
 - Free: all fields, all visibility controls, all settings. Plus adds convenience only (§11 concept).
-- Profiles: up to 3 (e.g. **Now**, **Sport**, **Friends**), one verification covers all; viewers can't link them.
+- One profile, shown through lenses (Hookup / Friends / Sport); you pick where you show up. Friends and Sport show only safe photos and no hookup/health fields (decision 2026-11-18, #96).
 
 ## 1. Profile fields
 
@@ -39,7 +39,7 @@ Principles:
 | Body hair, beard | none → very | Public | ✓ |
 | Tribes / vibes | bear, twink, jock, otter, daddy, geek, leather, pup, rugged, trans, clean-cut... (max 3, optional) | Public | ✓ |
 
-### Hookup (Now profile)
+### Hookup (Hookup lens only)
 | Field | Values | Default | Filterable |
 |---|---|---|---|
 | Looking for | hookup · now · tonight · chat · dates · friends · activities | Public | ✓ |
@@ -59,7 +59,7 @@ Principles:
 | Vaccinations | mpox, HPV, hep A/B | Only me | — |
 | Test reminders | interval | Only me (device) | — |
 
-### Activities (Sport profile)
+### Activities (Sport and Hookup lenses)
 | Field | Values | Default | Filterable |
 |---|---|---|---|
 | Sports | multi | Public | ✓ |
@@ -81,7 +81,7 @@ Principles:
 
 ## 2. "Me" screen
 
-Top: profile switcher (Now / Sport / Friends) · completeness ring · "Preview as…" (stranger / verified / my chats) → see exactly what each audience sees.
+Top: completeness ring · **Show me in** (Hookup / Friends / Sport switches) · "Preview as…" (lens × stranger / verified / my chats) → see exactly what each audience sees.
 Sections: photos · about · hookup · health · activities · social · private albums · my vouches.
 Quick toggles row: Location level · Incognito · Online status · Do not disturb.
 
@@ -121,7 +121,6 @@ Quick toggles row: Location level · Incognito · Online status · Do not distur
 - Verification status / re-verify.
 
 ### Account & data
-- Profiles: create / rename / delete (max 3).
 - Recovery phrase · optional email · linked devices (MLS).
 - Encrypted backup (on/off, user-held key).
 - Download my data (GDPR Art. 20) · import from other app export (concept §15).
