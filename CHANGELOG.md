@@ -10,18 +10,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **No duplicates on retry** (app, #78): the message is encrypted once; retries resend the same ciphertext with `client_id`.
 - **No silently lost messages** (app, #80): a message that can't be decrypted yet is kept up to 24 h and retried after each welcome/commit (e.g. it arrived before its chat setup); then a "couldn't be decrypted" notice is shown and the 1:1 chat re-syncs its keys. Messages expired on the server while away show a notice with the count. Pull acks only after everything is saved; re-deliveries after a kill aren't processed twice.
 - **Chats keep all messages** (app, #81): one encrypted row per message instead of one blob capped at 500; writes to a chat are serialized so a send and a receive at the same time can't overwrite each other. Existing chats migrate on first open. Messages sort by sender time clamped to server time.
+- **Chat send can't duplicate or half-deliver** (server, #78): `POST /mls/messages` takes `client_id`; a repeat from the same device within 7 d returns the first result and stores/pushes nothing. All envelopes of one call are stored in one transaction (all-or-nothing); `message.new` goes out after commit.
 
 ### Added
 - **Delivered ticks and per-chat read receipts** (app, #82): Sending → Sent → Delivered → Read (ticks only move forward; groups show "Read by N"). Read receipts off (Settings or the new per-chat toggle in chat ⋯) stops sending Delivered, Read and typing and hides them from others too.
 - **Delivery tests** (#84): AC-07.5 – AC-07.10 in `apps/mobile/__tests__/delivery.test.ts` (offline + kill, lost response, kill before ack, message before welcome, undecryptable notice, receipts on/off, 2,500 messages + migration).
-
-### Fixed
-- **Chat send can't duplicate or half-deliver** (server, #78): `POST /mls/messages` takes `client_id`; a repeat from the same device within 7 d returns the first result and stores/pushes nothing. All envelopes of one call are stored in one transaction (all-or-nothing); `message.new` goes out after commit.
-
-### Added
 - **Expired-message notice data** (#80): messages swept unread after 30 d are counted per device and group and returned once as `expired` by `GET /mls/messages`.
 - **Delivery latency** (#84): aggregate stored → acked histogram per day (no ids or pairs), admin console › Delivery with p95.
-### Added
 - Website legal notice / Impressum (#62, W-01): `/legal/`, `/fr/legal/`, `/de/legal/` + footer link, built from `web/site/legal.json` (operator data; page omitted until the file exists).
 - `hello@thirstr.fun` inbound mail (#62): GoDaddy MX → ImprovMX forwarding + SPF; records in `docs/runbooks/fly.md` › Domain.
 
