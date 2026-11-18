@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { api, ApiError } from '../api/client';
 import * as E from '../chat/engine';
 import { tx } from '../i18n/app';
-import { color, space, type } from '../theme/tokens';
-import { Banner, Button, Check, Chip, Chips, ErrorText, Field } from '../ui';
+import { color, font, space, type } from '../theme/tokens';
+import { Banner, Button, Check, ErrorText, Field, Section, SectionLabel, StickyCta, Toggle } from '../ui';
 
 type Nav = { navigate: (s: string, p?: object) => void; goBack: () => void };
 type Params = { profileId: string; cid?: string; messageIds?: string[]; context?: string };
@@ -60,19 +60,24 @@ export function ReportScreen({ navigation, route }: { navigation: Nav; route: { 
   }
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: color.bgBase }} contentContainerStyle={{ padding: space.l, gap: space.l, paddingBottom: 120 }}>
-      <Text style={{ ...type.display, color: color.fgPrimary }}>{tx.report.title}</Text>
-      <Text style={{ ...type.headline, color: color.fgPrimary }}>{tx.report.why}</Text>
-      <Chips>
-        {REASONS.map((r) => (
-          <Chip key={r} label={tx.report.reasons[r]} on={reason === r} fill={color.danger} onPress={() => setReason(r)} />
-        ))}
-      </Chips>
+    <View style={{ flex: 1, backgroundColor: color.bgBase }}>
+    <ScrollView contentContainerStyle={{ padding: space.l, paddingTop: space.s, gap: space.l, paddingBottom: 140 }}>
+      <Text accessibilityRole="header" style={{ ...type.display, color: color.fgPrimary }}>
+        {tx.report.title}
+      </Text>
+      <View style={{ gap: space.s }}>
+        <SectionLabel>{tx.report.why}</SectionLabel>
+        <Section>
+          {REASONS.map((r) => (
+            <Radio key={r} label={tx.report.reasons[r]} on={reason === r} onPress={() => setReason(r)} />
+          ))}
+        </Section>
+      </View>
       <Field testID="report-note" label={tx.report.note} value={note} onChangeText={setNote} maxLength={500} multiline />
       {theirs.length ? (
         <View style={{ gap: space.s }}>
-          <Text style={{ ...type.headline, color: color.fgPrimary }}>{tx.report.attach}</Text>
-          <Text style={{ ...type.meta, color: color.trust }}>🔏 {tx.report.attachHint}</Text>
+          <SectionLabel>{tx.report.attach}</SectionLabel>
+          <Banner tone="trust" text={tx.report.attachHint} />
           {theirs.map((m) => (
             <Check
               key={m.id}
@@ -90,9 +95,25 @@ export function ReportScreen({ navigation, route }: { navigation: Nav; route: { 
           ))}
         </View>
       ) : null}
-      <Check label={tx.report.block} on={block} onPress={() => setBlock(!block)} />
+      <Section>
+        <Toggle label={tx.report.block} value={block} tone={color.danger} onChange={setBlock} />
+      </Section>
       <ErrorText text={err} />
-      <Button testID="report-send" kind="danger" title={tx.report.send} busy={busy} disabled={!reason} onPress={send} />
     </ScrollView>
+      <StickyCta>
+        <Button testID="report-send" title={tx.report.send} fill={color.danger} busy={busy} disabled={!reason} onPress={send} />
+      </StickyCta>
+    </View>
+  );
+}
+
+function Radio({ label, on, onPress }: { label: string; on: boolean; onPress: () => void }) {
+  return (
+    <Pressable accessibilityRole="radio" accessibilityState={{ checked: on }} accessibilityLabel={label} onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', gap: space.m, minHeight: 56 }}>
+      <Text style={{ ...type.headline, fontFamily: font.bold, color: color.fgPrimary, flex: 1 }}>{label}</Text>
+      <View style={{ width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: on ? color.danger : color.navInactive, alignItems: 'center', justifyContent: 'center' }}>
+        {on ? <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: color.danger }} /> : null}
+      </View>
+    </Pressable>
   );
 }

@@ -6,7 +6,7 @@ import type { MyProfile, ProfileView, Visibility } from '../api/types';
 import { useSession } from '../app/session';
 import { distanceLabel, tx } from '../i18n/app';
 import { color, radius, space, type } from '../theme/tokens';
-import { Badge, Banner, Button, ErrorState, Icon, Loading, Photo, Scrim, Sheet, useAccent, VerifiedTick } from '../ui';
+import { Badge, Banner, Button, ErrorState, Icon, Loading, Photo, Scrim, Section, Sheet, useAccent, VerifiedTick } from '../ui';
 import { getLocal } from '../me/localFields';
 import { FieldList } from './FieldList';
 import { PrivateNote } from './PrivateNote';
@@ -255,21 +255,24 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
             />
           </View>
         ) : (
-          <View style={{ borderRadius: radius.md }}>
+          <Section>
             {[
-              { label: tx.profile.share, on: () => Share.share({ message: `https://thirstr.fun/p/${p.id}` }).catch(() => {}) },
-              { label: tx.profile.hide, on: () => act(() => api('POST', `/profiles/${p.id}/hide`), () => { setMenu(false); navigation.goBack(); }) },
+              { label: tx.profile.share, icon: Icon.Share, tint: color.friends, on: () => Share.share({ message: `https://thirstr.fun/p/${p.id}` }).catch(() => {}) },
               ...(p.vouched || p.can_vouch
-                ? [{ label: p.vouched ? tx.profile.unvouch : tx.profile.vouch, on: () => act(() => api(p.vouched ? 'DELETE' : 'POST', `/profiles/${p.id}/vouch`), () => { setMenu(false); load(); }) }]
+                ? [{ label: p.vouched ? tx.profile.unvouch : tx.profile.vouch, icon: Icon.Shield, tint: color.trust, on: () => act(() => api(p.vouched ? 'DELETE' : 'POST', `/profiles/${p.id}/vouch`), () => { setMenu(false); load(); }) }]
                 : []),
-              { label: tx.profile.report, on: () => { setMenu(false); navigation.navigate('Report', { profileId: p.id }); } },
-              { label: tx.profile.block, on: () => setConfirmBlock(true), danger: true },
+              { label: tx.profile.hide, icon: Icon.EyeOff, tint: color.fgSecondary, on: () => act(() => api('POST', `/profiles/${p.id}/hide`), () => { setMenu(false); navigation.goBack(); }) },
+              { label: tx.profile.report, icon: Icon.Flag, tint: color.warn, on: () => { setMenu(false); navigation.navigate('Report', { profileId: p.id }); } },
+              { label: tx.profile.block, icon: Icon.Ban, tint: color.danger, on: () => setConfirmBlock(true), danger: true },
             ].map((r) => (
-              <Pressable key={r.label} accessibilityRole="button" onPress={r.on} style={{ paddingVertical: space.m }}>
-                <Text style={{ ...type.headline, color: r.danger ? color.danger : color.fgPrimary }}>{r.label}</Text>
+              <Pressable key={r.label} accessibilityRole="button" onPress={r.on} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: space.m, minHeight: 58, opacity: pressed ? 0.7 : 1 })}>
+                <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: `${r.tint}26`, alignItems: 'center', justifyContent: 'center' }}>
+                  <r.icon size={19} c={r.tint} />
+                </View>
+                <Text style={{ ...type.headline, color: r.danger ? color.danger : color.fgPrimary, flex: 1 }}>{r.label}</Text>
               </Pressable>
             ))}
-          </View>
+          </Section>
         )}
       </Sheet>
     </View>

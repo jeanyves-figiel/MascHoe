@@ -47,7 +47,7 @@ export function PinPad({ title, error, onDone, extra }: { title: string; error?:
 }
 
 /** Press-and-hold action (SOS 2 s, wipe 3 s): a fill grows while held; release early cancels. */
-export function HoldButton({ label, ms, onDone, testID, tone = color.danger }: { label: string; ms: number; onDone: () => void; testID?: string; tone?: string }) {
+export function HoldButton({ label, ms, onDone, testID, tone = color.danger, badge, sub }: { label: string; ms: number; onDone: () => void; testID?: string; tone?: string; badge?: string; sub?: string }) {
   const [p] = useState(() => new Animated.Value(0));
   const anim = useRef<Animated.CompositeAnimation | null>(null);
   const [w, setW] = useState(0);
@@ -74,10 +74,22 @@ export function HoldButton({ label, ms, onDone, testID, tone = color.danger }: {
       onPressIn={start}
       onPressOut={stop}
       onLayout={(e) => setW(e.nativeEvent.layout.width)}
-      style={{ height: 64, borderRadius: radius.pill, borderWidth: 2, borderColor: tone, overflow: 'hidden', justifyContent: 'center' }}
+      style={{ minHeight: badge ? 76 : 64, borderRadius: badge ? 26 : radius.pill, borderWidth: 2, borderColor: tone, overflow: 'hidden', justifyContent: 'center' }}
     >
       <Animated.View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: p.interpolate({ inputRange: [0, 1], outputRange: [0, w] }), backgroundColor: tone }} />
-      <Text style={{ ...type.headline, color: color.fgPrimary, textAlign: 'center' }}>{label}</Text>
+      {badge ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 18 }}>
+          <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: tone, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ ...type.caption, fontSize: 14, color: color.onAccent }}>{badge}</Text>
+          </View>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={{ ...type.headline, fontSize: 17, color: color.fgPrimary }}>{label}</Text>
+            {sub ? <Text style={{ ...type.meta, color: color.fgSecondary }}>{sub}</Text> : null}
+          </View>
+        </View>
+      ) : (
+        <Text style={{ ...type.headline, color: color.fgPrimary, textAlign: 'center' }}>{label}</Text>
+      )}
     </Pressable>
   );
 }

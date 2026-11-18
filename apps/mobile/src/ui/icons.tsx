@@ -108,4 +108,55 @@ export const Icon = {
       <Path d="M5 12l5 5 9-10" {...base(c, w)} />
     </Svg>
   ),
+  Share: ({ size = 20, c = color.fgPrimary, w = 2.1 }: P) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 002 2h10a2 2 0 002-2v-6" {...base(c, w)} />
+    </Svg>
+  ),
+  EyeOff: ({ size = 20, c = color.fgPrimary, w = 2.1 }: P) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M3 3l18 18M10.6 5.1A10 10 0 0112 5c6 0 9.5 7 9.5 7a17 17 0 01-3.2 4.1M6.3 6.4C3.9 8 2.5 12 2.5 12S6 19 12 19a9.6 9.6 0 004.3-1" {...base(c, w)} />
+      <Path d="M9.9 9.9a3 3 0 004.2 4.2" {...base(c, w)} />
+    </Svg>
+  ),
+  Flag: ({ size = 20, c = color.fgPrimary, w = 2.1 }: P) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M5 21V4M5 4h11l-2 4 2 4H5" {...base(c, w)} />
+    </Svg>
+  ),
+  Ban: ({ size = 20, c = color.fgPrimary, w = 2.1 }: P) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Circle cx={12} cy={12} r={9} {...base(c, w)} />
+      <Path d="M5.6 5.6l12.8 12.8" {...base(c, w)} />
+    </Svg>
+  ),
+  Shield: ({ size = 20, c = color.fgPrimary, w = 2.1 }: P) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" {...base(c, w)} />
+      <Path d="M8.5 12l2.5 2.5 4.5-5" {...base(c, w)} />
+    </Svg>
+  ),
+  Bolt: ({ size = 22, c = color.fgPrimary, w = 2.1 }: P) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M13 2L4 14h7l-1 8 9-12h-7z" {...base(c, w)} />
+    </Svg>
+  ),
+  Home: ({ size = 22, c = color.fgPrimary, w = 2.1 }: P) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M3 11l9-7 9 7M5 9.5V20h14V9.5" {...base(c, w)} />
+      <Path d="M10 20v-5h4v5" {...base(c, w)} />
+    </Svg>
+  ),
+  Car: ({ size = 22, c = color.fgPrimary, w = 2.1 }: P) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M5 16V11l2-5h10l2 5v5M3 16h18v3H3zM5 11h14" {...base(c, w)} />
+      <Circle cx={7.5} cy={16} r={0.6} {...base(c, w)} />
+      <Circle cx={16.5} cy={16} r={0.6} {...base(c, w)} />
+    </Svg>
+  ),
+  Door: ({ size = 22, c = color.fgPrimary, w = 2.1 }: P) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M4 21h16M6 21V4l10-1v18M13 12v.5" {...base(c, w)} />
+    </Svg>
+  ),
 };

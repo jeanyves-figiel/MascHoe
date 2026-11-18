@@ -361,7 +361,7 @@ const en = {
   tonight: {
     title: 'Tonight',
     sportTitle: 'Activities',
-    window: { now2: 'Now → +2 h', now4: 'Now → +4 h', late: 'Until 3:00' } as Record<string, string>,
+    window: { now2: 'Now → +2 h', now4: 'Now → +4 h', late: 'Until 3 am' } as Record<string, string>,
     empty: 'No plans nearby yet',
     emptyBody: 'Post yours: people nearby will see it until 6:00.',
     post: 'Post your plan',
