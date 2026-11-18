@@ -6,6 +6,11 @@ name: iOS TestFlight
 
 on:
   workflow_dispatch:
+    inputs:
+      ref:
+        description: Commit to build (default = the branch you run on). Older commits ship for comparison tests (#93).
+        required: false
+        default: ''
   push:
     branches: [main]
     paths: ["apps/mobile/**", ".github/workflows/ios-testflight.yml"]
@@ -53,6 +58,8 @@ jobs:
 
       - if: steps.gate.outputs.ok == 'true'
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
 
       - if: steps.gate.outputs.ok == 'true'
         uses: actions/setup-node@v4
@@ -84,11 +91,15 @@ jobs:
       - name: Revoke CI development certificates (Apple caps their number)
         if: steps.gate.outputs.ok == 'true'
         working-directory: .
-        run: node .github/scripts/asc-revoke-ci-dev-certs.mjs
+        run: if [ -f .github/scripts/asc-revoke-ci-dev-certs.mjs ]; then node .github/scripts/asc-revoke-ci-dev-certs.mjs; else echo "older commit: no revoke script"; fi
 
       - name: Native project (expo prebuild)
         if: steps.gate.outputs.ok == 'true'
-        run: IOS_BUILD_NUMBER=$((GITHUB_RUN_NUMBER + BUILD_NUMBER_OFFSET)) npx expo prebuild --platform ios --clean
+        run: |
+          build=$((GITHUB_RUN_NUMBER + BUILD_NUMBER_OFFSET))
+          IOS_BUILD_NUMBER=$build npx expo prebuild --platform ios --clean
+          # Older commits don't read IOS_BUILD_NUMBER; set it directly so any ref uploads.
+          plutil -replace CFBundleVersion -string "$build" ios/Thirstr/Info.plist
 
       - name: Archive
         if: steps.gate.outputs.ok == 'true'
@@ -110,6 +121,20 @@ jobs:
             echo "::endgroup::"
           fi
           exit "$ok"
+
+      - name: Inspect archive (code bundle present?)
+        if: steps.gate.outputs.ok == 'true'
+        run: |
+          app="$RUNNER_TEMP/Thirstr.xcarchive/Products/Applications/Thirstr.app"
+          ls -la "$app" | head -80
+          if [ -s "$app/main.jsbundle" ]; then
+            echo "main.jsbundle: $(wc -c < "$app/main.jsbundle") bytes"; head -c 16 "$app/main.jsbundle" | xxd
+          else
+            echo "::error::main.jsbundle missing or empty in the archive"
+          fi
+          plutil -p "$app/Info.plist" | grep -E "CFBundleVersion|CFBundleShortVersionString|UILaunchStoryboardName|EXUpdates|RCT" || true
+          ls "$app/Frameworks" | head -40
+          codesign -d --entitlements :- "$app" 2>/dev/null | head -40 || true
 
       - name: Export and upload to TestFlight
         if: steps.gate.outputs.ok == 'true'
@@ -137,7 +162,7 @@ jobs:
       - name: Revoke this run's development certificate
         if: always() && steps.gate.outputs.ok == 'true'
         working-directory: .
-        run: node .github/scripts/asc-revoke-ci-dev-certs.mjs
+        run: if [ -f .github/scripts/asc-revoke-ci-dev-certs.mjs ]; then node .github/scripts/asc-revoke-ci-dev-certs.mjs; else echo "older commit: no revoke script"; fi
 
       - name: Remove key file
         if: always()

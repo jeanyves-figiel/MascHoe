@@ -15,6 +15,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Chat send can't duplicate or half-deliver** (server, #78): `POST /mls/messages` takes `client_id`; a repeat from the same device within 7 d returns the first result and stores/pushes nothing. All envelopes of one call are stored in one transaction (all-or-nothing); `message.new` goes out after commit.
 
 ### Added
+- **iOS TestFlight workflow** (#93): can build any older commit (for phone comparison tests), and checks that the packaged app contains its code bundle.
 - **iOS simulator smoke workflow** (#90): manual GitHub Action that builds the app, launches it in an iPhone simulator and prints its startup log, to debug launch problems without a phone.
 - **Delivered ticks and per-chat read receipts** (app, #82): Sending → Sent → Delivered → Read (ticks only move forward; groups show "Read by N"). Read receipts off (Settings or the new per-chat toggle in chat ⋯) stops sending Delivered, Read and typing and hides them from others too.
 - **Delivery tests** (#84): AC-07.5 – AC-07.10 in `apps/mobile/__tests__/delivery.test.ts` (offline + kill, lost response, kill before ack, message before welcome, undecryptable notice, receipts on/off, 2,500 messages + migration).
