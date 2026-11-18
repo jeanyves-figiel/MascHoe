@@ -27,7 +27,7 @@ async function country(): Promise<string | null> {
 export function Resources() {
   return (
     <>
-      <Text style={{ ...type.meta, color: color.fgSecondary }}>{tx.safeMode.resourcesBody}</Text>
+      <Text style={{ ...type.meta, color: color.fgSecondary, paddingHorizontal: space.l, paddingVertical: space.m }}>{tx.safeMode.resourcesBody}</Text>
       {tx.safeMode.orgs.map(([name, url]) => (
         <ListRow key={name} title={name} sub={url.replace('https://', '')} onPress={() => Linking.openURL(url)} />
       ))}

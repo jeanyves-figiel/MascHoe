@@ -5,6 +5,9 @@ Mockups: [canvas](https://claude.ai/artifact/TErsb1tkyu5qWo8JQxD6VG) (board name
 ## App v2 visual standard (issue 58)
 Mockup (approved 2026-11-17): [app v2 canvas](https://claude.ai/artifact/3uHEiz4DBoGmuXPQfnyxif). Board names in brackets below now refer to that canvas where they say "v2". Every main screen follows design-system.md › App v2 rules: 34 pt display titles on tab roots, pill controls, icon + label nav, scrims on photos, no text glyphs as icons (☰, ✓, ✕ replaced by `src/ui/icons.tsx`).
 
+## Sub-screen standard (issue 63)
+Mockups in the same canvas, second row: Edit profile, Settings, Party, Host a party, Venue check-in, Private albums, Safety, Report, Taps. Activity and Club follow Party; Album, Blocked, Devices, Notices, App lock and Check-in follow Settings/Safety. Rules: design-system.md › Sub-screen rules. Albums list = 2-column cover cards with Private pill plus a dashed "Create album" tile (name asked in a sheet). Taps = cards with a sunflower star badge; button Tap back → Message once mutual. Safety = SOS hold card first, then check-in, trusted contacts card (initial avatar, resend, remove), app lock, resources.
+
 ## Navigation
 Tab bar (4): **Explore** S-10 · **Tonight** S-13 · **Chats** S-40 · **Me** S-60. Modal sheets slide up; profiles open as sheet over map, full screen elsewhere. Back = swipe/edge.
 

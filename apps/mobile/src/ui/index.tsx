@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Image,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,12 +14,14 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-import { color, Mode, modeColor, radius, space, tileFor, touch, type } from '../theme/tokens';
+import { color, font, Mode, modeColor, radius, space, tileFor, touch, type } from '../theme/tokens';
 import { Icon } from './icons';
 export { Icon } from './icons';
 
 // Current mode recolours accent surfaces (R-04.1, design-system.md › Pop).
 export const ModeContext = createContext<Mode>('hookup');
+/** True inside a Section card: chips and fields switch to a lighter fill so they stay visible (issue 63). */
+const CardContext = createContext(false);
 export const useAccent = () => modeColor[useContext(ModeContext)];
 
 export function Screen({ children, progress, padded = true }: { children: React.ReactNode; progress?: number; padded?: boolean }) {
@@ -105,6 +108,7 @@ export function Button({ title, onPress, kind = 'primary', disabled, busy, testI
 
 export function Chip({ label, on, onPress, disabled, fill }: { label: string; on: boolean; onPress: () => void; disabled?: boolean; fill?: string }) {
   const ctx = useAccent();
+  const inCard = useContext(CardContext);
   const accent = fill ?? ctx;
   return (
     <Pressable
@@ -112,7 +116,7 @@ export function Chip({ label, on, onPress, disabled, fill }: { label: string; on
       accessibilityLabel={label}
       accessibilityState={{ checked: on, disabled }}
       onPress={disabled ? undefined : onPress}
-      style={[s.chip, on && { backgroundColor: accent, borderColor: accent }, disabled && s.off]}
+      style={[s.chip, inCard && { backgroundColor: color.line }, on && { backgroundColor: accent, borderColor: accent }, disabled && s.off]}
     >
       <Text style={[s.chipText, on && s.chipTextOn]}>{label}</Text>
     </Pressable>
@@ -139,8 +143,9 @@ export function Segmented<T extends string>({
   label: string;
   grow?: boolean;
 }) {
+  const inCard = useContext(CardContext);
   return (
-    <View accessibilityRole="radiogroup" accessibilityLabel={label} style={[s.segmented, grow && { flex: 1 }]}>
+    <View accessibilityRole="radiogroup" accessibilityLabel={label} style={[s.segmented, inCard && { backgroundColor: color.bgOverlay }, grow && { flex: 1 }]}>
       {options.map((o) => {
         const on = o.value === value;
         const bg = on ? (fills?.[o.value] ?? color.bgInverse) : 'transparent';
@@ -153,7 +158,9 @@ export function Segmented<T extends string>({
             onPress={() => onChange(o.value)}
             style={[s.segBtn, grow && { flex: 1 }, { backgroundColor: bg }]}
           >
-            <Text style={[s.segText, on && { color: color.onAccent }]}>{o.label}</Text>
+            <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[s.segText, on && { color: color.onAccent }]}>
+              {o.label}
+            </Text>
           </Pressable>
         );
       })}
@@ -162,11 +169,27 @@ export function Segmented<T extends string>({
 }
 
 export function Field(props: TextInputProps & { label: string; error?: string; hint?: string }) {
-  const { label, error, hint, ...rest } = props;
+  const { label, error, hint, onFocus, onBlur, ...rest } = props;
+  const accent = useAccent();
+  const inCard = useContext(CardContext);
+  const [focus, setFocus] = React.useState(false);
   return (
     <View style={s.field}>
-      <Label>{label}</Label>
-      <TextInput placeholderTextColor={color.fgMuted} style={[s.input, rest.multiline && s.inputMulti, error ? s.inputErr : null]} accessibilityLabel={label} {...rest} />
+      <Text style={s.sectionTitle}>{label}</Text>
+      <TextInput
+        placeholderTextColor={color.fgMuted}
+        style={[s.input, inCard && { backgroundColor: color.bgOverlay, borderColor: color.bgOverlay }, rest.multiline && s.inputMulti, focus && { borderColor: accent }, error ? s.inputErr : null, WEB_NO_OUTLINE]}
+        accessibilityLabel={label}
+        onFocus={(e) => {
+          setFocus(true);
+          onFocus?.(e);
+        }}
+        onBlur={(e) => {
+          setFocus(false);
+          onBlur?.(e);
+        }}
+        {...rest}
+      />
       {error ? <Text style={s.err}>{error}</Text> : hint ? <Text style={s.hint}>{hint}</Text> : null}
     </View>
   );
@@ -185,8 +208,8 @@ export function Check({ label, on, onPress }: { label: string; on: boolean; onPr
 export function Toggle({ label, sub, value, onChange, disabled, tone }: { label: string; sub?: string; value: boolean; onChange: (v: boolean) => void; disabled?: boolean; tone?: string }) {
   return (
     <View style={[s.row, disabled && s.off]}>
-      <View style={{ flex: 1 }}>
-        <Text style={s.body}>{label}</Text>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={s.rowTitle}>{label}</Text>
         {sub ? <Text style={s.meta}>{sub}</Text> : null}
       </View>
       <Switch
@@ -204,21 +227,36 @@ export function Toggle({ label, sub, value, onChange, disabled, tone }: { label:
 export function ListRow({ title, sub, onPress, right, danger, testID }: { title: string; sub?: string; onPress?: () => void; right?: string; danger?: boolean; testID?: string }) {
   return (
     <Pressable testID={testID} accessibilityRole="button" accessibilityLabel={title} onPress={onPress} style={({ pressed }) => [s.row, pressed && s.pressed]}>
-      <View style={{ flex: 1 }}>
-        <Text style={[s.body, danger && { color: color.danger }]}>{title}</Text>
-        {sub ? <Text style={s.meta}>{sub}</Text> : null}
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={[s.rowTitle, danger && { color: color.danger }]}>{title}</Text>
+        {sub ? <Text style={s.hint}>{sub}</Text> : null}
       </View>
-      {right ? <Text style={s.meta}>{right}</Text> : null}
-      {onPress ? <Text style={[s.meta, { marginLeft: space.s }]}>›</Text> : null}
+      {right ? <Text style={s.rowValue}>{right}</Text> : null}
+      {onPress && !danger ? <Icon.Next /> : null}
     </Pressable>
   );
+}
+
+/** App v2 uppercase group label (issue 63). */
+export function SectionLabel({ children }: { children: React.ReactNode }) {
+  return <Text style={s.sectionTitle}>{children}</Text>;
 }
 
 export function Section({ title, children }: { title?: string; children: React.ReactNode }) {
   return (
     <View style={{ gap: space.xs }}>
       {title ? <Text style={s.sectionTitle}>{title}</Text> : null}
-      <View style={s.card}>{children}</View>
+      <View style={s.card}>
+        <CardContext.Provider value>
+        {React.Children.toArray(children)
+          .filter(Boolean)
+          .map((c, i) => (
+            <View key={i} style={i ? s.sep : null}>
+              {c}
+            </View>
+          ))}
+        </CardContext.Provider>
+      </View>
     </View>
   );
 }
@@ -226,8 +264,9 @@ export function Section({ title, children }: { title?: string; children: React.R
 export function Banner({ text, tone = 'trust', onPress, testID }: { text: string; tone?: 'trust' | 'danger' | 'warn' | 'personal'; onPress?: () => void; testID?: string }) {
   const c = tone === 'warn' ? color.personal : color[tone];
   return (
-    <Pressable testID={testID} onPress={onPress} style={[s.banner, { borderColor: c }]} accessibilityRole={onPress ? 'button' : 'alert'}>
-      <Text style={[s.meta, { color: c }]}>{text}</Text>
+    <Pressable testID={testID} onPress={onPress} style={[s.banner, { backgroundColor: `${c}1A` }]} accessibilityRole={onPress ? 'button' : 'alert'}>
+      <Text style={[s.meta, { color: c, flex: 1, fontFamily: font.bold, fontSize: 14, lineHeight: 20 }]}>{text}</Text>
+      {onPress ? <Icon.Next c={c} /> : null}
     </Pressable>
   );
 }
@@ -322,6 +361,57 @@ export function Sheet({ visible, onClose, title, children, closeLabel = 'Close' 
   );
 }
 
+/** App v2 hero card (Party, Venue, Activity, Club; issue 63): colour fill, status pill, big title, meta, stat tiles. */
+export function Hero({ fill, pill, title, meta, stats, testID }: { fill: string; pill: string; title: string; meta?: string; stats?: { k: string; v: string }[]; testID?: string }) {
+  return (
+    <View testID={testID} style={[s.hero, { backgroundColor: fill }]}>
+      <View pointerEvents="none" style={s.heroBlobA} />
+      <View pointerEvents="none" style={s.heroBlobB} />
+      <View style={s.heroPill}>
+        <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: fill }} />
+        <Text style={[s.badgeText, { color: fill, letterSpacing: 0.6, textTransform: 'uppercase' }]}>{pill}</Text>
+      </View>
+      <Text accessibilityRole="header" style={{ ...type.display, fontSize: 30, lineHeight: 34, color: color.onAccent }}>
+        {title}
+      </Text>
+      {meta ? <Text style={{ ...type.headline, fontFamily: font.bold, color: color.onAccent, opacity: 0.8 }}>{meta}</Text> : null}
+      {stats?.length ? (
+        <View style={{ flexDirection: 'row', gap: space.s, marginTop: space.xs }}>
+          {stats.map((x) => (
+            <View key={x.k} style={s.heroStat}>
+              <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} style={{ ...type.title, fontSize: 19, lineHeight: 24, color: color.onAccent }}>
+                {x.v}
+              </Text>
+              <Text numberOfLines={1} style={{ ...type.meta, fontFamily: font.bold, fontSize: 12, color: color.onAccent, opacity: 0.75 }}>
+                {x.k}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+/** App v2 round back button (stack headers, issue 63). */
+export function BackButton({ onPress, label = 'Back' }: { onPress: () => void; label?: string }) {
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} hitSlop={8} style={({ pressed }) => [s.round, pressed && s.pressed]}>
+      <Icon.Back />
+    </Pressable>
+  );
+}
+
+/** App v2 sticky bottom action: one pill over a fade (issue 63). Put it after the ScrollView. */
+export function StickyCta({ children }: { children: React.ReactNode }) {
+  return (
+    <View pointerEvents="box-none" style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}>
+      <Scrim height={110} max={1} steps={8} />
+      <View style={{ paddingHorizontal: space.l, paddingBottom: space.xxl, paddingTop: space.s, gap: space.s }}>{children}</View>
+    </View>
+  );
+}
+
 export function Wordmark({ size = 27 }: { size?: number }) {
   const dot = size * 0.3;
   return (
@@ -336,6 +426,8 @@ export function Wordmark({ size = 27 }: { size?: number }) {
   );
 }
 
+const WEB_NO_OUTLINE = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as object) : null;
+
 export const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: color.bgBase },
   content: { padding: space.l, paddingTop: space.xxxl + space.xl, gap: space.l, maxWidth: 560, width: '100%', alignSelf: 'center', flexGrow: 1, paddingBottom: 120 },
@@ -348,7 +440,16 @@ export const s = StyleSheet.create({
   meta: { ...type.meta, color: color.fgSecondary },
   muted: { color: color.fgSecondary },
   label: { ...type.meta, color: color.fgSecondary, marginBottom: space.xs },
-  sectionTitle: { ...type.caption, color: color.fgSecondary, textTransform: 'uppercase', letterSpacing: 0.6, marginLeft: space.xs },
+  sectionTitle: { ...type.caption, fontSize: 12, lineHeight: 16, color: color.fgMuted, textTransform: 'uppercase', letterSpacing: 0.8, marginLeft: space.xs },
+  rowTitle: { ...type.headline, fontFamily: font.bold, color: color.fgPrimary },
+  rowValue: { ...type.meta, fontFamily: font.bold, fontSize: 14, color: color.fgSecondary },
+  sep: { borderTopWidth: 1, borderColor: color.lineSubtle },
+  hero: { borderRadius: 28, padding: space.xl, gap: space.s, overflow: 'hidden' },
+  heroBlobA: { position: 'absolute', right: -60, top: -60, width: 200, height: 200, borderRadius: 100, backgroundColor: color.bgInverse, opacity: 0.18 },
+  heroBlobB: { position: 'absolute', right: 30, bottom: -90, width: 160, height: 160, borderRadius: 80, backgroundColor: color.bgBase, opacity: 0.1 },
+  heroPill: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, height: 26, paddingHorizontal: space.m, borderRadius: radius.pill, backgroundColor: color.bgBase },
+  heroStat: { flex: 1, paddingVertical: 10, paddingHorizontal: space.m, borderRadius: 18, backgroundColor: 'rgba(23,20,46,0.14)', gap: 2 },
+  round: { width: touch, height: touch, borderRadius: touch / 2, backgroundColor: color.bgRaised, alignItems: 'center', justifyContent: 'center' },
   hint: { ...type.meta, color: color.fgMuted },
   btn: { minHeight: 56, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', paddingHorizontal: space.xl },
   btnSmall: { minHeight: touch, paddingHorizontal: space.l },
@@ -363,30 +464,30 @@ export const s = StyleSheet.create({
   btnTextSmall: { ...type.meta, fontFamily: type.headline.fontFamily },
   btnTextOnFill: { color: color.onAccent },
   btnTextDanger: { color: color.danger },
-  chip: { minHeight: touch - 6, paddingHorizontal: space.m, borderRadius: radius.pill, borderWidth: 1, borderColor: color.line, justifyContent: 'center', backgroundColor: color.bgRaised },
-  chipText: { ...type.meta, color: color.fgPrimary },
+  chip: { minHeight: 40, paddingHorizontal: space.l, borderRadius: radius.pill, justifyContent: 'center', backgroundColor: color.bgRaised },
+  chipText: { ...type.meta, fontFamily: font.bold, fontSize: 15, color: color.fgPrimary },
   chipTextOn: { color: color.onAccent, fontFamily: type.headline.fontFamily },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.s },
   segmented: { flexDirection: 'row', padding: 3, gap: 3, borderRadius: radius.pill, backgroundColor: color.bgRaised },
   segBtn: { minHeight: 38, paddingHorizontal: space.m, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
   segText: { ...type.meta, fontFamily: type.headline.fontFamily, color: color.fgPrimary },
-  field: { gap: space.xxs },
-  input: { ...type.body, minHeight: touch + 4, color: color.fgPrimary, backgroundColor: color.bgRaised, borderRadius: radius.md, borderWidth: 1, borderColor: color.line, paddingHorizontal: space.l },
-  inputMulti: { minHeight: 96, paddingTop: space.m, textAlignVertical: 'top' },
+  field: { gap: space.s },
+  input: { ...type.body, fontSize: 17, minHeight: 56, color: color.fgPrimary, backgroundColor: color.bgRaised, borderRadius: 18, borderWidth: 2, borderColor: color.bgRaised, paddingHorizontal: space.l },
+  inputMulti: { minHeight: 112, paddingTop: 14, paddingBottom: 14, lineHeight: 22, textAlignVertical: 'top' },
   inputErr: { borderColor: color.danger },
   err: { ...type.meta, color: color.danger },
   checkRow: { flexDirection: 'row', alignItems: 'center', gap: space.m, minHeight: touch },
   box: { width: 24, height: 24, borderRadius: 8, borderWidth: 2, borderColor: color.fgSecondary, alignItems: 'center', justifyContent: 'center' },
   tick: { color: color.onAccent, fontFamily: type.headline.fontFamily },
-  row: { flexDirection: 'row', alignItems: 'center', gap: space.m, minHeight: touch + 8, paddingVertical: space.s, paddingHorizontal: space.l },
-  banner: { borderWidth: 1, borderRadius: radius.md, padding: space.m, backgroundColor: color.bgRaised },
+  row: { flexDirection: 'row', alignItems: 'center', gap: space.m, minHeight: 60, paddingVertical: space.m, paddingHorizontal: space.l },
+  banner: { flexDirection: 'row', alignItems: 'center', gap: space.s, borderRadius: 20, paddingVertical: 14, paddingHorizontal: space.l },
   badge: { borderRadius: radius.pill, paddingHorizontal: space.m, paddingVertical: space.xs, alignSelf: 'flex-start' },
   badgeText: { ...type.caption, color: color.onAccent },
-  card: { backgroundColor: color.bgRaised, borderRadius: radius.md, borderWidth: 1, borderColor: color.line, overflow: 'hidden' },
+  card: { backgroundColor: color.bgRaised, borderRadius: radius.md, overflow: 'hidden' },
   spacer: { flex: 1 },
   empty: { alignItems: 'center', justifyContent: 'center', gap: space.l, padding: space.xxl, flexGrow: 1 },
   scrim: { flex: 1, backgroundColor: color.scrim },
-  sheet: { maxHeight: '88%', backgroundColor: color.bgBase, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, borderWidth: 1, borderColor: color.line, paddingHorizontal: space.l, paddingTop: space.l },
+  sheet: { maxHeight: '88%', backgroundColor: color.bgBase, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, paddingHorizontal: space.l, paddingTop: space.l },
   sheetHead: { flexDirection: 'row', alignItems: 'center', marginBottom: space.m },
-  close: { marginLeft: 'auto', width: touch, height: touch, alignItems: 'center', justifyContent: 'center' },
+  close: { marginLeft: 'auto', width: touch, height: touch, borderRadius: touch / 2, backgroundColor: color.bgRaised, alignItems: 'center', justifyContent: 'center' },
 });

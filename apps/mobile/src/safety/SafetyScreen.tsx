@@ -1,15 +1,18 @@
 import { getLocales } from 'expo-localization';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useState } from 'react';
-import { Linking, ScrollView, Share, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, Share, Text, View } from 'react-native';
 import { ApiError } from '../api/client';
 import { useSession } from '../app/session';
 import { tx } from '../i18n/app';
-import { color, space, type } from '../theme/tokens';
-import { Banner, Button, ErrorText, Field, ListRow, Section, Sheet } from '../ui';
+import { color, radius, space, type } from '../theme/tokens';
+import { Banner, Button, ErrorText, Field, Icon, ListRow, Section, SectionLabel, Sheet } from '../ui';
 import { HoldButton } from './parts';
 import { Resources } from './SafeModeAuto';
 import * as S from './safety';
+
+const pill = { height: 36, paddingHorizontal: space.m, borderRadius: radius.pill, backgroundColor: color.line, alignItems: 'center' as const, justifyContent: 'center' as const };
+const pillText = { ...type.meta, fontFamily: type.headline.fontFamily, color: color.fgPrimary };
 
 type Nav = { navigate: (s: string, p?: object) => void };
 
@@ -25,7 +28,9 @@ export function Sos({ name, onSent }: { name: string; onSent?: () => void }) {
     <View style={{ gap: space.s }}>
       <HoldButton
         testID="sos"
-        label={`${tx.safety.sos} · ${tx.safety.sosHold}`}
+        label={tx.safety.sos}
+        badge="SOS"
+        sub={tx.safety.sosHold}
         ms={2000}
         onDone={() => {
           setErr(null);
@@ -86,38 +91,51 @@ export function SafetyScreen({ navigation }: { navigation: Nav }) {
 
   const ok = list.some((c) => c.accepted);
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: color.bgBase }} contentContainerStyle={{ padding: space.l, gap: space.l, paddingBottom: 120 }}>
-      <Text style={{ ...type.display, color: color.fgPrimary }}>{tx.safety.title}</Text>
+    <ScrollView style={{ flex: 1, backgroundColor: color.bgBase }} contentContainerStyle={{ padding: space.l, paddingTop: space.s, gap: space.l, paddingBottom: 120 }}>
+      <Text accessibilityRole="header" style={{ ...type.display, color: color.fgPrimary }}>
+        {tx.safety.title}
+      </Text>
       {act ? <Banner tone="trust" text={tx.safety.active(time(act.due))} onPress={() => navigation.navigate('CheckinDue')} /> : null}
-
-      <Text style={{ ...type.headline, color: color.fgPrimary }}>{tx.safety.checkin}</Text>
-      {!ok ? <Text style={{ ...type.meta, color: color.fgSecondary }}>{tx.safety.needContacts}</Text> : null}
-      {act ? null : <Button testID="checkin-start" kind="trust" title={tx.safety.start} disabled={!ok} onPress={() => navigation.navigate('CheckinStart', {})} />}
       <Sos name={name || fallback} onSent={load} />
 
-      <Text style={{ ...type.headline, color: color.fgPrimary }}>{tx.safety.contacts}</Text>
-      <Text style={{ ...type.meta, color: color.fgSecondary }}>{tx.safety.contactsHint}</Text>
-      {list.length ? (
+      <View style={{ gap: space.s }}>
+        <SectionLabel>{tx.safety.checkin}</SectionLabel>
+        {!ok ? <Banner tone="warn" text={tx.safety.needContacts} /> : null}
+        {act ? null : <Button testID="checkin-start" kind="trust" title={tx.safety.start} disabled={!ok} onPress={() => navigation.navigate('CheckinStart', {})} />}
+      </View>
+
+      <View style={{ gap: space.s }}>
+        <SectionLabel>{tx.safety.contacts}</SectionLabel>
         <Section>
-        {list.map((c) => (
-          <View key={c.id} testID={`contact-${c.accepted ? 'accepted' : 'pending'}`} style={{ gap: space.xs }}>
-            <ListRow title={c.label} sub={c.accepted ? (c.push ? tx.safety.accepted : tx.safety.acceptedNoPush) : tx.safety.pending} />
-            <View style={{ flexDirection: 'row', gap: space.s }}>
-              {!c.accepted ? <Button small kind="secondary" title={tx.safety.resend} onPress={() => share(c)} /> : null}
-              <Button small kind="ghost" title={tx.safety.remove} onPress={() => S.removeContact(c.id).then(load)} />
+          {list.map((c) => (
+            <View key={c.id} testID={`contact-${c.accepted ? 'accepted' : 'pending'}`} style={{ flexDirection: 'row', alignItems: 'center', gap: space.m, padding: space.m, paddingLeft: space.l }}>
+              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: c.accepted ? color.trust : color.line, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ ...type.headline, color: c.accepted ? color.onAccent : color.fgPrimary }}>{c.label.slice(0, 1).toUpperCase()}</Text>
+              </View>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={{ ...type.headline, color: color.fgPrimary }}>{c.label}</Text>
+                <Text style={{ ...type.meta, color: c.accepted ? color.trust : color.fgMuted }}>{c.accepted ? (c.push ? tx.safety.accepted : tx.safety.acceptedNoPush) : tx.safety.pending}</Text>
+              </View>
+              {!c.accepted ? (
+                <Pressable accessibilityRole="button" onPress={() => share(c)} style={pill}>
+                  <Text style={pillText}>{tx.safety.resend}</Text>
+                </Pressable>
+              ) : null}
+              <Pressable accessibilityRole="button" accessibilityLabel={tx.safety.remove} onPress={() => S.removeContact(c.id).then(load)} style={[pill, { paddingHorizontal: 0, width: 36 }]}>
+                <Icon.Close size={16} c={color.fgSecondary} />
+              </Pressable>
             </View>
-          </View>
-        ))}
+          ))}
+          {list.length < 5 ? <ListRow testID="contact-add" title={tx.safety.add} sub={tx.safety.contactsHint} onPress={() => setAdding(true)} /> : null}
         </Section>
-      ) : null}
-      {list.length < 5 ? <Button testID="contact-add" kind="secondary" title={tx.safety.add} onPress={() => setAdding(true)} /> : null}
+      </View>
       <Field testID="safety-name" label={tx.safety.myName} value={name} onChangeText={setName} onEndEditing={() => S.setMyName(name || fallback)} maxLength={40} />
 
       <Section>
         <ListRow testID="app-lock" title={tx.safety.lock.title} onPress={() => navigation.navigate('AppLock')} />
       </Section>
 
-      <Text style={{ ...type.headline, color: color.fgPrimary }}>{tx.safeMode.resources}</Text>
+      <SectionLabel>{tx.safeMode.resources}</SectionLabel>
       <Section>
         <Resources />
       </Section>

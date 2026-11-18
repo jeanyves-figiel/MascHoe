@@ -4,7 +4,7 @@ import { api, ApiError } from '../api/client';
 import { useSession } from '../app/session';
 import { distanceLabel, tx } from '../i18n/app';
 import { color, space, type } from '../theme/tokens';
-import { Badge, Banner, Button, ErrorText, Field, ListRow, Loading, Toggle, useAccent } from '../ui';
+import { Banner, Button, ErrorText, Field, Hero, Icon, ListRow, Loading, Section, Toggle } from '../ui';
 import { Who } from './TonightScreen';
 import type { Here, Venue } from './types';
 
@@ -14,7 +14,6 @@ type Nav = { navigate: (s: string, p?: object) => void; goBack: () => void };
 export function VenueScreen({ navigation, route }: { navigation: Nav; route: { params: { venue: Venue } } }) {
   const v = route.params.venue;
   const { me, mode } = useSession();
-  const accent = useAccent();
   const [here, setHere] = useState<Here | null | undefined>(undefined);
   const [visible, setVisible] = useState(true);
   const [zone, setZone] = useState('');
@@ -61,38 +60,46 @@ export function VenueScreen({ navigation, route }: { navigation: Nav; route: { p
         paddingBottom: 120,
       }}
     >
-      <View style={{ flexDirection: 'row', gap: space.s }}>
-        <Badge label={tx.venue.kinds[v.kind] ?? v.kind} fill={accent} />
-        <Badge label={distanceLabel(v.distance)} fill={color.trust} />
-      </View>
-      <Text style={{ ...type.display, color: color.fgPrimary }}>{v.name}</Text>
+      <Hero fill={color.trust} pill={tx.venue.kinds[v.kind] ?? v.kind} title={v.name} meta={here ? undefined : [distanceLabel(v.distance), tx.venue.here(v.here)].filter(Boolean).join(' · ')} />
       <ErrorText text={err} />
 
       {here ? (
         <>
-          <Text testID="venue-stats" style={{ ...type.meta, color: color.fgSecondary }}>
+          <Text testID="venue-stats" style={{ ...type.headline, color: color.trust }}>
             {tx.venue.stats(here.stats.total, here.stats.visible_to_you, here.stats.tapped_you)}
           </Text>
-          <Toggle label={tx.venue.visible} value={visible} tone={color.trust} onChange={(x) => call(() => api('PATCH', `/venues/${v.id}/checkin`, { visible: x }))} />
+          <Section>
+            <Toggle label={tx.venue.visible} value={visible} tone={color.trust} onChange={(x) => call(() => api('PATCH', `/venues/${v.id}/checkin`, { visible: x }))} />
+          </Section>
           {!here.me.visible ? <Banner tone="warn" text={tx.venue.hidden} /> : null}
           {here.me.visible && here.people.length === 0 ? <Text style={{ ...type.meta, color: color.fgMuted }}>{tx.venue.empty}</Text> : null}
-          {here.people.map((x) => (
-            <Who key={x.profile.id} p={x.profile} sub={[x.zone, x.tapped_me ? tx.profile.tappedYou : null].filter(Boolean).join(' · ') || undefined} onPress={() => navigation.navigate('Profile', { id: x.profile.id })} />
-          ))}
-          <ListRow testID="venue-checkout" title={tx.venue.checkout} danger onPress={() => call(() => api('POST', '/venues/checkout'))} />
+          {here.people.length ? (
+            <Section>
+              {here.people.map((x) => (
+                <View key={x.profile.id} style={{ padding: space.m }}>
+                  <Who p={x.profile} sub={[x.zone, x.tapped_me ? tx.profile.tappedYou : null].filter(Boolean).join(' · ') || undefined} onPress={() => navigation.navigate('Profile', { id: x.profile.id })} right={<Icon.Next />} />
+                </View>
+              ))}
+            </Section>
+          ) : null}
+          <Section>
+            <ListRow testID="venue-checkout" title={tx.venue.checkout} danger onPress={() => call(() => api('POST', '/venues/checkout'))} />
+          </Section>
         </>
       ) : (
         <>
-          <Text style={{ ...type.body, color: color.fgSecondary }}>{tx.venue.here(v.here)}</Text>
           {safe ? (
             <Banner tone="warn" text={tx.venue.safe} />
           ) : (
             <>
-              <Toggle label={tx.venue.visible} value={visible} tone={color.trust} onChange={setVisible} />
+              <Section>
+                <Toggle label={tx.venue.visible} value={visible} tone={color.trust} onChange={setVisible} />
+              </Section>
               <Field testID="venue-zone" label={tx.venue.zone} value={zone} onChangeText={setZone} maxLength={40} />
               <Button
                 testID="venue-checkin"
                 title={tx.venue.checkin}
+                kind="trust"
                 busy={busy}
                 disabled={!me.verified}
                 onPress={() =>

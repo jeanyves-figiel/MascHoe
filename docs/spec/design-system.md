@@ -91,6 +91,18 @@ Generated to TS (RN theme) by Style Dictionary in CI. Hard-coded colours/sizes i
 - Rows: 58 pt min height, 10 pt coloured dot, value right in `fg.secondary` (teal for location), chevron `fg.muted`.
 - Text glyphs are never icons: use `src/ui/icons.tsx`.
 
+### Sub-screen rules (issue 63, mockup: app v2 canvas, second row)
+- Stack header: no bar chrome; 44 pt round `bg.raised` back button (`BackButton`), optional right pill action. Screen draws its own 32–34 pt display title, optional `fg.secondary` 15 subtitle.
+- Groups: `SectionLabel` (12 pt 800 uppercase `fg.muted`, 0.8 tracking) above a `Section` card (`bg.raised`, radius 22, no border, 1 px `line.subtle` separators). Rows 60 pt min, title 16/700, sub 13 `fg.muted`, value 14/700 `fg.secondary`, chevron icon.
+- Inside a card, chips use `line` fill and fields/segmented use `bg.overlay` so they never vanish into the card.
+- Fields: label as `SectionLabel`; input 56 pt, radius 18, `bg.raised` fill, 2 pt border that turns mode colour on focus.
+- Chips: 40 pt, no border, 15/700; selected = mode colour fill + ink text.
+- Banners: tinted fill (tone at 10 %), bold tone-coloured text, chevron when tappable. No emoji prefixes.
+- Hero card (`Hero`): Party, Activity, Club (mode colour) and Venue (teal). Radius 28, ink status pill, 30 pt title, meta line, up to 3 stat tiles.
+- Primary action: one pill in `StickyCta` (bottom fade) on forms (Edit profile, Host a party, Post activity, New club, Report). Save is white; destructive submit is `danger` fill.
+- Single choice of 2–4 options = `Segmented` (audience, intent, join policy, visibility); longer single choice = radio rows (Report reasons).
+- Photo editor: mosaic, main photo 2×2 with white "Main" pill, two right, two wide below; empty slots dashed with plus icon.
+
 ### Iconography
 - 24 px grid, 1.75 px stroke, rounded. Set lives in `/design/icons` (SVG → RN components).
 - Badges: verified (trust check), vouched (count), creator, host. Never colour-only: badge = icon + accessible label.

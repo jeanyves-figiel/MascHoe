@@ -5,8 +5,9 @@ import { useOptions } from '../api/options';
 import { useSession } from '../app/session';
 import * as E from '../chat/engine';
 import { distanceLabel, opt, tx } from '../i18n/app';
+import { v2 } from '../i18n/v2';
 import { color, space, type } from '../theme/tokens';
-import { Badge, Banner, Button, Chip, Chips, ErrorText, Field, ListRow, Loading, useAccent } from '../ui';
+import { Banner, Button, Chip, Chips, ErrorText, Field, Hero, Icon, ListRow, Loading, Section, SectionLabel, Segmented, StickyCta, useAccent } from '../ui';
 import { resyncHostGroups } from './groupSync';
 import { Who } from './TonightScreen';
 import type { Club, ClubDetail, Post } from './types';
@@ -88,26 +89,27 @@ export function ActivityScreen({ navigation, route }: { navigation: Nav; route: 
         paddingBottom: 120,
       }}
     >
-      <View style={{ flexDirection: 'row', gap: space.s, flexWrap: 'wrap' }}>
-        <Badge label={opt(p.sport)} fill={accent} />
-        <Badge label={tx.sport.intent[p.intent]} fill={color.bgInverse} />
-        {p.club ? <Badge label={p.club.name} fill={color.friends} /> : null}
-      </View>
-      <Text style={{ ...type.display, color: color.fgPrimary }}>{p.title}</Text>
-      <Text style={{ ...type.body, color: color.fgSecondary }}>
-        {day(p.starts_at)}
-        {p.place ? ` · ${p.place}` : ''} · {distanceLabel(p.distance)}
-      </Text>
-      <Text style={{ ...type.meta, color: color.fgSecondary }}>{tx.sport.going(p.joined, p.capacity)}</Text>
-      <Who p={p.host} onPress={() => navigation.navigate('Profile', { id: p.host.id })} />
+      <Hero
+        fill={accent}
+        pill={[opt(p.sport), tx.sport.intent[p.intent]].join(' · ')}
+        title={p.title}
+        meta={[day(p.starts_at), p.place, distanceLabel(p.distance)].filter(Boolean).join(' · ')}
+        stats={[{ k: v2.party.going, v: p.capacity ? `${p.joined}/${p.capacity}` : `${p.joined}` }, ...(p.club ? [{ k: 'Club', v: p.club.name }] : [])]}
+      />
+      <Section>
+        <View style={{ padding: space.m }}>
+          <Who p={p.host} onPress={() => navigation.navigate('Profile', { id: p.host.id })} right={<Icon.Next />} />
+        </View>
+      </Section>
       <ErrorText text={err} />
       {host ? null : p.my_state === 'joined' ? <Button kind="secondary" title={tx.sport.leave} onPress={() => rsvp(false)} /> : <Button testID="activity-join" title={tx.sport.join} disabled={!mine} onPress={() => rsvp(true)} />}
       {!mine ? <Banner tone="warn" text={tx.sport.needProfile} onPress={() => navigation.navigate('Tabs', { screen: 'Me' })} /> : null}
       {inside ? <Button testID="activity-chat" kind="secondary" title={tx.sport.chat} onPress={chat} /> : null}
-      {members
-        ? members.members.map((m) => (
+      {members && members.members.length ? (
+        <Section>
+          {members.members.map((m) => (
+            <View key={m.id} style={{ padding: space.m }}>
             <Who
-              key={m.id}
               p={m}
               onPress={() => navigation.navigate('Profile', { id: m.id })}
               right={
@@ -118,9 +120,15 @@ export function ActivityScreen({ navigation, route }: { navigation: Nav; route: 
                 ) : undefined
               }
             />
-          ))
-        : null}
-      {host ? <ListRow title={tx.common.delete} danger onPress={() => api('DELETE', `/activities/${p.id}`).then(() => navigation.goBack())} /> : null}
+            </View>
+          ))}
+        </Section>
+      ) : null}
+      {host ? (
+        <Section>
+          <ListRow title={tx.common.delete} danger onPress={() => api('DELETE', `/activities/${p.id}`).then(() => navigation.goBack())} />
+        </Section>
+      ) : null}
     </ScrollView>
   );
 }
@@ -176,18 +184,19 @@ export function ActivityNewScreen({ navigation }: { navigation: Nav }) {
   };
 
   return (
+    <View style={{ flex: 1, backgroundColor: color.bgBase }}>
     <ScrollView
       style={{ flex: 1, backgroundColor: color.bgBase }}
       contentContainerStyle={{
         padding: space.l,
         gap: space.l,
-        paddingBottom: 120,
+        paddingBottom: 150,
       }}
       keyboardShouldPersistTaps="handled"
     >
       <Text style={{ ...type.display, color: color.fgPrimary }}>{tx.sport.post}</Text>
       {!mine ? <Banner tone="warn" text={tx.sport.needProfile} /> : null}
-      <Text style={{ ...type.meta, color: color.fgSecondary }}>{tx.sport.sportPick}</Text>
+      <SectionLabel>{tx.sport.sportPick}</SectionLabel>
       <Chips>
         {(options?.options.sports ?? []).map((s) => (
           <Chip key={s} label={opt(s)} on={sport === s} fill={accent} onPress={() => setSport(s)} />
@@ -195,26 +204,22 @@ export function ActivityNewScreen({ navigation }: { navigation: Nav }) {
       </Chips>
       <Field testID="activity-title" label={tx.sport.activityTitle} value={title} onChangeText={setTitle} maxLength={80} />
       <Field label={tx.sport.place} value={place} onChangeText={setPlace} maxLength={80} />
-      <Text style={{ ...type.meta, color: color.fgSecondary }}>{tx.sport.when}</Text>
+      <SectionLabel>{tx.sport.when}</SectionLabel>
       <Chips>
         {[1, 2, 3, 4, 6, 12, 24, 48].map((h) => (
           <Chip key={h} label={day(when(h).toISOString())} on={inH === h} fill={accent} onPress={() => setInH(h)} />
         ))}
       </Chips>
-      <Text style={{ ...type.meta, color: color.fgSecondary }}>{tx.sport.cap}</Text>
+      <SectionLabel>{tx.sport.cap}</SectionLabel>
       <Chips>
         {[null, 2, 4, 6, 10, 20].map((n) => (
           <Chip key={String(n)} label={n ? String(n) : '∞'} on={cap === n} fill={accent} onPress={() => setCap(n)} />
         ))}
       </Chips>
-      <Chips>
-        {(['just_sport', 'open_to_more'] as const).map((i) => (
-          <Chip key={i} label={tx.sport.intent[i]} on={intent === i} fill={color.trust} onPress={() => setIntent(i)} />
-        ))}
-      </Chips>
+      <Segmented grow label={tx.sport.intent.just_sport} value={intent} onChange={setIntent} fills={{ just_sport: accent, open_to_more: accent }} options={(['just_sport', 'open_to_more'] as const).map((i) => ({ value: i, label: tx.sport.intent[i] }))} />
       {adminClubs.length ? (
         <>
-          <Text style={{ ...type.meta, color: color.fgSecondary }}>{tx.sport.asClub}</Text>
+          <SectionLabel>{tx.sport.asClub}</SectionLabel>
           <Chips>
             <Chip label="—" on={club === null} onPress={() => setClub(null)} />
             {adminClubs.map((c) => (
@@ -224,8 +229,11 @@ export function ActivityNewScreen({ navigation }: { navigation: Nav }) {
         </>
       ) : null}
       <ErrorText text={err} />
-      <Button testID="activity-post" title={tx.tonight.publish} busy={busy} disabled={!title.trim() || !mine} onPress={post} />
     </ScrollView>
+      <StickyCta>
+        <Button testID="activity-post" title={tx.tonight.publish} busy={busy} disabled={!title.trim() || !mine} onPress={post} />
+      </StickyCta>
+    </View>
   );
 }
 
@@ -264,15 +272,8 @@ export function ClubScreen({ navigation, route }: { navigation: Nav; route: { pa
         paddingBottom: 120,
       }}
     >
-      <View style={{ flexDirection: 'row', gap: space.s }}>
-        <Badge label={opt(c.sport)} fill={accent} />
-        {c.verified_club ? <Badge label="✓ Partner" fill={color.trust} /> : null}
-      </View>
-      <Text style={{ ...type.display, color: color.fgPrimary }}>{c.name}</Text>
-      {c.description ? <Text style={{ ...type.body, color: color.fgSecondary }}>{c.description}</Text> : null}
-      <Text style={{ ...type.meta, color: color.fgMuted }}>
-        {tx.sport.members(c.members)} · {tx.sport.policies[c.join_policy]}
-      </Text>
+      <Hero fill={c.verified_club ? color.trust : accent} pill={[opt(c.sport), c.verified_club ? 'Partner' : null].filter(Boolean).join(' · ')} title={c.name} meta={`${tx.sport.members(c.members)} · ${tx.sport.policies[c.join_policy]}`} />
+      {c.description ? <Text style={{ ...type.body, fontSize: 17, lineHeight: 24, color: color.fgSecondary }}>{c.description}</Text> : null}
       <ErrorText text={err} />
       {c.my_state === null ? (
         <Button testID="club-join" title={c.join_policy === 'open' ? tx.sport.joinClub : tx.sport.requestJoin} disabled={!mine} onPress={() => act(() => api('POST', `/clubs/${c.id}/join`))} />
@@ -281,14 +282,18 @@ export function ClubScreen({ navigation, route }: { navigation: Nav; route: { pa
       ) : (
         <Button testID="club-chat" title={tx.sport.clubChat} onPress={chat} />
       )}
-      <Text style={{ ...type.headline, color: color.fgPrimary }}>{tx.sport.events}</Text>
-      {c.events.map((e) => (
-        <ListRow key={e.id} title={e.title} sub={`${day(e.starts_at)}${e.place ? ` · ${e.place}` : ''}`} />
-      ))}
-      {admin ? <ListRow title={tx.sport.post} onPress={() => navigation.navigate('ActivityNew')} /> : null}
-      {c.member_list?.map((m) => (
+      <SectionLabel>{tx.sport.events}</SectionLabel>
+      <Section>
+        {c.events.map((e) => (
+          <ListRow key={e.id} title={e.title} sub={`${day(e.starts_at)}${e.place ? ` · ${e.place}` : ''}`} />
+        ))}
+        {admin ? <ListRow title={tx.sport.post} onPress={() => navigation.navigate('ActivityNew')} /> : null}
+      </Section>
+      {c.member_list?.length ? (
+        <Section>
+      {c.member_list.map((m) => (
+        <View key={m.profile.id} style={{ padding: space.m }}>
         <Who
-          key={m.profile.id}
           p={m.profile}
           sub={m.role === 'admin' ? 'Admin' : m.state === 'requested' ? tx.sport.pending : undefined}
           onPress={() => navigation.navigate('Profile', { id: m.profile.id })}
@@ -304,8 +309,15 @@ export function ClubScreen({ navigation, route }: { navigation: Nav; route: { pa
             ) : undefined
           }
         />
+        </View>
       ))}
-      {c.my_state ? <ListRow title={tx.sport.leave} danger onPress={() => api('POST', `/clubs/${c.id}/leave`).then(() => navigation.goBack())} /> : null}
+        </Section>
+      ) : null}
+      {c.my_state ? (
+        <Section>
+          <ListRow title={tx.sport.leave} danger onPress={() => api('POST', `/clubs/${c.id}/leave`).then(() => navigation.goBack())} />
+        </Section>
+      ) : null}
     </ScrollView>
   );
 }
@@ -337,17 +349,18 @@ export function ClubNewScreen({ navigation }: { navigation: Nav }) {
     }
   };
   return (
+    <View style={{ flex: 1, backgroundColor: color.bgBase }}>
     <ScrollView
       style={{ flex: 1, backgroundColor: color.bgBase }}
       contentContainerStyle={{
         padding: space.l,
         gap: space.l,
-        paddingBottom: 120,
+        paddingBottom: 150,
       }}
       keyboardShouldPersistTaps="handled"
     >
       <Text style={{ ...type.display, color: color.fgPrimary }}>{tx.sport.newClub}</Text>
-      <Text style={{ ...type.meta, color: color.fgSecondary }}>{tx.sport.clubAge}</Text>
+      <SectionLabel>{tx.sport.clubAge}</SectionLabel>
       <Field label={tx.sport.clubName} value={name} onChangeText={setName} maxLength={60} />
       <Field label={tx.sport.description} value={desc} onChangeText={setDesc} maxLength={500} multiline />
       <Chips>
@@ -355,14 +368,13 @@ export function ClubNewScreen({ navigation }: { navigation: Nav }) {
           <Chip key={s} label={opt(s)} on={sport === s} fill={accent} onPress={() => setSport(s)} />
         ))}
       </Chips>
-      <Text style={{ ...type.meta, color: color.fgSecondary }}>{tx.sport.policy}</Text>
-      <Chips>
-        {(['open', 'request'] as const).map((p) => (
-          <Chip key={p} label={tx.sport.policies[p]} on={policy === p} fill={color.trust} onPress={() => setPolicy(p)} />
-        ))}
-      </Chips>
+      <SectionLabel>{tx.sport.policy}</SectionLabel>
+      <Segmented grow label={tx.sport.policy} value={policy} onChange={setPolicy} fills={{ open: accent, request: accent }} options={(['open', 'request'] as const).map((p) => ({ value: p, label: tx.sport.policies[p] }))} />
       <ErrorText text={err} />
-      <Button title={tx.sport.newClub} busy={busy} disabled={!name.trim()} onPress={create} />
     </ScrollView>
+      <StickyCta>
+        <Button title={tx.sport.newClub} busy={busy} disabled={!name.trim()} onPress={create} />
+      </StickyCta>
+    </View>
   );
 }

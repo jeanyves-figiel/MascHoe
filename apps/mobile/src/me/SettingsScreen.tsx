@@ -8,8 +8,10 @@ import { customQuickReplies, setCustomQuickReplies } from '../chat/quick';
 import { tx } from '../i18n/app';
 import { exportData } from './exportData';
 import { type Prefs, prefs, setPrefs } from './prefs';
-import { color, space, type } from '../theme/tokens';
+import { color, font, space, type } from '../theme/tokens';
 import { Banner, Button, Chip, Chips, ErrorText, Field, ListRow, Loading, Section, Toggle } from '../ui';
+
+const pad = { paddingHorizontal: space.l, paddingVertical: space.m, gap: space.s };
 
 type Nav = { navigate: (s: string, p?: object) => void };
 
@@ -60,8 +62,8 @@ export function SettingsScreen({ navigation }: { navigation: Nav }) {
   const show = (...labels: string[]) => !q.trim() || labels.some((l) => l.toLowerCase().includes(q.trim().toLowerCase()));
   const choice = <T extends string>(label: string, value: T, opts: Record<string, string>, on: (v: T) => void) =>
     show(label) ? (
-      <View style={{ paddingVertical: space.s, gap: space.xs }}>
-        <Text style={{ ...type.body, color: color.fgPrimary }}>{label}</Text>
+      <View style={pad}>
+        <Text style={{ ...type.headline, fontFamily: font.bold, color: color.fgPrimary }}>{label}</Text>
         <Chips>
           {Object.entries(opts).map(([k, l]) => (
             <Chip key={k} label={l} on={value === k} fill={color.trust} onPress={() => on(k as T)} />
@@ -72,8 +74,10 @@ export function SettingsScreen({ navigation }: { navigation: Nav }) {
   const tog = (label: string, value: boolean, on: (v: boolean) => void, sub?: string) => (show(label, sub ?? '') ? <Toggle label={label} sub={sub} value={value} onChange={on} /> : null);
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: color.bgBase }} contentContainerStyle={{ padding: space.l, paddingTop: space.s, gap: space.l, paddingBottom: 140, maxWidth: 560, width: '100%', alignSelf: 'center' }} keyboardShouldPersistTaps="handled">
-      <Text style={{ ...type.display, color: color.fgPrimary }}>{tx.settings.title}</Text>
+    <ScrollView style={{ flex: 1, backgroundColor: color.bgBase }} contentContainerStyle={{ padding: space.l, paddingTop: space.s, gap: space.xl, paddingBottom: 140, maxWidth: 560, width: '100%', alignSelf: 'center' }} keyboardShouldPersistTaps="handled">
+      <Text accessibilityRole="header" style={{ ...type.display, color: color.fgPrimary }}>
+        {tx.settings.title}
+      </Text>
       <Field label={tx.settings.search} value={q} onChangeText={setQ} placeholder={tx.settings.search} />
       <ErrorText text={err} />
 
@@ -81,7 +85,7 @@ export function SettingsScreen({ navigation }: { navigation: Nav }) {
         {tog(`${tx.settings.hideFrom}: ${tx.settings.hideUnverified}`, st.hide_from_unverified, (v) => put({ hide_from_unverified: v }))}
         {tog(`${tx.settings.hideFrom}: ${tx.settings.hideNew}`, st.hide_from_new, (v) => put({ hide_from_new: v }))}
         {show(tx.settings.hideAgeMin, tx.settings.hideAgeMax) ? (
-          <View style={{ flexDirection: 'row', gap: space.s }}>
+          <View style={[pad, { flexDirection: 'row', gap: space.s }]}>
             <View style={{ flex: 1 }}>
               <Field label={`${tx.settings.hideFrom}: ${tx.settings.hideAgeMin}`} keyboardType="number-pad" defaultValue={st.hide_from_age_min ? String(st.hide_from_age_min) : ''} onEndEditing={(e) => put({ hide_from_age_min: Number.parseInt(e.nativeEvent.text, 10) || null })} />
             </View>
@@ -106,8 +110,8 @@ export function SettingsScreen({ navigation }: { navigation: Nav }) {
         {choice(tx.settings.disappearing, st.disappearing_default, tx.settings.disOpts, (v) => put({ disappearing_default: v }))}
         {tog(tx.prefs.autoDelete, pf.autoDelete || !!me.safe_mode_active, (v) => setPrefs({ autoDelete: v }).then(setPf))}
         {show(tx.settings.quickReplies) ? (
-          <View style={{ gap: space.xs }}>
-            <Text style={{ ...type.body, color: color.fgPrimary }}>{tx.settings.quickReplies}</Text>
+          <View style={pad}>
+            <Text style={{ ...type.headline, fontFamily: font.bold, color: color.fgPrimary }}>{tx.settings.quickReplies}</Text>
             <Text style={{ ...type.meta, color: color.fgMuted }}>{tx.settings.quickHint}</Text>
             {[0, 1, 2].map((i) => (
               <Field
@@ -128,14 +132,14 @@ export function SettingsScreen({ navigation }: { navigation: Nav }) {
       </Section>
 
       <Section title={tx.settings.notifications}>
-        {show(tx.settings.notifications) ? <Text style={{ ...type.meta, color: color.fgSecondary, paddingHorizontal: space.m, paddingTop: space.s }}>{tx.settings.notifIntro}</Text> : null}
+        {show(tx.settings.notifications) ? <Text style={{ ...type.meta, color: color.fgSecondary, paddingHorizontal: space.l, paddingVertical: space.m }}>{tx.settings.notifIntro}</Text> : null}
         {Platform.OS === 'ios' && show(tx.settings.enablePush) ? <ListRow title={tx.settings.enablePush} onPress={() => askPushPermission()} /> : null}
         {Object.entries(tx.settings.pushTypes).map(([k, label]) => (
           <React.Fragment key={k}>{tog(label, st.push?.[k] !== false, (v) => put({ push: { ...(st.push ?? {}), [k]: v } }))}</React.Fragment>
         ))}
         {tog(tx.settings.quiet, !!st.quiet_hours, (v) => put({ quiet_hours: v ? { from: 23, to: 7, tz_offset_min: -new Date().getTimezoneOffset() } : null }), tx.settings.quietSub)}
         {st.quiet_hours && show(tx.settings.quiet) ? (
-          <View style={{ gap: space.s }}>
+          <View style={pad}>
             {(['from', 'to'] as const).map((k) => (
               <View key={k} style={{ gap: space.xs }}>
                 <Text style={{ ...type.meta, color: color.fgSecondary }}>{k === 'from' ? tx.settings.quietFrom : tx.settings.quietTo}</Text>
@@ -153,7 +157,7 @@ export function SettingsScreen({ navigation }: { navigation: Nav }) {
       <Section title={tx.settings.safety}>
         {choice(tx.settings.safeMode, me.safe_mode, tx.settings.safeOpts, (v) => (v === 'off' ? setSafeOffAsk(true) : safe(v)))}
         {safeOffAsk ? (
-          <View style={{ gap: space.s }}>
+          <View style={pad}>
             <Banner tone="danger" text={tx.settings.safeOffWarn} />
             <Button kind="danger" small title={tx.common.confirm} onPress={() => { setSafeOffAsk(false); safe('off'); }} />
           </View>
@@ -183,7 +187,7 @@ export function SettingsScreen({ navigation }: { navigation: Nav }) {
         <ListRow title={tx.settings.logoutAll} onPress={() => call(async () => { await api('POST', '/auth/logout_all'); await clearSession(); signOut(); })} />
         <ListRow title={tx.settings.delete} danger onPress={() => setDel('')} />
         {del !== null ? (
-          <View style={{ gap: space.s }}>
+          <View style={pad}>
             <Field label={tx.settings.deleteConfirm} value={del} onChangeText={setDel} autoCapitalize="characters" />
             <Button kind="danger" title={tx.settings.delete} disabled={del !== 'DELETE'} onPress={() => call(async () => { await api('DELETE', '/account', { confirm: 'DELETE' }); await clearSession(); signOut(); })} />
           </View>
@@ -196,7 +200,7 @@ export function SettingsScreen({ navigation }: { navigation: Nav }) {
         {show(tx.prefs.language) ? <ListRow title={tx.prefs.language} sub={tx.prefs.languageSub} onPress={() => Linking.openSettings().catch(() => {})} /> : null}
         {show(tx.prefs.privacy) ? <ListRow title={tx.prefs.privacy} onPress={() => Linking.openURL('https://thirstr.fun/privacy/')} /> : null}
         {show(tx.prefs.licenses) ? <ListRow title={tx.prefs.licenses} onPress={() => setLic(!lic)} /> : null}
-        {lic ? <Text style={{ ...type.meta, color: color.fgSecondary }}>{tx.prefs.licensesBody}</Text> : null}
+        {lic ? <Text style={{ ...type.meta, color: color.fgSecondary, padding: space.l }}>{tx.prefs.licensesBody}</Text> : null}
       </Section>
     </ScrollView>
   );

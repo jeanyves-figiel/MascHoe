@@ -38,7 +38,7 @@ import { NoticesScreen } from '../trust/NoticesScreen';
 import { ReportScreen } from '../trust/ReportScreen';
 import { VenueScreen } from '../scene/VenueScreens';
 import { color, modeColor, radius, space, type } from '../theme/tokens';
-import { Icon, ModeContext } from '../ui';
+import { BackButton, Icon, ModeContext } from '../ui';
 import { useSession } from './session';
 
 const Tab = createBottomTabNavigator();
@@ -164,7 +164,20 @@ function useShareLinks() {
   }, []);
 }
 
-const sub = { headerShown: true, title: '', headerStyle: { backgroundColor: color.bgBase }, headerTintColor: color.fgPrimary, headerShadowVisible: false };
+// App v2 stack header (issue 63): round back button, no bar chrome; screens draw their own 34pt title.
+const sub = ({ navigation }: { navigation: { goBack: () => void } }) => ({
+  headerShown: true,
+  title: '',
+  headerStyle: { backgroundColor: color.bgBase },
+  headerTintColor: color.fgPrimary,
+  headerShadowVisible: false,
+  headerBackVisible: false,
+  headerLeft: () => (
+    <View style={{ marginLeft: Platform.OS === 'web' ? 16 : 0 }}>
+      <BackButton onPress={() => navigation.goBack()} label={tx.common.back} />
+    </View>
+  ),
+});
 
 export function Main() {
   const { mode } = useSession();

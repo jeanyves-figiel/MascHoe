@@ -7,7 +7,8 @@ import * as E from '../chat/engine';
 import { kv } from '../chat/kv';
 import { distanceLabel, tx } from '../i18n/app';
 import { color, font, radius, space, type } from '../theme/tokens';
-import { Banner, Badge, Button, ErrorText, ListRow, Loading, Sheet, useAccent } from '../ui';
+import { v2 } from '../i18n/v2';
+import { Banner, Button, Chip, Chips, ErrorText, Hero, Icon, ListRow, Loading, Section, SectionLabel, Sheet, useAccent } from '../ui';
 import { resyncHostGroups } from './groupSync';
 import { Who } from './TonightScreen';
 import type { Party } from './types';
@@ -93,29 +94,33 @@ export function PartyScreen({ navigation, route }: { navigation: Nav; route: { p
         paddingBottom: 120,
       }}
     >
-      <View style={{ flexDirection: 'row', gap: space.s, flexWrap: 'wrap' }}>
-        <Badge label={tx.party.status[p.status]} fill={accent} />
-        <Badge label={tx.party.seats(p.seats_taken, p.capacity)} fill={color.bgInverse} />
-        <Badge label={tx.tonight.audiences[p.audience]} fill={color.trust} />
-      </View>
-      <Text style={{ ...type.display, color: color.fgPrimary }}>{p.title}</Text>
-      <Text style={{ ...type.body, color: color.fgSecondary }}>
-        {day(p.starts_at)}–{time(p.ends_at)} · {distanceLabel(p.distance)}
-      </Text>
-      <Who p={p.host} sub={tx.party.title} onPress={() => navigation.navigate('Profile', { id: p.host.id })} />
+      <Hero
+        fill={accent}
+        pill={tx.party.status[p.status]}
+        title={p.title}
+        meta={[`${day(p.starts_at)}–${time(p.ends_at)}`, distanceLabel(p.distance)].filter(Boolean).join(' · ')}
+        stats={[
+          { k: v2.party.going, v: `${p.seats_taken}/${p.capacity}` },
+          { k: v2.party.who, v: tx.tonight.audiences[p.audience] ?? p.audience },
+          ...(p.rating && p.rating.total ? [{ k: v2.party.rating, v: `${Math.round((100 * p.rating.up) / p.rating.total)}%` }] : []),
+        ]}
+      />
+      <Section title={tx.party.title}>
+        <View style={{ padding: space.m }}>
+          <Who p={p.host} onPress={() => navigation.navigate('Profile', { id: p.host.id })} right={<Icon.Next />} />
+        </View>
+      </Section>
       {p.rules.length ? (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.s }}>
-          {p.rules.map((r) => (
-            <Badge key={r} label={tx.party.rule[r] ?? r} fill={color.bgOverlay} />
-          ))}
+        <View style={{ gap: space.s }}>
+          <SectionLabel>{v2.party.rules}</SectionLabel>
+          <Chips>
+            {p.rules.map((r) => (
+              <Chip key={r} label={tx.party.rule[r] ?? r} on={false} onPress={() => {}} />
+            ))}
+          </Chips>
         </View>
       ) : null}
-      <Text style={{ ...type.meta, color: color.trust }}>📍 {tx.party.area}</Text>
-      {p.rating ? (
-        <Text style={{ ...type.meta, color: color.fgSecondary }}>
-          👍 {p.rating.up}/{p.rating.total}
-        </Text>
-      ) : null}
+      <Banner tone="trust" text={tx.party.area} />
       <ErrorText text={err} />
 
       {host ? (
@@ -134,16 +139,16 @@ export function PartyScreen({ navigation, route }: { navigation: Nav; route: { p
               })
             }
           />
-          <Text style={{ ...type.headline, color: color.fgPrimary }}>{tx.party.requests}</Text>
+          <SectionLabel>{tx.party.requests}</SectionLabel>
           {pending.length === 0 ? <Text style={{ ...type.meta, color: color.fgMuted }}>{tx.party.noRequests}</Text> : null}
           {pending.map((r) => (
             <View
               key={r.profile.id}
               style={{
-                padding: space.m,
+                padding: space.l,
                 borderRadius: radius.md,
                 backgroundColor: color.bgRaised,
-                gap: space.s,
+                gap: space.m,
               }}
             >
               <Who p={r.profile} sub={r.profile.verified ? tx.me.verified : undefined} onPress={() => navigation.navigate('Profile', { id: r.profile.id })} />
@@ -157,7 +162,7 @@ export function PartyScreen({ navigation, route }: { navigation: Nav; route: { p
               </View>
             </View>
           ))}
-          <Text style={{ ...type.headline, color: color.fgPrimary }}>{tx.party.guests}</Text>
+          <SectionLabel>{tx.party.guests}</SectionLabel>
           {accepted.map((r) => (
             <Who
               key={r.profile.id}
@@ -171,7 +176,7 @@ export function PartyScreen({ navigation, route }: { navigation: Nav; route: { p
             />
           ))}
           {live ? (
-            <View>
+            <Section>
               <ListRow
                 title={p.status === 'full' ? tx.party.reopen : tx.party.markFull}
                 onPress={() =>
@@ -184,7 +189,7 @@ export function PartyScreen({ navigation, route }: { navigation: Nav; route: { p
               />
               <ListRow title={tx.party.end} onPress={() => run('s', () => api('PATCH', `/parties/${p.id}`, { status: 'ended' }))} />
               <ListRow title={tx.party.cancel} danger onPress={() => run('s', () => api('PATCH', `/parties/${p.id}`, { status: 'cancelled' }))} />
-            </View>
+            </Section>
           ) : null}
         </>
       ) : (
@@ -214,7 +219,10 @@ export function PartyScreen({ navigation, route }: { navigation: Nav; route: { p
           ) : (
             <Banner tone="warn" text={tx.party.notThisTime} />
           )}
-          {p.my_state === 'pending' || p.my_state === 'accepted' ? <ListRow title={tx.party.leave} onPress={() => run('l', () => api('POST', `/parties/${p.id}/leave`))} /> : null}
+          <Section>
+            {p.my_state === 'pending' || p.my_state === 'accepted' ? <ListRow title={tx.party.leave} onPress={() => run('l', () => api('POST', `/parties/${p.id}/leave`))} /> : null}
+            <ListRow title={tx.party.report} danger onPress={() => api('POST', `/parties/${p.id}/report`, { reason: 'user' }).then(() => setNote(tx.party.reported))} />
+          </Section>
           {p.status === 'ended' && p.my_state === 'accepted' ? (
             <View
               style={{
@@ -228,13 +236,12 @@ export function PartyScreen({ navigation, route }: { navigation: Nav; route: { p
               <Button small kind="secondary" title="👎" onPress={() => run('rate', () => api('POST', `/parties/${p.id}/rate`, { up: false }))} />
             </View>
           ) : null}
-          <ListRow title={tx.party.report} danger onPress={() => api('POST', `/parties/${p.id}/report`, { reason: 'user' }).then(() => setNote(tx.party.reported))} />
           {note ? <Banner tone="trust" text={note} /> : null}
         </>
       )}
 
       <Sheet visible={addrOpen} onClose={() => setAddrOpen(false)} title={tx.party.sendAddress} closeLabel={tx.common.close}>
-        <Text style={{ ...type.meta, color: color.trust }}>🔒 {tx.party.addressHint}</Text>
+        <Banner tone="trust" text={tx.party.addressHint} />
         <TextInput
           testID="party-addr"
           value={addr}
@@ -243,8 +250,8 @@ export function PartyScreen({ navigation, route }: { navigation: Nav; route: { p
           placeholderTextColor={color.fgMuted}
           multiline
           style={{
-            minHeight: 90,
-            borderRadius: radius.md,
+            minHeight: 112,
+            borderRadius: 18,
             backgroundColor: color.bgRaised,
             color: color.fgPrimary,
             padding: space.m,

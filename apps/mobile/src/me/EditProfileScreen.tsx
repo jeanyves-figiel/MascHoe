@@ -7,8 +7,8 @@ import type { MyProfile, Visibility } from '../api/types';
 import { useSession } from '../app/session';
 import { opt, tx } from '../i18n/app';
 import { availableFor, fieldType, GROUPS, maxLen, optionKey } from '../profile/fieldMeta';
-import { color, modeColor, radius, space, type } from '../theme/tokens';
-import { Banner, Button, Chip, Chips, ErrorText, Field, Loading, Section, Toggle } from '../ui';
+import { color, modeColor, space, type } from '../theme/tokens';
+import { Banner, Button, Chip, Chips, ErrorText, Field, Icon, Loading, Section, SectionLabel, Segmented, StickyCta, Toggle } from '../ui';
 import { getLocal, setLocal } from './localFields';
 import { resharePrivate } from '../chat/engine';
 import { PhotoEditor } from './PhotoEditor';
@@ -77,7 +77,11 @@ export function EditProfileScreen({ route, navigation }: { route: { params: { id
     const choices = options.options[optionKey(k)] ?? [];
     switch (t) {
       case 'bool':
-        return <Toggle label={tx.edit.fields[k] ?? k} value={!!v} onChange={(x) => set(k, x)} tone={accent} />;
+        return (
+          <Section>
+            <Toggle label={tx.edit.fields[k] ?? k} value={!!v} onChange={(x) => set(k, x)} tone={accent} />
+          </Section>
+        );
       case 'text':
         return <Field label={tx.edit.fields[k] ?? k} value={(v as string) ?? ''} onChangeText={(x) => set(k, x)} maxLength={maxLen(k)} multiline={maxLen(k) > 60} error={fieldErr[k]?.[0]} />;
       case 'int':
@@ -87,8 +91,8 @@ export function EditProfileScreen({ route, navigation }: { route: { params: { id
       case 'multi': {
         const cur = (v as string[]) ?? [];
         return (
-          <View style={{ gap: space.xs }}>
-            <Text style={{ ...type.meta, color: color.fgSecondary }}>{tx.edit.fields[k] ?? k}</Text>
+          <View style={{ gap: space.s }}>
+            <SectionLabel>{tx.edit.fields[k] ?? k}</SectionLabel>
             <Chips>
               {choices.map((c) => (
                 <Chip key={c} label={opt(c)} on={cur.includes(c)} fill={accent} onPress={() => set(k, cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c])} />
@@ -99,8 +103,8 @@ export function EditProfileScreen({ route, navigation }: { route: { params: { id
       }
       default:
         return (
-          <View style={{ gap: space.xs }}>
-            <Text style={{ ...type.meta, color: color.fgSecondary }}>{tx.edit.fields[k] ?? k}</Text>
+          <View style={{ gap: space.s }}>
+            <SectionLabel>{tx.edit.fields[k] ?? k}</SectionLabel>
             <Chips>
               {choices.map((c) => (
                 <Chip key={c} label={opt(c)} on={v === c} fill={accent} onPress={() => set(k, v === c ? null : c)} />
@@ -114,48 +118,58 @@ export function EditProfileScreen({ route, navigation }: { route: { params: { id
   const visRow = (k: string) => {
     const health = options.health.includes(k);
     return (
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.xs, alignItems: 'center' }}>
-        <Text style={{ ...type.caption, color: color.fgMuted }}>{tx.edit.visibility}:</Text>
-        {VIS.filter((x) => !(health && x === 'public')).map((x) => (
-          <Chip key={x} label={tx.edit.vis[x]} on={visOf(k) === x} fill={color.trust} onPress={() => setVis((cur) => ({ ...cur, [k]: x }))} />
-        ))}
+      <View style={{ gap: space.xs }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: space.xs }}>
+          <Icon.Lock size={12} />
+          <Text style={{ ...type.caption, color: color.trust }}>{tx.edit.visibility}</Text>
+        </View>
+        <Segmented
+          grow
+          label={tx.edit.visibility}
+          value={visOf(k)}
+          onChange={(x) => setVis((cur) => ({ ...cur, [k]: x }))}
+          fills={{ public: color.trust, verified: color.trust, chats: color.trust, only_me: color.trust }}
+          options={VIS.filter((x) => !(health && x === 'public')).map((x) => ({ value: x, label: tx.edit.vis[x] }))}
+        />
       </View>
     );
   };
 
   return (
     <View style={{ flex: 1, backgroundColor: color.bgBase }}>
-      <ScrollView contentContainerStyle={{ padding: space.l, paddingTop: space.s, gap: space.l, paddingBottom: 140, maxWidth: 560, width: '100%', alignSelf: 'center' }} keyboardShouldPersistTaps="handled">
-        <Text style={{ ...type.display, color: color.fgPrimary }}>{tx.edit.title}</Text>
+      <ScrollView contentContainerStyle={{ padding: space.l, paddingTop: space.s, gap: space.xl, paddingBottom: 150, maxWidth: 560, width: '100%', alignSelf: 'center' }} keyboardShouldPersistTaps="handled">
+        <Text accessibilityRole="header" style={{ ...type.display, color: color.fgPrimary }}>
+          {tx.edit.title}
+        </Text>
         <PhotoEditor profile={p} accent={accent} onChange={setP} />
         <Field label={tx.edit.name} value={name} onChangeText={setName} maxLength={30} />
         {GROUPS.map(({ group, keys }) => {
           const ks = keys.filter((k) => availableFor(options.defaults[k]?.kinds, p.kind));
           if (!ks.length) return null;
           return (
-            <Section key={group} title={tx.profile.sections[group]}>
+            <View key={group} style={{ gap: space.m }}>
+              <Text accessibilityRole="header" style={{ ...type.title, color: color.fgPrimary, marginTop: space.s }}>
+                {tx.profile.sections[group]}
+              </Text>
               {group === 'health' ? <Banner tone="trust" text={tx.edit.healthNote} /> : null}
               {ks.map((k) => (
-                <View key={k} style={{ paddingVertical: space.s, gap: space.xs, borderBottomWidth: 1, borderBottomColor: color.lineSubtle, borderRadius: radius.sm }}>
+                <View key={k} style={{ gap: space.s, paddingBottom: space.m, borderBottomWidth: 1, borderBottomColor: color.lineSubtle }}>
                   {input(k)}
                   {visRow(k)}
-                  {['chats', 'only_me'].includes(visOf(k)) && group !== 'health' ? <Text style={{ ...type.caption, color: color.fgMuted }}>{tx.edit.chatsNote}</Text> : null}
+                  {['chats', 'only_me'].includes(visOf(k)) && group !== 'health' ? <Text style={{ ...type.meta, color: color.fgMuted, marginLeft: space.xs }}>{tx.edit.chatsNote}</Text> : null}
                 </View>
               ))}
-            </Section>
+            </View>
           );
         })}
         <ProfileLinks profileId={p.id} />
         <ErrorText text={err} />
       </ScrollView>
-      <View style={{ position: 'absolute', left: space.l, right: space.l, bottom: insets.bottom + space.l, flexDirection: 'row', gap: space.s, maxWidth: 560, alignSelf: 'center', width: '100%' }}>
-        <View style={{ flex: 1 }}>
-          <Button kind="secondary" title={tx.common.cancel} onPress={navigation.goBack} />
+      <StickyCta>
+        <View style={{ paddingBottom: insets.bottom ? insets.bottom - space.m : 0 }}>
+          <Button testID="edit-save" title={tx.common.save} fill={color.fgPrimary} busy={busy} onPress={save} />
         </View>
-        <View style={{ flex: 2 }}>
-          <Button testID="edit-save" title={tx.common.save} fill={accent} busy={busy} onPress={save} />
-        </View>
-      </View>
+      </StickyCta>
     </View>
   );
 }
