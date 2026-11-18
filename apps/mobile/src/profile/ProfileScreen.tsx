@@ -62,6 +62,7 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
   const [busy, setBusy] = useState(false);
   const width = Math.min(Dimensions.get('window').width, 560);
   const [page, setPage] = useState(0);
+  const [solid, setSolid] = useState(false);
 
   const [nowTs] = useState(() => Date.now());
   const [local, setLocal] = useState<Record<string, unknown>>({});
@@ -118,7 +119,14 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
 
   return (
     <View style={{ flex: 1, backgroundColor: color.bgBase }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 140 }}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 140 }}
+        scrollEventThrottle={32}
+        onScroll={(e) => {
+          const past = e.nativeEvent.contentOffset.y > width * 1.33 - 140;
+          if (past !== solid) setSolid(past);
+        }}
+      >
         <View>
           <FlatList
             horizontal
@@ -168,7 +176,7 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
             <View testID="profile-linked" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.s }}>
               {p.linked_accounts.map((l) => (
                 <Pressable key={l.platform + l.handle} accessibilityRole="link" onPress={() => l.url && Linking.openURL(l.url)}>
-                  <Badge label={`${tx.linked.platforms[l.platform] ?? l.platform} @${l.handle}${l.verified ? ' · verified' : ''}`} fill={color.fgSoft} />
+                  <Badge label={`${tx.linked.platforms[l.platform] ?? l.platform} @${l.handle}${l.verified ? ` · ${tx.profile.linkedVerified}` : ''}`} fill={color.fgSoft} />
                 </Pressable>
               ))}
             </View>
@@ -179,6 +187,13 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
         </View>
       </ScrollView>
 
+      {solid ? (
+        <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: insets.top + 76, backgroundColor: color.bgBase, borderBottomWidth: 1, borderBottomColor: color.line, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 26 }}>
+          <Text numberOfLines={1} style={{ ...type.headline, color: color.fgPrimary, maxWidth: '60%' }}>
+            {p.display_name}, {p.age}
+          </Text>
+        </View>
+      ) : null}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={tx.common.back}
@@ -200,7 +215,7 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
       ) : null}
 
       {!p.self ? (
-        <View style={{ position: 'absolute', left: space.l, right: space.l, bottom: insets.bottom + space.l, flexDirection: 'row', alignItems: 'center', gap: 10, maxWidth: 560, alignSelf: 'center', width: '100%' }}>
+        <View style={{ position: 'absolute', left: space.l, right: space.l, bottom: insets.bottom + space.l, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <Pressable
             testID="tap-btn"
             accessibilityRole="button"

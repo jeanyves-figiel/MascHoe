@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Image,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -196,6 +197,7 @@ export function Toggle({ label, sub, value, onChange, disabled, tone }: { label:
         onValueChange={onChange}
         trackColor={{ true: tone ?? color.trust, false: color.line }}
         thumbColor={color.bgInverse}
+        {...(Platform.OS === 'web' ? { activeThumbColor: color.bgInverse } : {})}
       />
     </View>
   );
@@ -259,7 +261,7 @@ export function ErrorText({ text }: { text: string | null }) {
 export function EmptyState({ title, body, action, onAction }: { title: string; body?: string; action?: string; onAction?: () => void }) {
   return (
     <View style={s.empty}>
-      <Text style={s.title}>{title}</Text>
+      <Text style={[s.title, { textAlign: 'center' }]}>{title}</Text>
       {body ? <Text style={[s.body, s.muted, { textAlign: 'center' }]}>{body}</Text> : null}
       {action && onAction ? <Button title={action} onPress={onAction} /> : null}
     </View>
@@ -378,11 +380,11 @@ export const s = StyleSheet.create({
   checkRow: { flexDirection: 'row', alignItems: 'center', gap: space.m, minHeight: touch },
   box: { width: 24, height: 24, borderRadius: 8, borderWidth: 2, borderColor: color.fgSecondary, alignItems: 'center', justifyContent: 'center' },
   tick: { color: color.onAccent, fontFamily: type.headline.fontFamily },
-  row: { flexDirection: 'row', alignItems: 'center', gap: space.m, minHeight: touch + 8, paddingVertical: space.s, paddingHorizontal: space.l },
+  row: { flexDirection: 'row', alignItems: 'center', gap: space.m, minHeight: touch + 8, paddingVertical: space.s },
   banner: { borderWidth: 1, borderRadius: radius.md, padding: space.m, backgroundColor: color.bgRaised },
   badge: { borderRadius: radius.pill, paddingHorizontal: space.m, paddingVertical: space.xs, alignSelf: 'flex-start' },
   badgeText: { ...type.caption, color: color.onAccent },
-  card: { backgroundColor: color.bgRaised, borderRadius: radius.md, borderWidth: 1, borderColor: color.line, overflow: 'hidden' },
+  card: { backgroundColor: color.bgRaised, borderRadius: radius.md, borderWidth: 1, borderColor: color.line, overflow: 'hidden', paddingHorizontal: space.l, paddingVertical: space.xs },
   spacer: { flex: 1 },
   empty: { alignItems: 'center', justifyContent: 'center', gap: space.l, padding: space.xxl, flexGrow: 1 },
   scrim: { flex: 1, backgroundColor: color.scrim },

@@ -91,7 +91,7 @@ export function EditProfileScreen({ route, navigation }: { route: { params: { id
             <Text style={{ ...type.meta, color: color.fgSecondary }}>{tx.edit.fields[k] ?? k}</Text>
             <Chips>
               {choices.map((c) => (
-                <Chip key={c} label={opt(c)} on={cur.includes(c)} fill={accent} onPress={() => set(k, cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c])} />
+                <Chip key={c} label={opt(c, k)} on={cur.includes(c)} fill={accent} onPress={() => set(k, cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c])} />
               ))}
             </Chips>
           </View>
@@ -148,7 +148,7 @@ export function EditProfileScreen({ route, navigation }: { route: { params: { id
         <ProfileLinks profileId={p.id} />
         <ErrorText text={err} />
       </ScrollView>
-      <View style={{ position: 'absolute', left: space.l, right: space.l, bottom: insets.bottom + space.l, flexDirection: 'row', gap: space.s, maxWidth: 560, alignSelf: 'center', width: '100%' }}>
+      <View style={{ position: 'absolute', left: space.l, right: space.l, bottom: insets.bottom + space.l, flexDirection: 'row', gap: space.s }}>
         <View style={{ flex: 1 }}>
           <Button kind="secondary" title={tx.common.cancel} onPress={navigation.goBack} />
         </View>

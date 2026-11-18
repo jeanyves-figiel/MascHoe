@@ -28,6 +28,7 @@ export default function App() {
   const [me, setMe] = useState<Me | null>(null);
   const [screen, setScreen] = useState<S | 'loading'>('loading');
   const [mode, setMode] = useState<'signup' | 'login'>('signup');
+  const [sent, setSent] = useState<{ email: string; adult: boolean }>({ email: '', adult: true });
   const [fontsReady] = useFonts({ BricolageGrotesque_400Regular, BricolageGrotesque_500Medium, BricolageGrotesque_700Bold, BricolageGrotesque_800ExtraBold });
 
   const land = (m: Me) => {
@@ -69,10 +70,10 @@ export default function App() {
       body = <LinkDeviceScreen onDone={land} onBack={() => setScreen('welcome')} />;
       break;
     case 'create':
-      body = <CreateAccountScreen mode={mode} onBack={() => setScreen('welcome')} onDone={land} onEmailSent={() => setScreen('inbox')} onUnderage={() => setScreen('underage')} />;
+      body = <CreateAccountScreen mode={mode} onBack={() => setScreen('welcome')} onDone={land} onEmailSent={(email, adult) => { setSent({ email, adult }); setScreen('inbox'); }} onUnderage={() => setScreen('underage')} />;
       break;
     case 'inbox':
-      body = <CheckInboxScreen onBack={() => setScreen('create')} />;
+      body = <CheckInboxScreen email={sent.email} adult={sent.adult} onBack={() => setScreen('create')} />;
       break;
     case 'basics':
       body = <BasicsScreen me={me!} onDone={land} onUnderage={async () => { await clearSession(); setScreen('underage'); }} />;

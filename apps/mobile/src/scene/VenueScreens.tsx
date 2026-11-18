@@ -86,6 +86,8 @@ export function VenueScreen({ navigation, route }: { navigation: Nav; route: { p
           <Text style={{ ...type.body, color: color.fgSecondary }}>{tx.venue.here(v.here)}</Text>
           {safe ? (
             <Banner tone="warn" text={tx.venue.safe} />
+          ) : !me.verified ? (
+            <Banner tone="trust" text={tx.common.verifyToDo} onPress={() => navigation.navigate('Verify')} />
           ) : (
             <>
               <Toggle label={tx.venue.visible} value={visible} tone={color.trust} onChange={setVisible} />
@@ -94,7 +96,6 @@ export function VenueScreen({ navigation, route }: { navigation: Nav; route: { p
                 testID="venue-checkin"
                 title={tx.venue.checkin}
                 busy={busy}
-                disabled={!me.verified}
                 onPress={() =>
                   call(() =>
                     api('POST', `/venues/${v.id}/checkin?mode=${mode}`, {
@@ -104,7 +105,6 @@ export function VenueScreen({ navigation, route }: { navigation: Nav; route: { p
                   )
                 }
               />
-              {!me.verified ? <Text style={{ ...type.meta, color: color.fgMuted }}>{tx.common.verifyToDo}</Text> : null}
             </>
           )}
         </>

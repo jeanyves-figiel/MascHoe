@@ -56,6 +56,7 @@ export const fr: Partialize<AppStrings> = {
     tapped: 'Tapé',
     message: 'Message',
     tappedYou: 'T’a tapé',
+    linkedVerified: 'vérifié',
     menu: 'Plus',
     block: 'Bloquer',
     blockConfirm: 'Bloquer ce mec ? Il ne te verra nulle part et ne pourra plus t’écrire. Il n’est pas prévenu.',

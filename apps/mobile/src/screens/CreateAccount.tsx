@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
@@ -12,7 +12,7 @@ import { color, font, radius, space } from '../theme/tokens';
 import { ErrorText, Wordmark } from '../ui';
 
 // S-02 v2 (F-01 R-01.1, R-01.12, F-02 R-02.1b): Apple first, passkey, Google, email link; 18+ by consent line.
-export function CreateAccountScreen({ mode, onDone, onEmailSent, onUnderage, onBack }: { mode: 'signup' | 'login'; onDone: (me: Me) => void; onEmailSent: () => void; onUnderage: () => void; onBack?: () => void }) {
+export function CreateAccountScreen({ mode, onDone, onEmailSent, onUnderage, onBack }: { mode: 'signup' | 'login'; onDone: (me: Me) => void; onEmailSent: (email: string, adult: boolean) => void; onUnderage: () => void; onBack?: () => void }) {
   const insets = useSafeAreaInsets();
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -75,7 +75,7 @@ export function CreateAccountScreen({ mode, onDone, onEmailSent, onUnderage, onB
               selectionColor={color.hookup}
               style={c.email}
             />
-            <BigButton title={o.signup.send} busy={busy === 'email'} disabled={!/^\S+@\S+\.\S+$/.test(email)} onPress={() => run('email', async () => { await requestEmailLink(email, adult); onEmailSent(); })} />
+            <BigButton title={o.signup.send} busy={busy === 'email'} disabled={!/^\S+@\S+\.\S+$/.test(email)} onPress={() => run('email', async () => { await requestEmailLink(email, adult); onEmailSent(email.trim(), adult); })} />
           </Enter>
         ) : (
           <MethodButton testID="email-start" kind="text" icon={<MailGlyph />} title={o.signup.email} onPress={() => setShowEmail(true)} />
@@ -133,12 +133,47 @@ const MailGlyph = () => (
   </Svg>
 );
 
-export function CheckInboxScreen({ onBack }: { onBack: () => void }) {
+// "Check your inbox": shows where the link went and lets the person resend after 30 s.
+export function CheckInboxScreen({ email, adult, onBack }: { email: string; adult: boolean; onBack: () => void }) {
+  const [wait, setWait] = useState(30);
+  const [note, setNote] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (wait <= 0) return;
+    const id = setTimeout(() => setWait((w) => w - 1), 1000);
+    return () => clearTimeout(id);
+  }, [wait]);
+  const resend = async () => {
+    setBusy(true);
+    setNote(null);
+    try {
+      await requestEmailLink(email, adult);
+      setNote(t.inbox.resent);
+    } catch (e) {
+      setNote(e instanceof ApiError ? e.message : t.verify.error);
+    } finally {
+      setBusy(false);
+      setWait(30);
+    }
+  };
   return (
-    <StepShell onBack={onBack} title={t.inbox.title} sub={t.inbox.body} below={<BigButton kind="text" title={t.inbox.back} onPress={onBack} />}>
-      <View style={c.mailBadge}>
-        <MailGlyph />
+    <StepShell
+      onBack={onBack}
+      title={t.inbox.title}
+      sub={t.inbox.body}
+      cta={{ title: wait > 0 ? t.inbox.resendIn(wait) : t.inbox.resend, testID: 'inbox-resend', disabled: wait > 0, busy, onPress: resend }}
+      below={<BigButton kind="text" title={t.inbox.back} onPress={onBack} />}
+    >
+      <View style={c.sentCard}>
+        <View style={c.mailBadge}>
+          <MailGlyph />
+        </View>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={k.sub}>{t.inbox.sentTo}</Text>
+          <Text testID="inbox-email" numberOfLines={1} style={c.sentEmail}>{email}</Text>
+        </View>
       </View>
+      {note ? <Text style={[k.sub, { color: color.trust }]}>{note}</Text> : null}
       {__DEV__ || process.env.EXPO_PUBLIC_ENV === 'dev' ? <Text style={k.sub}>{t.inbox.devHint}</Text> : null}
     </StepShell>
   );
@@ -153,5 +188,7 @@ const c = StyleSheet.create({
   email: { minHeight: 56, borderRadius: radius.pill, borderWidth: 2, borderColor: color.line, backgroundColor: color.bgRaised, color: color.fgPrimary, fontFamily: font.regular, fontSize: 17, paddingHorizontal: 22 },
   consent: { marginTop: space.s, marginHorizontal: space.s, fontFamily: font.regular, fontSize: 13, lineHeight: 18, color: color.fgMuted, textAlign: 'center' },
   consentStrong: { fontFamily: font.bold, color: color.fgPrimary },
-  mailBadge: { marginTop: space.xl, width: 64, height: 64, borderRadius: 32, backgroundColor: color.bgRaised, alignItems: 'center', justifyContent: 'center' },
+  mailBadge: { width: 52, height: 52, borderRadius: 26, backgroundColor: color.bgBase, alignItems: 'center', justifyContent: 'center' },
+  sentCard: { marginTop: space.xl, flexDirection: 'row', alignItems: 'center', gap: space.m, padding: space.m, borderRadius: 24, backgroundColor: color.bgRaised },
+  sentEmail: { fontFamily: font.bold, fontSize: 17, color: color.fgPrimary },
 });
