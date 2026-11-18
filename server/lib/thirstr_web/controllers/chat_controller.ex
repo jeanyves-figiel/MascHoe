@@ -35,7 +35,10 @@ defmodule ThirstrWeb.ChatController do
         _ -> 0
       end
 
-    json(conn, %{messages: Chat.pull(a(conn), d(conn), after_id)})
+    json(conn, %{
+      messages: Chat.pull(a(conn), d(conn), after_id),
+      expired: Chat.take_expired(d(conn))
+    })
   end
 
   def ack(conn, params) do

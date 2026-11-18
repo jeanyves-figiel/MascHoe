@@ -460,6 +460,50 @@ defmodule ThirstrWeb.AdminController do
     """)
   end
 
+  # ------------------------------------------------------------------ delivery latency (R-07.24)
+
+  def delivery(conn, _) do
+    labels =
+      Enum.map(Thirstr.Chat.latency_buckets(), &"≤ #{lat_ms(&1)}") ++ ["slower"]
+
+    keys = Thirstr.Chat.latency_buckets() ++ [0]
+
+    rows =
+      Thirstr.Chat.delivery_stats()
+      |> Enum.group_by(fn [day, _, _] -> day end, fn [_, b, n] -> {b, n} end)
+      |> Enum.sort_by(fn {day, _} -> day end, {:desc, Date})
+      |> Enum.map_join("", fn {day, counts} ->
+        m = Map.new(counts)
+        total = m |> Map.values() |> Enum.sum()
+        cells = Enum.map_join(keys, "", &"<td>#{Map.get(m, &1, 0)}</td>")
+
+        "<tr><td>#{Date.to_iso8601(day)}</td><td>#{total}</td>#{cells}<td>#{p95(m, keys, total)}</td></tr>"
+      end)
+
+    head = Enum.map_join(labels, "", &"<th>#{e(&1)}</th>")
+
+    page(conn, "Delivery", """
+    #{nav()}<h1>Chat delivery latency</h1>
+    <p>Server stored → recipient device acked, per message, aggregated per day (R-07.24). Target p95 ≤ 500 ms online (AC-07.2); offline recipients land in the slow buckets by design.</p>
+    <table><tr><th>Day</th><th>Messages</th>#{head}<th>p95 ≤</th></tr>#{rows}</table>
+    """)
+  end
+
+  defp lat_ms(ms) when ms >= 60_000, do: "#{div(ms, 60_000)} min"
+  defp lat_ms(ms) when ms >= 1000, do: "#{div(ms, 1000)} s"
+  defp lat_ms(ms), do: "#{ms} ms"
+
+  defp p95(_m, _keys, 0), do: "–"
+
+  defp p95(m, keys, total) do
+    target = total * 0.95
+
+    Enum.reduce_while(keys, 0, fn k, acc ->
+      acc = acc + Map.get(m, k, 0)
+      if acc >= target, do: {:halt, if(k == 0, do: "slower", else: lat_ms(k))}, else: {:cont, acc}
+    end)
+  end
+
   # ------------------------------------------------------------------ helpers
 
   @doc "Append-only audit entry; object ids are stored hashed (R-AD.4)."
@@ -492,7 +536,7 @@ defmodule ThirstrWeb.AdminController do
 
   defp nav do
     """
-    <nav><a href="/admin">Reports</a><a href="/admin/photos">Photos</a><a href="/admin/quarantine">Quarantine</a>
+    <nav><a href="/admin">Reports</a><a href="/admin/photos">Photos</a><a href="/admin/quarantine">Quarantine</a><a href="/admin/delivery">Delivery</a>
     <a href="/admin/appeals">Appeals</a><a href="/admin/audit">Audit</a>
     <form method="post" action="/admin/logout" style="display:inline"><input type="hidden" name="_csrf_token" value="#{get_csrf_token()}"><button>Sign out</button></form></nav>
     """

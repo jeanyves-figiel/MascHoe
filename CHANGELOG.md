@@ -5,6 +5,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+- **Chat send can't duplicate or half-deliver** (server, #78): `POST /mls/messages` takes `client_id`; a repeat from the same device within 7 d returns the first result and stores/pushes nothing. All envelopes of one call are stored in one transaction (all-or-nothing); `message.new` goes out after commit.
+
+### Added
+- **Expired-message notice data** (#80): messages swept unread after 30 d are counted per device and group and returned once as `expired` by `GET /mls/messages`.
+- **Delivery latency** (#84): aggregate stored → acked histogram per day (no ids or pairs), admin console › Delivery with p95.
+
 ### Changed
 - **Chat delivery spec** (F-07 R-07.16–R-07.24, AC-07.5–AC-07.10; api.md, data-model.md, F-17 R-17.5): Sending → Sent → Delivered → Read states; persistent outbox with automatic retry and backoff; idempotent `client_id` send (no duplicates on retry) and all-or-nothing server write; request timeouts and "Waiting for network" chip; no silent drop of undecryptable messages; per-message local store without the 500-message cap; read receipts cover Delivered and typing, enforced both ways, with a per-chat override. Issues #76, #78–#82, #84.
 - **Required vs optional fields** (owner decisions 2026-11-18, [docs/spec/required-fields.md](docs/spec/required-fields.md)):
