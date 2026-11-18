@@ -7,8 +7,8 @@ defmodule Thirstr.Profiles.Profile do
   @foreign_key_type :binary_id
   @timestamps_opts [type: :utc_datetime_usec]
 
-  # R-02.4 / R-02.5
-  @genders ~w(man trans_man non_binary other)
+  # R-02.4 / R-02.5 ("unspecified" = "Prefer not to say", owner decision 2026-11-18, required-fields.md)
+  @genders ~w(man trans_man non_binary other unspecified)
   @here_for ~w(hookup tonight chat friends sport)
 
   schema "profiles" do
@@ -34,16 +34,26 @@ defmodule Thirstr.Profiles.Profile do
   def genders, do: @genders
   def here_for_values, do: @here_for
 
+  # required-fields.md RF-1: display name 1–20 (owner decision 2026-11-18).
+  @name_max 20
+  def name_max, do: @name_max
+
   def basics_changeset(profile, attrs) do
     profile
     |> cast(attrs, [:display_name, :gender, :gender_other, :here_for])
     |> update_change(:display_name, &String.trim/1)
+    |> put_default_gender()
     |> validate_required([:display_name, :gender])
-    |> validate_length(:display_name, min: 1, max: 30)
+    |> validate_length(:display_name, min: 1, max: @name_max)
     |> validate_inclusion(:gender, @genders)
     |> validate_gender_other()
     |> validate_subset(:here_for, @here_for)
     |> validate_length(:here_for, min: 1)
+  end
+
+  # RF-3: the "I am" step is optional; skipped = "unspecified".
+  defp put_default_gender(cs) do
+    if get_field(cs, :gender) in [nil, ""], do: put_change(cs, :gender, "unspecified"), else: cs
   end
 
   defp validate_gender_other(cs) do

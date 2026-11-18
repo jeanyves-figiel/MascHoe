@@ -1,3 +1,4 @@
+import { NAME_MAX } from '../onboarding/flow';
 import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -138,7 +139,7 @@ export function EditProfileScreen({ route, navigation }: { route: { params: { id
           {tx.edit.title}
         </Text>
         <PhotoEditor profile={p} accent={accent} onChange={setP} />
-        <Field label={tx.edit.name} value={name} onChangeText={setName} maxLength={30} />
+        <Field label={tx.edit.name} value={name} onChangeText={setName} maxLength={NAME_MAX} />
         {GROUPS.map(({ group, keys }) => {
           const ks = keys.filter((k) => availableFor(options.defaults[k]?.kinds, p.kind));
           if (!ks.length) return null;

@@ -138,6 +138,11 @@ defmodule ThirstrWeb.Router do
     end
 
     scope "/" do
+      pipe_through [:auth, :email_limit]
+      post "/me/email", AccountController, :add_email
+    end
+
+    scope "/" do
       pipe_through :auth
       post "/auth/logout", AuthController, :logout
       post "/auth/logout_all", AuthController, :logout_all
@@ -148,6 +153,7 @@ defmodule ThirstrWeb.Router do
       post "/account/resume", AccountController, :resume
 
       put "/me/basics", AccountController, :basics
+      post "/me/onboarding/photo_later", AccountController, :photo_later
       post "/me/onboarding/verify_later", AccountController, :verify_later
 
       # F-06 profiles

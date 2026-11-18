@@ -44,10 +44,11 @@ describe('F-02 flow', () => {
     expect(parseBirthday(isoBirthday(1990, 11, 31))).not.toBeNull();
   });
 
-  test('name 1–30 chars after trim (S-03a)', () => {
+  test('name 1–20 chars after trim (S-03a, RF-1)', () => {
     expect(nameValid('Max')).toBe(true);
     expect(nameValid('  ')).toBe(false);
-    expect(nameValid('x'.repeat(31))).toBe(false);
+    expect(nameValid('x'.repeat(20))).toBe(true);
+    expect(nameValid('x'.repeat(21))).toBe(false);
   });
 
   test('basics validation mirrors server (R-02.4, R-02.5)', () => {
@@ -57,6 +58,7 @@ describe('F-02 flow', () => {
     expect(basicsValid({ ...ok, gender: 'other' })).toBe(false);
     expect(basicsValid({ ...ok, gender: 'other', gender_other: 'Genderfluid' })).toBe(true);
     expect(basicsValid({ ...ok, here_for: [] })).toBe(false);
+    expect(basicsValid({ ...ok, gender: 'unspecified' })).toBe(true); // RF-3 prefer not to say
   });
 
   test('welcome count rounding (R-02.2)', () => {

@@ -15,7 +15,7 @@ Beta: passkey, Apple, Google, email magic link, device link by QR, recovery phra
 ## Rules
 - R-01.1 Passkey is the primary CTA. Apple/Google/Email secondary. **No phone number, no password, anywhere.**
 - R-01.2 OIDC: store only `SHA-256(provider‖sub‖server_pepper)`. Never email/name from the provider. Apple "Hide My Email" accepted.
-- R-01.3 Email magic link: email stored hashed; link valid 15 min, single use; response is always 202 (no account enumeration).
+- R-01.3 Email magic link: email stored hashed; link valid 15 min, single use; response is always 202 (no account enumeration). An account made with Apple/Google/passkey can add a sign-in email later (`POST /me/email`, [RF-7](../required-fields.md)).
 - R-01.4 One account per verified human (enforced at F-03, not here).
 - R-01.5 Access token 15 min; refresh 30 d, bound to device key; rotate on use; revoke all on "Log out everywhere".
 - R-01.6 Device link: old device shows QR (expires 120 s) → new device scans → old device confirms with biometrics → MLS adds new device to the user's groups.

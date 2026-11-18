@@ -284,7 +284,7 @@ export function TonightScreen({ navigation }: { navigation: Nav }) {
                     }}
                   >
                     <View style={{ flex: 1 }}>
-                      <Text style={{ ...type.body, color: color.fgPrimary }}>{m.text}</Text>
+                      <Text style={{ ...type.body, color: color.fgPrimary }}>{m.text || tx.tonight.tags[m.tag]}</Text>
                       <Text style={{ ...type.meta, color: color.fgSecondary }}>
                         {time(m.window_start)}–{time(m.window_end)} · {tx.tonight.tags[m.tag]} · {tx.tonight.audiences[m.audience]}
                       </Text>
@@ -338,7 +338,7 @@ export function TonightScreen({ navigation }: { navigation: Nav }) {
                       </Pressable>
                     }
                   />
-                  <Text style={{ ...type.body, fontSize: 17, lineHeight: 23, color: color.fgPrimary }}>{p.text}</Text>
+                  {p.text ? <Text style={{ ...type.body, fontSize: 17, lineHeight: 23, color: color.fgPrimary }}>{p.text}</Text> : null}
                   <Chips>
                     <Tag label={`${time(p.window_start)}–${time(p.window_end)}`} tone={color.fgSecondary} />
                     <Tag label={tx.tonight.tags[p.tag]} tone={accent} />

@@ -33,6 +33,16 @@ defmodule ThirstrWeb.AccountController do
     end
   end
 
+  @doc "RF-7: POST /me/email {email} → 202, link sent to confirm."
+  def add_email(conn, params) do
+    Thirstr.Auth.EmailLink.request_attach(params["email"], conn.assigns.account.id)
+    send_resp(conn, 202, "")
+  end
+
+  def photo_later(conn, _) do
+    with {:ok, a} <- Onboarding.photo_later(conn.assigns.account), do: json(conn, MeJSON.me(a))
+  end
+
   def verify_later(conn, _) do
     with {:ok, a} <- Onboarding.verify_later(conn.assigns.account), do: json(conn, MeJSON.me(a))
   end

@@ -3,13 +3,14 @@ import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-na
 import { api, ApiError, Me } from '../api/client';
 import { t } from '../i18n/strings';
 import { months, o } from '../i18n/onboarding';
-import { ageOn, BASICS_STEPS, BasicsStep, basicsValid, daysIn, isoBirthday, nameValid, parseBirthday, STEP_OF } from '../onboarding/flow';
+import { ageOn, BASICS_STEPS, BasicsStep, basicsValid, daysIn, isoBirthday, NAME_MAX, nameValid, parseBirthday, STEP_OF } from '../onboarding/flow';
 import { Enter, k, OptionPill, ROW, StepShell, tick, WheelColumn } from '../onboarding/kit';
 import { color, font, radius, space } from '../theme/tokens';
 import { ErrorText } from '../ui';
 
 // S-03a…d (F-02 R-02.1c–f, R-02.4, R-02.5): one question per screen; one PUT /me/basics at the end.
-const GENDERS = ['man', 'trans_man', 'non_binary', 'other'];
+// RF-3 (required-fields.md): optional; "Prefer not to say" stores unspecified.
+const GENDERS = ['man', 'trans_man', 'non_binary', 'other', 'unspecified'];
 const HERE: [string, string][] = [
   ['hookup', color.hookup],
   ['tonight', color.hookup],
@@ -30,7 +31,7 @@ export function BasicsScreen({ me, onDone, onUnderage }: { me: Me; onDone: (me: 
   const [d, setD] = useState(1);
   const [gender, setGender] = useState(me.profile?.gender ?? '');
   const [other, setOther] = useState(me.profile?.gender_other ?? '');
-  const [here, setHere] = useState<string[]>(me.profile?.here_for ?? ['hookup', 'tonight']);
+  const [here, setHere] = useState<string[]>(me.onboarding_step === 'basics' ? [] : (me.profile?.here_for ?? [])) // RF-4: nothing pre-selected;
   const [busy, setBusy] = useState(false);
   const [focus, setFocus] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -64,7 +65,7 @@ export function BasicsScreen({ me, onDone, onUnderage }: { me: Me; onDone: (me: 
           testID="name"
           accessibilityLabel={o.name.ph}
           value={name}
-          onChangeText={(v) => setName(v.slice(0, 30))}
+          onChangeText={(v) => setName(v.slice(0, NAME_MAX))}
           placeholder={o.name.ph}
           placeholderTextColor={color.navInactive}
           autoFocus
@@ -74,12 +75,12 @@ export function BasicsScreen({ me, onDone, onUnderage }: { me: Me; onDone: (me: 
           returnKeyType="next"
           onSubmitEditing={() => ok && go('birthday')}
           selectionColor={color.hookup}
-          maxLength={30}
+          maxLength={NAME_MAX}
           onFocus={() => setFocus(true)}
           onBlur={() => setFocus(false)}
           style={[b.name, focus && { borderBottomColor: color.hookup }, Platform.OS === 'web' && ({ outlineStyle: 'none' } as object)]}
         />
-        <Text style={b.counter}>{name.length}/30</Text>
+        <Text style={b.counter}>{name.length}/{NAME_MAX}</Text>
         <ErrorText text={err} />
       </StepShell>
     );

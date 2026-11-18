@@ -26,6 +26,8 @@ export type Me = {
   incognito?: boolean;
   hidden?: boolean;
   member_since?: string;
+  has_email?: boolean;
+  created_at?: string;
   profile: null | MyProfile;
   profiles?: MyProfile[];
   location: null | {

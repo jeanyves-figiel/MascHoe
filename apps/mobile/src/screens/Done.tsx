@@ -26,7 +26,13 @@ export function DoneScreen({ me, onContinue }: { me: Me; onContinue: () => void 
       </Enter>
       <Enter delay={120} style={d.card}>
         <View style={[d.photo, { backgroundColor: tileFor(p?.id ?? 'x') }]}>
-          {photo ? <Image source={{ uri: photo }} style={StyleSheet.absoluteFill} accessibilityLabel={`${name}'s photo 1`} /> : null}
+          {photo ? (
+            <Image source={{ uri: photo }} style={StyleSheet.absoluteFill} accessibilityLabel={`${name}'s photo 1`} />
+          ) : (
+            <View style={d.noPhoto}>
+              <Text style={d.initial}>{(name.trim()[0] ?? '?').toUpperCase()}</Text>
+            </View>
+          )}
           <View style={d.loc}>
             <View style={d.locDot} />
             <Text style={d.locText}>{o.done.level[level]}</Text>
@@ -49,6 +55,11 @@ export function DoneScreen({ me, onContinue }: { me: Me; onContinue: () => void 
           </View>
         </View>
       </Enter>
+      {photo ? null : (
+        <Enter delay={200} style={d.nudge}>
+          <Text style={d.nudgeText}>{o.photo.laterNote}</Text>
+        </Enter>
+      )}
       <View style={{ flex: 1 }} />
       <BigButton testID="done-continue" title={o.done.cta} onPress={onContinue} />
     </View>
@@ -58,6 +69,10 @@ export function DoneScreen({ me, onContinue }: { me: Me; onContinue: () => void 
 const d = StyleSheet.create({
   title: { fontFamily: font.heavy, fontSize: 40, lineHeight: 42, letterSpacing: -1.2, color: color.fgPrimary },
   card: { borderRadius: radius.lg, overflow: 'hidden', backgroundColor: color.bgRaised },
+  noPhoto: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, alignItems: 'center', justifyContent: 'center' },
+  initial: { fontFamily: font.heavy, fontSize: 96, color: color.fgPrimary, opacity: 0.35 },
+  nudge: { alignSelf: 'flex-start', borderRadius: radius.pill, paddingHorizontal: space.l, paddingVertical: space.s, backgroundColor: 'rgba(255,203,61,0.14)' },
+  nudgeText: { fontFamily: font.bold, fontSize: 14, color: color.personal },
   photo: { height: 300 },
   loc: { position: 'absolute', left: 14, top: 14, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: color.bgRaised },
   locDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: color.trust },

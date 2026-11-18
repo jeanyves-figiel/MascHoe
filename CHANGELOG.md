@@ -5,6 +5,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+- **Required vs optional fields** (owner decisions 2026-11-18, [docs/spec/required-fields.md](docs/spec/required-fields.md)):
+  - Display name max 20 characters (was 30).
+  - "I am" is optional: new "Prefer not to say" option; a skipped answer is stored as `unspecified` and gender is no longer shown or required to be visible.
+  - "Here for" starts with nothing selected; Continue unlocks after one pick.
+  - Main photo can be added later ("Add it later"); the account stays invisible until one passes. "You're in" shows your initial and Explore shows an "Add a main photo" banner. Faceless main photos allowed ("Show yourself.").
+  - Tonight plan text is optional; an empty plan shows its tag.
+  - Completeness ring counts basics: 40 % right after onboarding (20 % without a photo).
+
+### Added
+- **Sign-in email** for Apple, Google and passkey accounts: Settings › Account › Sign-in email (`POST /me/email`, confirm by link, only the hash is stored). Offered once on Me a week after sign-up. `GET /me` returns `has_email`.
+
 ### Fixed
 - **QA pass 1** (issues 65–69), found walking the whole app on DEV in en/fr/de:
   - Profile **Message** and Edit profile **Save** bars no longer run off the right edge of the screen.

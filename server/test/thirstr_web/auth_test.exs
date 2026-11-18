@@ -197,6 +197,25 @@ defmodule ThirstrWeb.AuthTest do
     end
   end
 
+  test "RF-7 add a sign-in email to an Apple account", %{conn: conn} do
+    {c, body} = sign_up(conn)
+    refute body["account"]["has_email"]
+
+    c |> post("/v1/me/email", %{email: "Later@Example.com"}) |> response(202)
+    token = extract_token()
+
+    me = conn |> recycle() |> post("/v1/auth/email/verify", %{token: token}) |> json_response(200)
+    assert me["account"]["has_email"]
+
+    # the email now signs into the same account
+    again = link_token(conn, "later@example.com")
+
+    me2 =
+      conn |> recycle() |> post("/v1/auth/email/verify", %{token: again}) |> json_response(200)
+
+    assert me2["account"]["profile"] == me["account"]["profile"]
+  end
+
   defp link_token(conn, email) do
     conn
     |> recycle()

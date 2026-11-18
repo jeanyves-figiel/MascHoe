@@ -11,7 +11,7 @@
 - R-09.6 Time slider (now → 03:00) filters plans whose window overlaps selection; default now → +4 h.
 - R-09.7 Featured: parties nearby with free spots appear as large cards at top (F-10), max 2.
 - R-09.8 Plan card: avatar, name, verified, distance bucket, text, window chip, tag chip; tap → profile; long-press → message.
-- R-09.9 Post plan (FAB "Post your plan"): window start/end, text 140, tag (hosting, can travel, drinks first, party, other), audience (verified default / my chats). Max 2 active plans. Verified only.
+- R-09.9 Post plan (FAB "Post your plan"): window start/end, text optional 140 (empty → tag shown as the line), tag (hosting, can travel, drinks first, party, other), audience (verified default / my chats). Max 2 active plans. Verified only.
 - R-09.10 Mode applies: Hookup shows hookup plans; Sport shows activity posts (F-11) today; Friends shows friends plans.
 - R-09.11 Expiry 06:00 local or window_end + 1 h, whichever first.
 

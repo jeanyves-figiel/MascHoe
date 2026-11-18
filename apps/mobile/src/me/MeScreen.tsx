@@ -11,6 +11,8 @@ import Svg, { Circle } from 'react-native-svg';
 import { Banner, Button, ErrorText, ListRow, Photo, Section, Segmented, Toggle, VerifiedTick, Wordmark } from '../ui';
 import type { Notice } from '../trust/NoticesScreen';
 import { NowSheet } from './NowSheet';
+import { prefs, setPrefs } from './prefs';
+import { SignInEmailSheet } from './SignInEmail';
 
 type Nav = { navigate: (s: string, p?: object) => void };
 const KINDS: Kind[] = ['now', 'friends', 'sport'];
@@ -27,6 +29,16 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
   const [loc, setLoc] = useState(false);
   const [now, setNow] = useState(false);
   const [busy, setBusy] = useState(false);
+  // RF-7: offer a sign-in email once, a week after sign-up, if none is on file.
+  const [emailSheet, setEmailSheet] = useState(false);
+  const [nudgeDone, setNudgeDone] = useState(!!prefs().emailNudgeDone);
+  const [openedAt] = useState(() => Date.now());
+  const weekOld = !!me.created_at && openedAt - new Date(me.created_at).getTime() > 7 * 86400000;
+  const emailNudge = weekOld && me.has_email === false && !nudgeDone;
+  const dismissNudge = () => {
+    setNudgeDone(true);
+    setPrefs({ emailNudgeDone: true });
+  };
   const [err, setErr] = useState<string | null>(null);
   const p: MyProfile | undefined = profiles.find((x) => x.kind === kind);
   const accent = modeColor[kindMode[kind]];
@@ -117,6 +129,14 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
           <Banner tone="warn" text={tx.notices.banner} onPress={() => navigation.navigate('Notices')} />
         ) : null}
         {!me.verified ? <Banner text={tx.explore.verifyBanner} onPress={() => navigation.navigate('Verify')} /> : null}
+        {emailNudge ? (
+          <View testID="email-nudge" style={{ gap: space.s }}>
+            <Banner tone="personal" text={tx.signInEmail.nudge} onPress={() => { setEmailSheet(true); dismissNudge(); }} />
+            <Pressable accessibilityRole="button" onPress={dismissNudge} style={{ alignSelf: 'flex-end', paddingHorizontal: space.s }}>
+              <Text style={{ ...type.meta, color: color.fgSecondary }}>{tx.signInEmail.dismiss}</Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         <Section>
           <ListRow testID="me-location" title={tx.me.location} right={me.incognito ? tx.location.incognito : tx.location.levels[level]?.[0]} onPress={() => setLoc(true)} />
@@ -142,6 +162,7 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
       </ScrollView>
       <LocationSheet visible={loc} onClose={() => setLoc(false)} />
       <NowSheet visible={now} onClose={() => setNow(false)} />
+      <SignInEmailSheet visible={emailSheet} onClose={() => setEmailSheet(false)} />
     </View>
   );
 }

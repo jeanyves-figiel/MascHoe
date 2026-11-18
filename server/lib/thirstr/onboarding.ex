@@ -43,7 +43,19 @@ defmodule Thirstr.Onboarding do
 
   defp write_basics(a, attrs, age, birthdate) do
     profile = main_profile(a) || %Profile{account_id: a.id, kind: "now"}
-    changeset = profile |> Profile.basics_changeset(attrs) |> Ecto.Changeset.put_change(:age, age)
+
+    changeset =
+      profile
+      |> Profile.basics_changeset(attrs)
+      |> Ecto.Changeset.put_change(:age, age)
+      |> Ecto.Changeset.put_change(
+        :completeness,
+        Thirstr.Profiles.Fields.completeness(%{
+          fields: profile.fields,
+          photo_ids: profile.photo_ids,
+          kind: profile.kind
+        })
+      )
 
     with {:ok, p} <- Repo.insert_or_update(changeset),
          {:ok, a} <- a |> Account.changeset(%{birthdate: birthdate}) |> Repo.update() do
@@ -84,6 +96,15 @@ defmodule Thirstr.Onboarding do
       {:ok, ph, a}
     end
   end
+
+  @doc """
+  RF-6 (required-fields.md): the main photo can be added later. The account moves on
+  to verify; Explore keeps it invisible until a main photo passes (no photo, no card).
+  """
+  def photo_later(%Account{onboarding_step: "photo"} = a), do: {:ok, advance!(a, "photo")}
+
+  def photo_later(%Account{} = a),
+    do: {:error, {:conflict, "onboarding step is #{a.onboarding_step}"}}
 
   # ------------------------------------------------------------- S-06 Verify
 
