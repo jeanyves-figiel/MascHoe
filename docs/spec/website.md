@@ -21,6 +21,7 @@ Issue #40. Owner (2026-11-17): visitors to the web domain see a small marketing 
 |---|---|---|---|
 | `/` | `/fr/` | `/de/` | home |
 | `/privacy/` | `/fr/privacy/` | `/de/privacy/` | privacy summary (plain language; full policy by counsel before store submission) |
+| `/legal/` | `/fr/legal/` | `/de/legal/` | legal notice / Impressum (#62): operator name, postal address, country, contact email, UID if any, person responsible, liability + consumer-dispute notes. Operator data in `web/site/legal.json`; page and footer link are built only when that file exists |
 | `404.html` | — | — | not found (trilingual) |
 
 Home sections, in order:
@@ -31,7 +32,7 @@ Home sections, in order:
 5. Privacy promises (teal): no ads, no ad IDs, no selling data; E2EE chats and private albums; photos checked by AI, not browsed by staff; delete = gone immediately; real people only (anti-bot).
 6. Free: fully usable for free, no paywalled basics.
 7. For every man: cis, trans, non-binary; 18+ only.
-8. Contact: `hello@thirstr.fun` (mailto). Footer: © year Thirstr, Privacy link, languages, "18+".
+8. Contact: `hello@thirstr.fun` (mailto; forwarded by ImprovMX to the owner's inbox, #62). Footer: © year Thirstr, Privacy, Legal notice, email, "18+".
 
 Copy rules: claims only from concept/spec; no competitor names; en/fr/de written per language (not machine-literal), strings in `web/site/strings/<lang>.json`.
 

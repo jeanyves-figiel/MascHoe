@@ -46,14 +46,45 @@
   "privacy_page_title": "Datenschutz-Übersicht",
   "privacy_intro": "Hier steht in einfachen Worten, wie Thirstr mit deinen Daten umgeht. Die vollständige Datenschutzerklärung erscheint, bevor die App in den Stores verfügbar ist.",
   "privacy_sections": [
-    ["Was wir erheben", "Die Basisdaten, die du uns gibst (Name, Geburtstag, Fotos, Profiltext), und deinen Standort in der Genauigkeit, die du wählst. Deinen genauen Standort speichern wir nie, außer du setzt einen genauen Pin, und der läuft von selbst ab."],
-    ["Was wir nie tun", "Keine Werbung, keine Werbe-IDs, keine Datenhändler, kein Verkauf oder Teilen deiner Daten für Marketing. Kein Tracking auf dieser Website: keine Cookies, keine Statistik, keine Anfragen an Dritte."],
-    ["Verschlüsselung", "Chats und private Alben sind Ende-zu-Ende-verschlüsselt. Unsere Server speichern nur Inhalte, die wir nicht lesen können."],
-    ["Fotos", "Öffentliche Fotos prüft eine KI anhand unserer Regeln. Unser Team schaut deine Fotos nicht durch; ein Mensch sieht ein Foto nur, wenn es gemeldet wird."],
-    ["Wo deine Daten liegen", "Ausschließlich auf Servern in der Europäischen Union."],
-    ["Deine Kontrolle", "Sichtbarkeit jederzeit ansehen und ändern, Konto pausieren, Daten exportieren oder alles löschen. Das Löschen passiert sofort."],
-    ["Kontakt", "Fragen zu deinen Daten: hello@thirstr.fun"]
+    [
+      "Was wir erheben",
+      "Die Basisdaten, die du uns gibst (Name, Geburtstag, Fotos, Profiltext), und deinen Standort in der Genauigkeit, die du wählst. Deinen genauen Standort speichern wir nie, außer du setzt einen genauen Pin, und der läuft von selbst ab."
+    ],
+    [
+      "Was wir nie tun",
+      "Keine Werbung, keine Werbe-IDs, keine Datenhändler, kein Verkauf oder Teilen deiner Daten für Marketing. Kein Tracking auf dieser Website: keine Cookies, keine Statistik, keine Anfragen an Dritte."
+    ],
+    [
+      "Verschlüsselung",
+      "Chats und private Alben sind Ende-zu-Ende-verschlüsselt. Unsere Server speichern nur Inhalte, die wir nicht lesen können."
+    ],
+    [
+      "Fotos",
+      "Öffentliche Fotos prüft eine KI anhand unserer Regeln. Unser Team schaut deine Fotos nicht durch; ein Mensch sieht ein Foto nur, wenn es gemeldet wird."
+    ],
+    [
+      "Wo deine Daten liegen",
+      "Ausschließlich auf Servern in der Europäischen Union."
+    ],
+    [
+      "Deine Kontrolle",
+      "Sichtbarkeit jederzeit ansehen und ändern, Konto pausieren, Daten exportieren oder alles löschen. Das Löschen passiert sofort."
+    ],
+    [
+      "Kontakt",
+      "Fragen zu deinen Daten: hello@thirstr.fun"
+    ]
   ],
   "back_home": "Zurück zur Startseite",
-  "nf_title": "Seite nicht gefunden"
+  "nf_title": "Seite nicht gefunden",
+  "footer_legal": "Impressum",
+  "legal_page_title": "Impressum",
+  "legal_operator": "Betreiber",
+  "legal_contact": "Kontakt",
+  "legal_uid": "UID",
+  "legal_resp": "Verantwortlich für den Inhalt",
+  "legal_liab_h": "Haftung",
+  "legal_liab": "Wir prüfen diese Website sorgfältig, können aber keine Gewähr für Vollständigkeit und Aktualität übernehmen. Für Inhalte externer Links sind wir nicht verantwortlich.",
+  "legal_odr_h": "Streitbeilegung",
+  "legal_odr": "Wir sind nicht verpflichtet und nicht bereit, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen."
 }
