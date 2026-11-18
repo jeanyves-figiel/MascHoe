@@ -9,7 +9,7 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import { initialWindowMetrics, SafeAreaProvider, type Metrics } from 'react-native-safe-area-context';
 import { ActivityIndicator, Dimensions, Platform, View } from 'react-native';
-import { api, clearSession, hasSession, Me } from './src/api/client';
+import { api, ApiError, clearSession, hasSession, Me } from './src/api/client';
 import { verifyEmailToken } from './src/auth/oidc';
 import { screenFor, Screen as S } from './src/onboarding/flow';
 import { BasicsScreen, UnderageScreen } from './src/screens/Basics';
@@ -32,6 +32,16 @@ const startMetrics: Metrics = initialWindowMetrics ?? {
   insets: { top: Platform.OS === 'ios' ? 47 : 0, bottom: Platform.OS === 'ios' ? 34 : 0, left: 0, right: 0 },
 };
 
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`Timed out after ${ms} ms`)), ms);
+    p.then(
+      (v) => (clearTimeout(t), resolve(v)),
+      (e) => (clearTimeout(t), reject(e)),
+    );
+  });
+}
+
 export default function App() {
   const [me, setMe] = useState<Me | null>(null);
   const [screen, setScreen] = useState<S | 'loading'>('loading');
@@ -53,17 +63,20 @@ export default function App() {
   };
 
   // Resume at the last incomplete step (F-02 edge case) or consume an email magic link.
+  // Startup must always end on a screen: every step has a time limit and a failing
+  // keychain or network falls through to Welcome instead of spinning forever (#90).
   useEffect(() => {
     (async () => {
       try {
         const token = Platform.OS === 'web' ? new URLSearchParams(window.location.search).get('token') : null;
         if (token) {
           window.history.replaceState({}, '', '/');
-          return land(await verifyEmailToken(token));
+          return land(await withTimeout(verifyEmailToken(token), 15000));
         }
-        if (await hasSession()) return land(await api<Me>('GET', '/me'));
-      } catch {
-        await clearSession();
+        if (await withTimeout(hasSession(), 5000)) return land(await withTimeout(api<Me>('GET', '/me', undefined, true, 10000), 15000));
+      } catch (e) {
+        console.warn('Startup session check failed', e);
+        if (e instanceof ApiError && e.status === 401) await clearSession().catch(() => {});
       }
       setScreen('welcome');
     })();
