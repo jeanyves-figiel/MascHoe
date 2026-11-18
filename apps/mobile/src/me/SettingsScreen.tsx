@@ -11,7 +11,7 @@ import { type Prefs, prefs, setPrefs } from './prefs';
 import { color, font, space, type } from '../theme/tokens';
 import { Banner, Button, Chip, Chips, ErrorText, Field, ListRow, Loading, Section, Toggle } from '../ui';
 
-const pad = { paddingHorizontal: space.l, paddingVertical: space.m, gap: space.s };
+const pad = { paddingVertical: space.m, gap: space.s };
 
 type Nav = { navigate: (s: string, p?: object) => void };
 
@@ -132,7 +132,7 @@ export function SettingsScreen({ navigation }: { navigation: Nav }) {
       </Section>
 
       <Section title={tx.settings.notifications}>
-        {show(tx.settings.notifications) ? <Text style={{ ...type.meta, color: color.fgSecondary, paddingHorizontal: space.l, paddingVertical: space.m }}>{tx.settings.notifIntro}</Text> : null}
+        {show(tx.settings.notifications) ? <Text style={{ ...type.meta, color: color.fgSecondary, paddingVertical: space.m }}>{tx.settings.notifIntro}</Text> : null}
         {Platform.OS === 'ios' && show(tx.settings.enablePush) ? <ListRow title={tx.settings.enablePush} onPress={() => askPushPermission()} /> : null}
         {Object.entries(tx.settings.pushTypes).map(([k, label]) => (
           <React.Fragment key={k}>{tog(label, st.push?.[k] !== false, (v) => put({ push: { ...(st.push ?? {}), [k]: v } }))}</React.Fragment>
@@ -200,7 +200,7 @@ export function SettingsScreen({ navigation }: { navigation: Nav }) {
         {show(tx.prefs.language) ? <ListRow title={tx.prefs.language} sub={tx.prefs.languageSub} onPress={() => Linking.openSettings().catch(() => {})} /> : null}
         {show(tx.prefs.privacy) ? <ListRow title={tx.prefs.privacy} onPress={() => Linking.openURL('https://thirstr.fun/privacy/')} /> : null}
         {show(tx.prefs.licenses) ? <ListRow title={tx.prefs.licenses} onPress={() => setLic(!lic)} /> : null}
-        {lic ? <Text style={{ ...type.meta, color: color.fgSecondary, padding: space.l }}>{tx.prefs.licensesBody}</Text> : null}
+        {lic ? <Text style={{ ...type.meta, color: color.fgSecondary, paddingVertical: space.m }}>{tx.prefs.licensesBody}</Text> : null}
       </Section>
     </ScrollView>
   );

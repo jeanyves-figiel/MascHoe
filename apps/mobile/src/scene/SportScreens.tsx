@@ -97,7 +97,7 @@ export function ActivityScreen({ navigation, route }: { navigation: Nav; route: 
         stats={[{ k: v2.party.going, v: p.capacity ? `${p.joined}/${p.capacity}` : `${p.joined}` }, ...(p.club ? [{ k: 'Club', v: p.club.name }] : [])]}
       />
       <Section>
-        <View style={{ padding: space.m }}>
+        <View style={{ paddingVertical: space.m }}>
           <Who p={p.host} onPress={() => navigation.navigate('Profile', { id: p.host.id })} right={<Icon.Next />} />
         </View>
       </Section>
@@ -108,7 +108,7 @@ export function ActivityScreen({ navigation, route }: { navigation: Nav; route: 
       {members && members.members.length ? (
         <Section>
           {members.members.map((m) => (
-            <View key={m.id} style={{ padding: space.m }}>
+            <View key={m.id} style={{ paddingVertical: space.m }}>
             <Who
               p={m}
               onPress={() => navigation.navigate('Profile', { id: m.id })}
@@ -292,7 +292,7 @@ export function ClubScreen({ navigation, route }: { navigation: Nav; route: { pa
       {c.member_list?.length ? (
         <Section>
       {c.member_list.map((m) => (
-        <View key={m.profile.id} style={{ padding: space.m }}>
+        <View key={m.profile.id} style={{ paddingVertical: space.m }}>
         <Who
           p={m.profile}
           sub={m.role === 'admin' ? 'Admin' : m.state === 'requested' ? tx.sport.pending : undefined}

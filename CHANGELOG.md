@@ -5,6 +5,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+- **QA pass 1** (issues 65–69), found walking the whole app on DEV in en/fr/de:
+  - Profile **Message** and Edit profile **Save** bars no longer run off the right edge of the screen.
+  - Cards get proper inner padding: profile details, Edit profile, Settings and Safety rows no longer sit on the card border, and Safety › Help & resources no longer clips its first letter. Toggles in sheets line up with the rest.
+  - Profile options in French and German (body type, position, looking for, tribes, sports, relationship, health…); languages show their own name (Español, Deutsch…) instead of "Es"/"De"; "Height · 170 cm" instead of "Height (cm) · 170 cm".
+  - Onboarding locks Exact location until you verify, like Hidden (the server refused it anyway).
+  - Map opens zoomed out a step, outlines each area and shows how many guys are in it, instead of one coral blob.
+  - Me profile switcher follows the app mode and changes it.
+  - Check your inbox shows the address and lets you resend after 30 s.
+  - Welcome says "1,356 guys around you." (it counts accounts in the area, not people online right now).
+  - Venue: unverified users get a verify prompt instead of a disabled check-in form.
+  - Profile: a header with the name appears when you scroll past the photos.
+  - Empty-state titles and wrapped text buttons are centred; web switches use one colour.
+
 ### Changed
 - **App v2 sub-screens** (issue 63): Edit profile, Settings, Party, Host a party, Venue, Activity, Club, Albums, Safety, Report, Taps and the other stack screens brought to the App v2 standard from the approved mockup. Round back button instead of the system bar; grouped rounded cards with section labels; 60 pt rows with chevron icons; tinted banners without emoji; bigger fields and chips that stay visible inside cards; colour hero cards for Party, Activity, Club and Venue; sticky save/publish button on forms; photo editor mosaic; album cover cards; Taps with Tap back / Message; SOS hold card; Report reasons as radio rows.
 - **App v2 main screens** (issue 58): map, grid, profile, chats, chat, Tonight and Me restyled to the approved App v2 mockup. New line icon set replaces emoji and text glyphs; pill tab bar with the active tab filled in the mode colour; map/grid icon toggle and location chip in the Explore header; photo cards with a soft scrim and online dot; profile photo pager with page bars, chips and a round Tap star; inbox filter (All, Unread, New) and E2EE footer; chat header with disappearing-timer chip, rounded bubbles and pill composer; Tonight window chips on top, party card and plan rows with a round message button, white Post button; Me completeness ring card. en/fr/de.

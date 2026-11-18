@@ -107,9 +107,10 @@ export function LocationScreen({ me, onDone }: { me: Me; onDone: (me: Me) => voi
       <MapPreview level={level} />
       <View style={{ gap: space.s }} accessibilityRole="radiogroup">
         {LEVELS.map((lv) => {
-          const locked = lv === 'hidden' && !me.verified;
+          const locked = (lv === 'hidden' || lv === 'exact') && !me.verified; // AC-05.4
           const on = level === lv;
-          const [title, sub] = o.location.levels[lv];
+          const [title, sub0] = o.location.levels[lv];
+          const sub = locked && lv === 'exact' ? o.location.exactLocked : sub0;
           return (
             <Pressable
               key={lv}

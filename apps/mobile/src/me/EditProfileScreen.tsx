@@ -95,7 +95,7 @@ export function EditProfileScreen({ route, navigation }: { route: { params: { id
             <SectionLabel>{tx.edit.fields[k] ?? k}</SectionLabel>
             <Chips>
               {choices.map((c) => (
-                <Chip key={c} label={opt(c)} on={cur.includes(c)} fill={accent} onPress={() => set(k, cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c])} />
+                <Chip key={c} label={opt(c, k)} on={cur.includes(c)} fill={accent} onPress={() => set(k, cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c])} />
               ))}
             </Chips>
           </View>
@@ -107,7 +107,7 @@ export function EditProfileScreen({ route, navigation }: { route: { params: { id
             <SectionLabel>{tx.edit.fields[k] ?? k}</SectionLabel>
             <Chips>
               {choices.map((c) => (
-                <Chip key={c} label={opt(c)} on={v === c} fill={accent} onPress={() => set(k, v === c ? null : c)} />
+                <Chip key={c} label={opt(c, k)} on={v === c} fill={accent} onPress={() => set(k, v === c ? null : c)} />
               ))}
             </Chips>
           </View>

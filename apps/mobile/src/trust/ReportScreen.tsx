@@ -109,7 +109,7 @@ export function ReportScreen({ navigation, route }: { navigation: Nav; route: { 
 
 function Radio({ label, on, onPress }: { label: string; on: boolean; onPress: () => void }) {
   return (
-    <Pressable accessibilityRole="radio" accessibilityState={{ checked: on }} accessibilityLabel={label} onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', gap: space.m, minHeight: 56, paddingHorizontal: space.l }}>
+    <Pressable accessibilityRole="radio" accessibilityState={{ checked: on }} accessibilityLabel={label} onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', gap: space.m, minHeight: 56 }}>
       <Text style={{ ...type.headline, fontFamily: font.bold, color: color.fgPrimary, flex: 1 }}>{label}</Text>
       <View style={{ width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: on ? color.danger : color.navInactive, alignItems: 'center', justifyContent: 'center' }}>
         {on ? <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: color.danger }} /> : null}

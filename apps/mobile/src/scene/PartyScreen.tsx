@@ -106,7 +106,7 @@ export function PartyScreen({ navigation, route }: { navigation: Nav; route: { p
         ]}
       />
       <Section title={tx.party.title}>
-        <View style={{ padding: space.m }}>
+        <View style={{ paddingVertical: space.m }}>
           <Who p={p.host} onPress={() => navigation.navigate('Profile', { id: p.host.id })} right={<Icon.Next />} />
         </View>
       </Section>

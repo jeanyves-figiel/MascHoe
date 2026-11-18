@@ -219,6 +219,7 @@ export function Toggle({ label, sub, value, onChange, disabled, tone }: { label:
         onValueChange={onChange}
         trackColor={{ true: tone ?? color.trust, false: color.line }}
         thumbColor={color.bgInverse}
+        {...(Platform.OS === 'web' ? { activeThumbColor: color.bgInverse } : {})}
       />
     </View>
   );
@@ -298,7 +299,7 @@ export function ErrorText({ text }: { text: string | null }) {
 export function EmptyState({ title, body, action, onAction }: { title: string; body?: string; action?: string; onAction?: () => void }) {
   return (
     <View style={s.empty}>
-      <Text style={s.title}>{title}</Text>
+      <Text style={[s.title, { textAlign: 'center' }]}>{title}</Text>
       {body ? <Text style={[s.body, s.muted, { textAlign: 'center' }]}>{body}</Text> : null}
       {action && onAction ? <Button title={action} onPress={onAction} /> : null}
     </View>
@@ -479,11 +480,11 @@ export const s = StyleSheet.create({
   checkRow: { flexDirection: 'row', alignItems: 'center', gap: space.m, minHeight: touch },
   box: { width: 24, height: 24, borderRadius: 8, borderWidth: 2, borderColor: color.fgSecondary, alignItems: 'center', justifyContent: 'center' },
   tick: { color: color.onAccent, fontFamily: type.headline.fontFamily },
-  row: { flexDirection: 'row', alignItems: 'center', gap: space.m, minHeight: 60, paddingVertical: space.m, paddingHorizontal: space.l },
+  row: { flexDirection: 'row', alignItems: 'center', gap: space.m, minHeight: 60, paddingVertical: space.m },
   banner: { flexDirection: 'row', alignItems: 'center', gap: space.s, borderRadius: 20, paddingVertical: 14, paddingHorizontal: space.l },
   badge: { borderRadius: radius.pill, paddingHorizontal: space.m, paddingVertical: space.xs, alignSelf: 'flex-start' },
   badgeText: { ...type.caption, color: color.onAccent },
-  card: { backgroundColor: color.bgRaised, borderRadius: radius.md, overflow: 'hidden' },
+  card: { backgroundColor: color.bgRaised, borderRadius: radius.md, overflow: 'hidden', paddingHorizontal: space.l, paddingVertical: space.xs },
   spacer: { flex: 1 },
   empty: { alignItems: 'center', justifyContent: 'center', gap: space.l, padding: space.xxl, flexGrow: 1 },
   scrim: { flex: 1, backgroundColor: color.scrim },

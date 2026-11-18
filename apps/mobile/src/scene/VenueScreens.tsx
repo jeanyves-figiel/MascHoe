@@ -76,7 +76,7 @@ export function VenueScreen({ navigation, route }: { navigation: Nav; route: { p
           {here.people.length ? (
             <Section>
               {here.people.map((x) => (
-                <View key={x.profile.id} style={{ padding: space.m }}>
+                <View key={x.profile.id} style={{ paddingVertical: space.m }}>
                   <Who p={x.profile} sub={[x.zone, x.tapped_me ? tx.profile.tappedYou : null].filter(Boolean).join(' · ') || undefined} onPress={() => navigation.navigate('Profile', { id: x.profile.id })} right={<Icon.Next />} />
                 </View>
               ))}
@@ -90,6 +90,8 @@ export function VenueScreen({ navigation, route }: { navigation: Nav; route: { p
         <>
           {safe ? (
             <Banner tone="warn" text={tx.venue.safe} />
+          ) : !me.verified ? (
+            <Banner tone="trust" text={tx.common.verifyToDo} onPress={() => navigation.navigate('Verify')} />
           ) : (
             <>
               <Section>
@@ -101,7 +103,6 @@ export function VenueScreen({ navigation, route }: { navigation: Nav; route: { p
                 title={tx.venue.checkin}
                 kind="trust"
                 busy={busy}
-                disabled={!me.verified}
                 onPress={() =>
                   call(() =>
                     api('POST', `/venues/${v.id}/checkin?mode=${mode}`, {
@@ -111,7 +112,6 @@ export function VenueScreen({ navigation, route }: { navigation: Nav; route: { p
                   )
                 }
               />
-              {!me.verified ? <Text style={{ ...type.meta, color: color.fgMuted }}>{tx.common.verifyToDo}</Text> : null}
             </>
           )}
         </>

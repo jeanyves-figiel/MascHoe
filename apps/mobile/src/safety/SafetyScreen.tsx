@@ -108,7 +108,7 @@ export function SafetyScreen({ navigation }: { navigation: Nav }) {
         <SectionLabel>{tx.safety.contacts}</SectionLabel>
         <Section>
           {list.map((c) => (
-            <View key={c.id} testID={`contact-${c.accepted ? 'accepted' : 'pending'}`} style={{ flexDirection: 'row', alignItems: 'center', gap: space.m, padding: space.m, paddingLeft: space.l }}>
+            <View key={c.id} testID={`contact-${c.accepted ? 'accepted' : 'pending'}`} style={{ flexDirection: 'row', alignItems: 'center', gap: space.m, paddingVertical: space.m }}>
               <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: c.accepted ? color.trust : color.line, alignItems: 'center', justifyContent: 'center' }}>
                 <Text style={{ ...type.headline, color: c.accepted ? color.onAccent : color.fgPrimary }}>{c.label.slice(0, 1).toUpperCase()}</Text>
               </View>
