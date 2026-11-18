@@ -1,229 +1,151 @@
-import React, { useEffect, useState } from 'react';
-import { Linking, Platform, ScrollView, Text, View } from 'react-native';
-import { api, ApiError, clearSession, Me } from '../api/client';
-import type { Settings } from '../api/types';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Linking, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import Svg, { Circle, Path } from 'react-native-svg';
+import app from '../../app.json';
+import { api, clearSession } from '../api/client';
 import { useSession } from '../app/session';
-import { askPushPermission } from '../chat/engine';
-import { customQuickReplies, setCustomQuickReplies } from '../chat/quick';
 import { tx } from '../i18n/app';
-import { v2 } from '../i18n/v2';
-import { exportData } from './exportData';
-import { SignInEmailSheet } from './SignInEmail';
+import { v3 } from '../i18n/v3';
+import { color, font, radius, space, type } from '../theme/tokens';
+import { ErrorText, Icon } from '../ui';
 import { type Prefs, prefs, setPrefs } from './prefs';
-import { color, font, space, type } from '../theme/tokens';
-import { Banner, Button, Chip, Chips, ErrorText, Field, ListRow, Loading, RangeSlider, Section, Toggle } from '../ui';
-
-const pad = { paddingVertical: space.m, gap: space.s };
+import { Group, IconTile, Row, Seg, SwitchRow, useSettings } from './settings/parts';
 
 type Nav = { navigate: (s: string, p?: object) => void };
 
-// S-50 Settings (F-17). Every setting is server-enforced (R-17.1).
+const S = v3.settings;
+const hh = (h: number) => `${String(h).padStart(2, '0')}:00`;
+
+// Search index (R-17.4): every setting label → the category screen that holds it.
+const INDEX: [string, string][] = [
+  ...[tx.me.location, S.hideUnverified, S.hideNew, S.hideHidden, S.ages, S.appearOn, ...Object.values(S.surfaces), S.distance, S.online].map((l) => [l, 'PrivacySettings'] as [string, string]),
+  ...[S.whoMessage, S.explicit, S.disappear, S.receipts, tx.prefs.autoDelete, S.quick].map((l) => [l, 'ChatSettings'] as [string, string]),
+  ...[S.notifications, ...Object.values(S.push), S.quiet].map((l) => [l, 'NotificationSettings'] as [string, string]),
+  ...[S.safeMode, S.appLock, tx.prefs.verification, S.blocked, S.notices].map((l) => [l, 'SafetySettings'] as [string, string]),
+  ...[tx.signInEmail.row, tx.devices.title, tx.exportData.title, S.pause, S.logoutAll, S.delete].map((l) => [l, 'AccountSettings'] as [string, string]),
+];
+
+// S-61 Settings hub v3 (#102, F-17 R-17.10): 5 categories with live summaries, App + About inline.
 export function SettingsScreen({ navigation }: { navigation: Nav }) {
-  const { me, setMe, signOut } = useSession();
-  const [st, setSt] = useState<Settings | null>(me.settings ?? null);
-  const [err, setErr] = useState<string | null>(null);
+  const { me, signOut } = useSession();
+  const { st } = useSettings();
   const [q, setQ] = useState('');
-  const [safeOffAsk, setSafeOffAsk] = useState(false);
-  const [del, setDel] = useState<string | null>(null);
-  const [quick, setQuick] = useState<string[]>([]);
   const [pf, setPf] = useState<Prefs>(prefs());
-  const [exported, setExported] = useState(false);
   const [lic, setLic] = useState(false);
-  const [emailSheet, setEmailSheet] = useState(false);
+  const [blocked, setBlocked] = useState<number | null>(null);
+  const [devices, setDevices] = useState<number | null>(null);
+  const [err, setErr] = useState<string | null>(null);
   useEffect(() => {
-    customQuickReplies().then(setQuick);
+    api<{ blocks: unknown[] }>('GET', '/me/blocks').then((r) => setBlocked(r.blocks.length), () => {});
+    api<{ devices: unknown[] }>('GET', '/me/devices').then((r) => setDevices(r.devices.length), () => {});
   }, []);
 
-  useEffect(() => {
-    api<Settings>('GET', '/me/settings').then(setSt).catch(() => {});
-  }, []);
+  const hits = useMemo(() => {
+    const t = q.trim().toLowerCase();
+    if (!t) return null;
+    const seen = new Set<string>();
+    return INDEX.filter(([l]) => l.toLowerCase().includes(t) && !seen.has(l) && seen.add(l)).slice(0, 12);
+  }, [q]);
 
-  // Age range drags locally; saved 600 ms after the last move.
-  const [ageDraft, setAgeDraft] = useState<[number, number] | null>(null);
-  useEffect(() => {
-    if (!ageDraft) return;
-    const t = setTimeout(() => {
-      api<Settings>('PATCH', '/me/settings', { hide_from_age_min: ageDraft[0] === 18 ? null : ageDraft[0], hide_from_age_max: ageDraft[1] === 99 ? null : ageDraft[1] }).then(setSt, () => setErr(tx.common.error));
-    }, 600);
-    return () => clearTimeout(t);
-  }, [ageDraft]);
-
-  if (!st) return <Loading />;
-  const age: [number, number] = ageDraft ?? [st.hide_from_age_min ?? 18, st.hide_from_age_max ?? 99];
-  const setAge = setAgeDraft;
-
-  const put = async (patch: Partial<Settings>) => {
-    setErr(null);
-    const prev = st;
-    setSt({ ...st, ...patch });
-    try {
-      setSt(await api<Settings>('PATCH', '/me/settings', patch));
-    } catch (e) {
-      setSt(prev);
-      setErr(e instanceof ApiError ? e.message : tx.common.error);
-    }
+  const summary = {
+    privacy: st ? `${st.hide_from_unverified ? S.sum.hideUnverified : S.sum.visibleAll} · ${S.sum.dist[st.show_distance]}` : undefined,
+    chats: st ? `${S.sum.who[st.who_can_message]} · ${S.sum.explicit[st.explicit_from_strangers]}` : undefined,
+    notifications: st ? [S.sum.on, st.quiet_hours ? S.sum.quiet(hh(st.quiet_hours.from), hh(st.quiet_hours.to)) : null].filter(Boolean).join(' · ') : undefined,
+    safety: [S.sum.safe[me.safe_mode] ?? S.sum.safe.auto, blocked != null ? S.sum.blocked(blocked) : null].filter(Boolean).join(' · '),
+    account: [me.has_email ? S.sum.email : S.sum.noEmail, devices != null ? S.sum.devices(devices) : null].filter(Boolean).join(' · '),
   };
-  const call = async (fn: () => Promise<unknown>) => {
-    setErr(null);
-    try {
-      await fn();
-    } catch (e) {
-      setErr(e instanceof ApiError ? e.message : tx.common.error);
-    }
-  };
-  const safe = async (setting: string) => call(async () => setMe(await api<Me>('PUT', '/me/safe_mode', { setting, active: setting === 'on' })));
 
-  // Settings search (R-17.3): matching sections stay visible.
-  const show = (...labels: string[]) => !q.trim() || labels.some((l) => l.toLowerCase().includes(q.trim().toLowerCase()));
-  const choice = <T extends string>(label: string, value: T, opts: Record<string, string>, on: (v: T) => void) =>
-    show(label) ? (
-      <View style={pad}>
-        <Text style={{ ...type.headline, fontFamily: font.bold, color: color.fgPrimary }}>{label}</Text>
-        <Chips>
-          {Object.entries(opts).map(([k, l]) => (
-            <Chip key={k} label={l} on={value === k} fill={color.trust} onPress={() => on(k as T)} />
-          ))}
-        </Chips>
-      </View>
-    ) : null;
-  const tog = (label: string, value: boolean, on: (v: boolean) => void, sub?: string) => (show(label, sub ?? '') ? <Toggle label={label} sub={sub} value={value} onChange={on} /> : null);
+  const cats: { key: keyof typeof summary; title: string; route: string; tone: string; icon: React.ReactNode }[] = [
+    { key: 'privacy', title: S.privacy, route: 'PrivacySettings', tone: color.trust, icon: <EyeIcon /> },
+    { key: 'chats', title: S.chats, route: 'ChatSettings', tone: color.friends, icon: <Icon.Chat size={20} c={color.onAccent} /> },
+    { key: 'notifications', title: S.notifications, route: 'NotificationSettings', tone: color.hookup, icon: <BellIcon /> },
+    { key: 'safety', title: S.safety, route: 'SafetySettings', tone: color.sport, icon: <Icon.Shield size={20} c={color.onAccent} /> },
+    { key: 'account', title: S.account, route: 'AccountSettings', tone: color.personal, icon: <Icon.User size={20} c={color.onAccent} /> },
+  ];
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: color.bgBase }} contentContainerStyle={{ padding: space.l, paddingTop: space.s, gap: space.xl, paddingBottom: 140, maxWidth: 560, width: '100%', alignSelf: 'center' }} keyboardShouldPersistTaps="handled">
-      <Text accessibilityRole="header" style={{ ...type.display, color: color.fgPrimary }}>
-        {tx.settings.title}
+    <ScrollView style={{ flex: 1, backgroundColor: color.bgBase }} contentContainerStyle={{ padding: space.l, paddingTop: space.s, gap: space.xxl, paddingBottom: 120, maxWidth: 560, width: '100%', alignSelf: 'center' }} keyboardShouldPersistTaps="handled">
+      <Text accessibilityRole="header" style={{ ...type.display, fontSize: 34, lineHeight: 40, color: color.fgPrimary }}>
+        {S.title}
       </Text>
-      <Field label={tx.settings.search} value={q} onChangeText={setQ} placeholder={tx.settings.search} />
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.s, height: 44, paddingHorizontal: space.m, borderRadius: radius.pill, backgroundColor: color.bgRaised, marginTop: -space.s }}>
+        <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={color.fgMuted} strokeWidth={2.2} strokeLinecap="round">
+          <Circle cx={11} cy={11} r={7} />
+          <Path d="m20 20-4-4" />
+        </Svg>
+        <TextInput
+          testID="settings-search"
+          accessibilityLabel={S.search}
+          placeholder={S.search}
+          placeholderTextColor={color.fgMuted}
+          value={q}
+          onChangeText={setQ}
+          style={{ flex: 1, ...type.body, color: color.fgPrimary, height: 44, ...(Platform.OS === 'web' ? { outlineStyle: 'none' } : {}) } as object}
+        />
+      </View>
       <ErrorText text={err} />
 
-      <Section title={tx.settings.visibility}>
-        {tog(`${tx.settings.hideFrom}: ${tx.settings.hideUnverified}`, st.hide_from_unverified, (v) => put({ hide_from_unverified: v }))}
-        {tog(`${tx.settings.hideFrom}: ${tx.settings.hideNew}`, st.hide_from_new, (v) => put({ hide_from_new: v }))}
-        {show(tx.settings.hideAgeMin, tx.settings.hideAgeMax, v2.settings.visibleTo) ? (
-          <View style={pad}>
-            <RangeSlider
-              label={v2.settings.visibleTo}
-              fill={color.trust}
-              min={18}
-              max={99}
-              low={age[0]}
-              high={age[1]}
-              format={(v) => (v === 99 ? '99+' : String(v))}
-              onChange={(lo, hi) => setAge([lo, hi])}
-            />
-          </View>
-        ) : null}
-        {tog(`${tx.settings.showIn}: ${tx.settings.showGrid}`, st.show_in_grid, (v) => put({ show_in_grid: v }))}
-        {tog(`${tx.settings.showIn}: ${tx.settings.showMap}`, st.show_in_map, (v) => put({ show_in_map: v }))}
-        {tog(`${tx.settings.showIn}: ${tx.settings.showTonight}`, st.show_in_tonight, (v) => put({ show_in_tonight: v }))}
-        {tog(`${tx.settings.showIn}: ${tx.settings.showActivities}`, st.show_in_activities, (v) => put({ show_in_activities: v }))}
-        {tog(`${tx.settings.showIn}: ${tx.settings.showVenues}`, st.show_in_venues, (v) => put({ show_in_venues: v }))}
-        {choice(tx.settings.showDistance, st.show_distance, tx.settings.distanceOpts, (v) => put({ show_distance: v }))}
-        {tog(tx.settings.online, st.online_visible, (v) => put({ online_visible: v }), tx.settings.onlineSub)}
-      </Section>
-
-      <Section title={tx.settings.chat}>
-        {tog(tx.settings.receipts, st.read_receipts, (v) => put({ read_receipts: v }), tx.settings.receiptsSub)}
-        {choice(tx.settings.whoMessage, st.who_can_message, tx.settings.whoOpts, (v) => put({ who_can_message: v }))}
-        {choice(tx.settings.explicit, st.explicit_from_strangers, tx.settings.explicitOpts, (v) => put({ explicit_from_strangers: v }))}
-        {choice(tx.settings.disappearing, st.disappearing_default, tx.settings.disOpts, (v) => put({ disappearing_default: v }))}
-        {tog(tx.prefs.autoDelete, pf.autoDelete || !!me.safe_mode_active, (v) => setPrefs({ autoDelete: v }).then(setPf))}
-        {show(tx.settings.quickReplies) ? (
-          <View style={pad}>
-            <Text style={{ ...type.headline, fontFamily: font.bold, color: color.fgPrimary }}>{tx.settings.quickReplies}</Text>
-            <Text style={{ ...type.meta, color: color.fgMuted }}>{tx.settings.quickHint}</Text>
-            {[0, 1, 2].map((i) => (
-              <Field
-                key={i}
-                label={v2.settings.quick(i + 1)}
-                placeholder={tx.chat.quick[i]}
-                maxLength={40}
-                value={quick[i] ?? ''}
-                onChangeText={(v) => {
-                  const next = [...quick];
-                  next[i] = v;
-                  setQuick(next);
-                }}
-                onEndEditing={() => setCustomQuickReplies(quick)}
-              />
+      {hits ? (
+        <Group>
+          {hits.length ? hits.map(([l, route]) => <Row key={l} title={l} sub={cats.find((c) => c.route === route)?.title} onPress={() => navigation.navigate(route)} />) : <Row title={S.noResults} />}
+        </Group>
+      ) : (
+        <>
+          <Group>
+            {cats.map((c) => (
+              <Row key={c.key} testID={`settings-${c.key}`} title={c.title} sub={summary[c.key]} onPress={() => navigation.navigate(c.route)} left={<IconTile tone={c.tone}>{c.icon}</IconTile>} />
             ))}
-          </View>
-        ) : null}
-      </Section>
+          </Group>
 
-      <Section title={tx.settings.notifications}>
-        {show(tx.settings.notifications) ? <Text style={{ ...type.meta, color: color.fgSecondary, paddingVertical: space.m }}>{tx.settings.notifIntro}</Text> : null}
-        {Platform.OS === 'ios' && show(tx.settings.enablePush) ? <ListRow title={tx.settings.enablePush} onPress={() => askPushPermission()} /> : null}
-        {Object.entries(tx.settings.pushTypes).map(([k, label]) => (
-          <React.Fragment key={k}>{tog(label, st.push?.[k] !== false, (v) => put({ push: { ...(st.push ?? {}), [k]: v } }))}</React.Fragment>
-        ))}
-        {tog(tx.settings.quiet, !!st.quiet_hours, (v) => put({ quiet_hours: v ? { from: 23, to: 7, tz_offset_min: -new Date().getTimezoneOffset() } : null }), tx.settings.quietSub)}
-        {st.quiet_hours && show(tx.settings.quiet) ? (
-          <View style={pad}>
-            {(['from', 'to'] as const).map((k) => (
-              <View key={k} style={{ gap: space.xs }}>
-                <Text style={{ ...type.meta, color: color.fgSecondary }}>{k === 'from' ? tx.settings.quietFrom : tx.settings.quietTo}</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.xs }}>
-                  {Array.from({ length: 24 }, (_, h) => (
-                    <Chip key={h} label={`${h}:00`} on={st.quiet_hours![k] === h} fill={color.trust} onPress={() => put({ quiet_hours: { ...st.quiet_hours!, [k]: h, tz_offset_min: -new Date().getTimezoneOffset() } })} />
-                  ))}
-                </ScrollView>
-              </View>
-            ))}
-          </View>
-        ) : null}
-      </Section>
+          <Group label={S.app}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', minHeight: 56, paddingHorizontal: space.l, gap: space.m }}>
+              <Text style={{ flex: 1, ...type.body, fontFamily: font.medium, fontSize: 16, color: color.fgPrimary }}>{tx.prefs.units}</Text>
+              <Seg compact tone={color.bgInverse} label={tx.prefs.units} value={pf.units} options={[['km', tx.prefs.unitOpts.km], ['mi', tx.prefs.unitOpts.mi]]} onChange={(v) => setPrefs({ units: v }).then(setPf)} />
+            </View>
+            {Platform.OS !== 'web' ? <SwitchRow title={tx.prefs.haptics} value={pf.haptics} onChange={(v) => setPrefs({ haptics: v }).then(setPf)} /> : null}
+            <Row title={tx.prefs.language} sub={tx.prefs.languageSub} onPress={() => Linking.openSettings().catch(() => {})} />
+          </Group>
 
-      <Section title={tx.settings.safety}>
-        {choice(tx.settings.safeMode, me.safe_mode, tx.settings.safeOpts, (v) => (v === 'off' ? setSafeOffAsk(true) : safe(v)))}
-        {safeOffAsk ? (
-          <View style={pad}>
-            <Banner tone="danger" text={tx.settings.safeOffWarn} />
-            <Button kind="danger" small title={tx.common.confirm} onPress={() => { setSafeOffAsk(false); safe('off'); }} />
-          </View>
-        ) : null}
-        {show(tx.settings.blocked) ? <ListRow testID="settings-blocked" title={tx.settings.blocked} onPress={() => navigation.navigate('Blocked')} /> : null}
-        {show(tx.safety.menu) ? <ListRow title={tx.safety.menu} onPress={() => navigation.navigate('Safety')} /> : null}
-        {show(tx.safety.lock.title) ? <ListRow testID="settings-applock" title={tx.safety.lock.title} onPress={() => navigation.navigate('AppLock')} /> : null}
-        {show(tx.prefs.verification) ? (
-          <ListRow
-            title={tx.prefs.verification}
-            sub={me.verified ? tx.prefs.verified(me.verified_since ?? '') : tx.prefs.notVerified}
-            right={me.verified ? tx.prefs.reverify : undefined}
-            onPress={() => navigation.navigate('Verify')}
-          />
-        ) : null}
-      </Section>
+          <Group label={S.about}>
+            <Row title={tx.prefs.privacy} onPress={() => Linking.openURL('https://thirstr.fun/privacy/')} />
+            <Row title={tx.prefs.licenses} onPress={() => setLic(!lic)} />
+            {lic ? <Text style={{ ...type.meta, color: color.fgSecondary, padding: space.l }}>{tx.prefs.licensesBody}</Text> : null}
+            <Row title={S.version} value={app.expo.version} />
+          </Group>
 
-      <Section title={tx.settings.account}>
-        {me.status === 'paused' ? (
-          <ListRow title={tx.settings.resume} onPress={() => call(async () => setMe(await api<Me>('POST', '/account/resume')))} />
-        ) : (
-          <ListRow title={tx.settings.pause} onPress={() => call(async () => setMe(await api<Me>('POST', '/account/pause')))} />
-        )}
-        <ListRow testID="settings-email" title={tx.signInEmail.row} sub={me.has_email ? undefined : tx.signInEmail.rowSub} right={me.has_email ? tx.signInEmail.added : undefined} onPress={me.has_email ? undefined : () => setEmailSheet(true)} />
-        <ListRow testID="settings-devices" title={tx.devices.title} onPress={() => navigation.navigate('Devices')} />
-        <ListRow testID="settings-export" title={tx.exportData.title} sub={exported ? tx.exportData.ready : tx.exportData.hint} onPress={() => call(async () => { await exportData(); setExported(true); })} />
-        <ListRow testID="logout" title={tx.settings.logout} onPress={() => call(async () => { await api('POST', '/auth/logout').catch(() => {}); await clearSession(); signOut(); })} />
-        <ListRow title={tx.settings.logoutAll} onPress={() => call(async () => { await api('POST', '/auth/logout_all'); await clearSession(); signOut(); })} />
-        <ListRow title={tx.settings.delete} danger onPress={() => setDel('')} />
-        {del !== null ? (
-          <View style={pad}>
-            <Field label={tx.settings.deleteConfirm} value={del} onChangeText={setDel} autoCapitalize="characters" />
-            <Button kind="danger" title={tx.settings.delete} disabled={del !== 'DELETE'} onPress={() => call(async () => { await api('DELETE', '/account', { confirm: 'DELETE' }); await clearSession(); signOut(); })} />
-          </View>
-        ) : null}
-      </Section>
-
-      <Section title={tx.prefs.app}>
-        {choice(tx.prefs.units, pf.units, tx.prefs.unitOpts, (v) => setPrefs({ units: v as 'km' | 'mi' }).then(setPf))}
-        {Platform.OS !== 'web' ? tog(tx.prefs.haptics, pf.haptics, (v) => setPrefs({ haptics: v }).then(setPf)) : null}
-        {show(tx.prefs.language) ? <ListRow title={tx.prefs.language} sub={tx.prefs.languageSub} onPress={() => Linking.openSettings().catch(() => {})} /> : null}
-        {show(tx.prefs.privacy) ? <ListRow title={tx.prefs.privacy} onPress={() => Linking.openURL('https://thirstr.fun/privacy/')} /> : null}
-        {show(tx.prefs.licenses) ? <ListRow title={tx.prefs.licenses} onPress={() => setLic(!lic)} /> : null}
-        {lic ? <Text style={{ ...type.meta, color: color.fgSecondary, paddingVertical: space.m }}>{tx.prefs.licensesBody}</Text> : null}
-      </Section>
-      <SignInEmailSheet visible={emailSheet} onClose={() => setEmailSheet(false)} />
+          <Pressable
+            testID="logout"
+            accessibilityRole="button"
+            onPress={async () => {
+              setErr(null);
+              await api('POST', '/auth/logout').catch(() => {});
+              await clearSession();
+              signOut();
+            }}
+            style={({ pressed }) => ({ height: 52, borderRadius: radius.pill, borderWidth: 1.5, borderColor: color.line, alignItems: 'center', justifyContent: 'center', backgroundColor: pressed ? color.bgRaised : 'transparent' })}
+          >
+            <Text style={{ ...type.headline, color: color.fgPrimary }}>{S.logout}</Text>
+          </Pressable>
+        </>
+      )}
     </ScrollView>
+  );
+}
+
+function EyeIcon() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={color.onAccent} strokeWidth={2.2}>
+      <Path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" />
+      <Circle cx={12} cy={12} r={3} />
+    </Svg>
+  );
+}
+
+function BellIcon() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={color.onAccent} strokeWidth={2.2} strokeLinecap="round">
+      <Path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z" />
+      <Path d="M10 21h4" />
+    </Svg>
   );
 }

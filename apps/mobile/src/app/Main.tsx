@@ -18,7 +18,9 @@ import { BlockedScreen } from '../me/BlockedScreen';
 import { DevicesScreen } from '../me/DevicesScreen';
 import { EditProfileScreen } from '../me/EditProfileScreen';
 import { MeScreen } from '../me/MeScreen';
+import { LensPreviewScreen } from '../me/LensPreviewScreen';
 import { SettingsScreen } from '../me/SettingsScreen';
+import { AccountSettings, ChatSettings, DeleteAccount, NotificationSettings, PrivacySettings, SafetySettings } from '../me/settings/screens';
 import { TapsScreen } from '../me/TapsScreen';
 import { ProfileScreen } from '../profile/ProfileScreen';
 import { VerifyScreen } from '../screens/Verify';
@@ -200,6 +202,13 @@ export function Main() {
           <Stack.Screen name="Profile" component={ProfileScreen as React.ComponentType} />
           <Stack.Screen name="EditProfile" component={EditProfileScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="Settings" component={SettingsScreen as React.ComponentType} options={sub} />
+          <Stack.Screen name="PrivacySettings" component={PrivacySettings} options={sub} />
+          <Stack.Screen name="ChatSettings" component={ChatSettings} options={sub} />
+          <Stack.Screen name="NotificationSettings" component={NotificationSettings} options={sub} />
+          <Stack.Screen name="SafetySettings" component={SafetySettings as React.ComponentType} options={sub} />
+          <Stack.Screen name="AccountSettings" component={AccountSettings as React.ComponentType} options={sub} />
+          <Stack.Screen name="DeleteAccount" component={DeleteAccount} options={sub} />
+          <Stack.Screen name="LensPreview" component={LensPreviewScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="Blocked" component={BlockedScreen} options={sub} />
           <Stack.Screen name="Taps" component={TapsScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="Verify" component={VerifyRoute as React.ComponentType} />
