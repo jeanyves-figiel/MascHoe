@@ -1,0 +1,6 @@
+{
+  "name": "Thirstr.fun by Figiel",
+  "address": ["Schulstrasse 31", "8952 Schlieren"],
+  "country": { "en": "Switzerland", "fr": "Suisse", "de": "Schweiz" },
+  "email": "hello@thirstr.fun"
+}

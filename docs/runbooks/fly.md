@@ -31,6 +31,9 @@ Registrar + DNS: GoDaddy (owner account). Records (TTL 1 h):
 | `_acme-challenge` | CNAME | Fly DNS-01 target from `addCertificate(thirstr.fun)` |
 | `www` | CNAME | `thirstr.fun` (same app; `Plugs.Site` 301 → apex) |
 | `_acme-challenge.www` | CNAME | Fly DNS-01 target from `addCertificate(www.thirstr.fun)` |
+| `@` | MX | `mx1.improvmx.com` (10), `mx2.improvmx.com` (20): ImprovMX forwards `hello@thirstr.fun` to the owner (#62) |
+| `@` | TXT | `v=spf1 include:spf.improvmx.com ~all` (add the transactional SMTP provider here, #26) |
+| `_dmarc` | TXT | GoDaddy default `p=quarantine` (unchanged) |
 
 Fly certificates (Let's Encrypt, auto-renew) were added with GraphQL `addCertificate(appId, hostname)`; check with `checkCertificate` or `flyctl certs show <host> -a <app>`. IPs come from `app { sharedIpAddress ipAddresses }`. New host: add cert → add the 3 records → wait for `clientStatus: Ready` → change `PHX_HOST`/`APP_URL`/`WEBAUTHN_*` in the toml.
 

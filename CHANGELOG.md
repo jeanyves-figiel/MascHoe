@@ -5,6 +5,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- Website legal notice / Impressum (#62, W-01): `/legal/`, `/fr/legal/`, `/de/legal/` + footer link, built from `web/site/legal.json` (operator data; page omitted until the file exists).
+- `hello@thirstr.fun` inbound mail (#62): GoDaddy MX → ImprovMX forwarding + SPF; records in `docs/runbooks/fly.md` › Domain.
+
 ### Changed
 - **Chat delivery spec** (F-07 R-07.16–R-07.24, AC-07.5–AC-07.10; api.md, data-model.md, F-17 R-17.5): Sending → Sent → Delivered → Read states; persistent outbox with automatic retry and backoff; idempotent `client_id` send (no duplicates on retry) and all-or-nothing server write; request timeouts and "Waiting for network" chip; no silent drop of undecryptable messages; per-message local store without the 500-message cap; read receipts cover Delivered and typing, enforced both ways, with a per-chat override. Issues #76, #78–#82, #84.
 - **Required vs optional fields** (owner decisions 2026-11-18, [docs/spec/required-fields.md](docs/spec/required-fields.md)):

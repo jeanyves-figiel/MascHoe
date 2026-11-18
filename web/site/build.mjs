@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Builds the static marketing site (docs/spec/website.md, W-01) into web/site/dist.
 // No dependencies: node web/site/build.mjs [outDir]
-import { readFileSync, writeFileSync, mkdirSync, rmSync, cpSync, readdirSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, rmSync, cpSync, readdirSync, existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -10,6 +10,9 @@ const out = resolve(process.argv[2] ?? join(here, "dist"));
 const LANGS = ["en", "fr", "de"];
 const CANON = "https://thirstr.fun";
 const EMAIL = "hello@thirstr.fun";
+// Operator details for the legal notice (#62). Page + footer link only when present.
+const legalPath = join(here, "legal.json");
+const LEGAL = existsSync(legalPath) ? JSON.parse(readFileSync(legalPath, "utf8")) : null;
 const S = Object.fromEntries(LANGS.map((l) => [l, JSON.parse(readFileSync(join(here, "strings", `${l}.json`), "utf8"))]));
 
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -48,7 +51,7 @@ ${noindex ? '<meta name="robots" content="noindex">' : `<link rel="canonical" hr
 <main id="main">
 ${body}
 </main>
-<footer><span>© ${new Date().getUTCFullYear()} Thirstr</span><a href="${prefix(l)}privacy/">${esc(t.footer_privacy)}</a><a href="mailto:${EMAIL}">${EMAIL}</a><span>${esc(t.footer_age)}</span></footer>
+<footer><span>© ${new Date().getUTCFullYear()} Thirstr</span><a href="${prefix(l)}privacy/">${esc(t.footer_privacy)}</a>${LEGAL ? `<a href="${prefix(l)}legal/">${esc(t.footer_legal)}</a>` : ""}<a href="mailto:${EMAIL}">${EMAIL}</a><span>${esc(t.footer_age)}</span></footer>
 </div>
 </body>
 </html>
@@ -91,6 +94,23 @@ ${secs}
   return page(l, "privacy/", `${t.privacy_page_title} · Thirstr`, t.privacy_intro, body);
 }
 
+function legal(l) {
+  const t = S[l];
+  const L = LEGAL;
+  const country = typeof L.country === "object" ? L.country[l] ?? L.country.en : L.country;
+  const addr = [L.name, ...L.address, country].map(esc).join("<br>");
+  const email = L.email ?? EMAIL;
+  const body = `<article class="doc"><h1>${esc(t.legal_page_title)}</h1>
+<h2>${esc(t.legal_operator)}</h2><p>${addr}</p>
+<h2>${esc(t.legal_contact)}</h2><p><a href="mailto:${esc(email)}">${esc(email)}</a></p>
+${L.uid ? `<h2>${esc(t.legal_uid)}</h2><p>${esc(L.uid)}</p>` : ""}
+<h2>${esc(t.legal_resp)}</h2><p>${esc(L.responsible ?? L.name)}</p>
+<h2>${esc(t.legal_liab_h)}</h2><p>${esc(t.legal_liab)}</p>
+<h2>${esc(t.legal_odr_h)}</h2><p>${esc(t.legal_odr)}</p>
+<p class="back"><a class="btn" href="${prefix(l)}">${esc(t.back_home)}</a></p></article>`;
+  return page(l, "legal/", `${t.legal_page_title} · Thirstr`, t.legal_page_title, body);
+}
+
 function notFound() {
   const body = `<div class="nf"><h1>404</h1>
 ${LANGS.map((l) => `<p lang="${l}"><strong>${esc(S[l].nf_title)}</strong> <a href="${prefix(l)}">${esc(S[l].back_home)}</a></p>`).join("\n")}</div>`;
@@ -105,13 +125,14 @@ for (const l of LANGS) {
   const base = l === "en" ? "" : `${l}/`;
   write(`${base}index.html`, home(l));
   write(`${base}privacy/index.html`, privacy(l));
+  if (LEGAL) write(`${base}legal/index.html`, legal(l));
 }
 write("404.html", notFound());
 write("robots.txt", `User-agent: *\nAllow: /\nSitemap: ${CANON}/sitemap.xml\n`);
 write(
   "sitemap.xml",
   `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${LANGS.flatMap((l) =>
-    ["", "privacy/"].map((s) => `<url><loc>${CANON}${prefix(l)}${s}</loc></url>`)
+    ["", "privacy/", ...(LEGAL ? ["legal/"] : [])].map((s) => `<url><loc>${CANON}${prefix(l)}${s}</loc></url>`)
   ).join("\n")}\n</urlset>\n`
 );
 for (const f of ["site.css", "favicon.svg", "fonts", "c"]) cpSync(join(here, f), join(out, f), { recursive: true });
