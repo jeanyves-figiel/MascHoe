@@ -97,8 +97,14 @@ jobs:
             -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_STYLE=Automatic \
             CURRENT_PROJECT_VERSION="$build" \
-            | tail -n 200
-          test "${PIPESTATUS[0]}" -eq 0
+            > "$RUNNER_TEMP/archive.log" 2>&1 && ok=0 || ok=$?
+          tail -n 200 "$RUNNER_TEMP/archive.log"
+          if [ "$ok" -ne 0 ]; then
+            echo "::group::Errors"
+            grep -nE "error:|error [A-Z]+[0-9]+|\*\* ARCHIVE FAILED|The following build commands failed" -A4 "$RUNNER_TEMP/archive.log" | head -n 120
+            echo "::endgroup::"
+          fi
+          exit "$ok"
 
       - name: Export and upload to TestFlight
         if: steps.gate.outputs.ok == 'true'
