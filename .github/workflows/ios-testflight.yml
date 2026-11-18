@@ -81,6 +81,11 @@ jobs:
           printf '%s\n' "$ASC_KEY_P8" > "$RUNNER_TEMP/keys/AuthKey_$ASC_KEY_ID.p8"
           echo "ASC_KEY_PATH=$RUNNER_TEMP/keys/AuthKey_$ASC_KEY_ID.p8" >> "$GITHUB_ENV"
 
+      - name: Revoke CI development certificates (Apple caps their number)
+        if: steps.gate.outputs.ok == 'true'
+        working-directory: .
+        run: node .github/scripts/asc-revoke-ci-dev-certs.mjs
+
       - name: Native project (expo prebuild)
         if: steps.gate.outputs.ok == 'true'
         run: IOS_BUILD_NUMBER=$((GITHUB_RUN_NUMBER + BUILD_NUMBER_OFFSET)) npx expo prebuild --platform ios --clean
@@ -128,6 +133,11 @@ jobs:
             -authenticationKeyPath "$ASC_KEY_PATH" -authenticationKeyID "$ASC_KEY_ID" \
             -authenticationKeyIssuerID "$ASC_ISSUER_ID"
           echo "Uploaded build $((GITHUB_RUN_NUMBER + BUILD_NUMBER_OFFSET)); Apple processing takes ~5-15 min."
+
+      - name: Revoke this run's development certificate
+        if: always() && steps.gate.outputs.ok == 'true'
+        working-directory: .
+        run: node .github/scripts/asc-revoke-ci-dev-certs.mjs
 
       - name: Remove key file
         if: always()

@@ -21,6 +21,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - **Expired-message notice data** (#80): messages swept unread after 30 d are counted per device and group and returned once as `expired` by `GET /mls/messages`.
 - **Delivery latency** (#84): aggregate stored → acked histogram per day (no ids or pairs), admin console › Delivery with p95.
+### Added
+- Website legal notice / Impressum (#62, W-01): `/legal/`, `/fr/legal/`, `/de/legal/` + footer link, built from `web/site/legal.json` (operator data; page omitted until the file exists).
+- `hello@thirstr.fun` inbound mail (#62): GoDaddy MX → ImprovMX forwarding + SPF; records in `docs/runbooks/fly.md` › Domain.
 
 ### Changed
 - **Chat delivery spec** (F-07 R-07.16–R-07.24, AC-07.5–AC-07.10; api.md, data-model.md, F-17 R-17.5): Sending → Sent → Delivered → Read states; persistent outbox with automatic retry and backoff; idempotent `client_id` send (no duplicates on retry) and all-or-nothing server write; request timeouts and "Waiting for network" chip; no silent drop of undecryptable messages; per-message local store without the 500-message cap; read receipts cover Delivered and typing, enforced both ways, with a per-chat override. Issues #76, #78–#82, #84.
@@ -36,6 +39,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Sign-in email** for Apple, Google and passkey accounts: Settings › Account › Sign-in email (`POST /me/email`, confirm by link, only the hash is stored). Offered once on Me a week after sign-up. `GET /me` returns `has_email`.
 
 ### Fixed
+- **iOS builds stopped (Apple certificate limit)**: each build machine created a new Apple development certificate until Apple refused more. The iOS workflow now revokes the certificates CI created (named "Created via API") before and after each build (#77).
 - **iOS build failures were hard to read**: the Archive step now prints the compiler errors (not just the last 200 lines) when it fails.
 - **App opened to an empty screen on iPhone**: the app drew nothing until its custom font finished loading, so a font that failed or hung left a blank screen. It now falls back to the system font after 3 s, shows a spinner meanwhile, and shows the error message (instead of nothing) if a screen crashes while drawing.
 - **QA pass 1** (issues 65–69), found walking the whole app on DEV in en/fr/de:

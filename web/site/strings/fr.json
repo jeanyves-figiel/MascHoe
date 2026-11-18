@@ -46,14 +46,45 @@
   "privacy_page_title": "Résumé vie privée",
   "privacy_intro": "Voici, en langage clair, comment Thirstr traite tes données. La politique de confidentialité complète sera publiée avant la sortie de l'appli dans les stores.",
   "privacy_sections": [
-    ["Ce que nous collectons", "Les infos de base que tu nous donnes (prénom, date de naissance, photos, texte du profil) et ta position à la précision que tu choisis. Ta position exacte n'est jamais stockée, sauf si tu poses une épingle exacte, qui expire toute seule."],
-    ["Ce que nous ne faisons jamais", "Pas de pub, pas d'identifiant publicitaire, pas de courtiers en données, aucune vente ni partage de tes données à des fins marketing. Aucun pistage sur ce site : pas de cookies, pas de statistiques, aucune requête vers des tiers."],
-    ["Chiffrement", "Les chats et albums privés sont chiffrés de bout en bout. Nos serveurs ne détiennent que du contenu illisible pour nous."],
-    ["Photos", "Les photos publiques sont vérifiées par une IA selon nos règles. L'équipe ne parcourt pas tes photos ; une personne n'en voit une que si elle est signalée."],
-    ["Où sont tes données", "Uniquement sur des serveurs dans l'Union européenne."],
-    ["Tu gardes le contrôle", "Vois et change ta visibilité à tout moment, mets ton compte en pause, exporte tes données ou supprime tout. La suppression est immédiate."],
-    ["Contact", "Questions sur tes données : hello@thirstr.fun"]
+    [
+      "Ce que nous collectons",
+      "Les infos de base que tu nous donnes (prénom, date de naissance, photos, texte du profil) et ta position à la précision que tu choisis. Ta position exacte n'est jamais stockée, sauf si tu poses une épingle exacte, qui expire toute seule."
+    ],
+    [
+      "Ce que nous ne faisons jamais",
+      "Pas de pub, pas d'identifiant publicitaire, pas de courtiers en données, aucune vente ni partage de tes données à des fins marketing. Aucun pistage sur ce site : pas de cookies, pas de statistiques, aucune requête vers des tiers."
+    ],
+    [
+      "Chiffrement",
+      "Les chats et albums privés sont chiffrés de bout en bout. Nos serveurs ne détiennent que du contenu illisible pour nous."
+    ],
+    [
+      "Photos",
+      "Les photos publiques sont vérifiées par une IA selon nos règles. L'équipe ne parcourt pas tes photos ; une personne n'en voit une que si elle est signalée."
+    ],
+    [
+      "Où sont tes données",
+      "Uniquement sur des serveurs dans l'Union européenne."
+    ],
+    [
+      "Tu gardes le contrôle",
+      "Vois et change ta visibilité à tout moment, mets ton compte en pause, exporte tes données ou supprime tout. La suppression est immédiate."
+    ],
+    [
+      "Contact",
+      "Questions sur tes données : hello@thirstr.fun"
+    ]
   ],
   "back_home": "Retour à l'accueil",
-  "nf_title": "Page introuvable"
+  "nf_title": "Page introuvable",
+  "footer_legal": "Mentions légales",
+  "legal_page_title": "Mentions légales",
+  "legal_operator": "Éditeur",
+  "legal_contact": "Contact",
+  "legal_uid": "Numéro IDE",
+  "legal_resp": "Responsable du contenu",
+  "legal_liab_h": "Responsabilité",
+  "legal_liab": "Nous vérifions ce site avec soin, sans pouvoir garantir qu'il soit complet ou à jour. Nous ne sommes pas responsables du contenu des sites externes vers lesquels nous renvoyons.",
+  "legal_odr_h": "Litiges",
+  "legal_odr": "Nous ne sommes ni obligés ni disposés à participer à une procédure de règlement des litiges devant un organe de conciliation pour consommateurs."
 }
