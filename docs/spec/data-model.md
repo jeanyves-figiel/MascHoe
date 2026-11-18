@@ -110,6 +110,8 @@ Address/door code: E2EE message to accepted guests, never in DB.
 ### mls_key_packages (id bigserial, profile_id, device_id, key_package bytea, last_resort bool, created_at) — single-use; ≤ 200 per (profile, device); one last-resort per (profile, device)
 ### mls_messages (id bigserial, to_profile_id, to_device_id, from_profile_id, group_id bytea, kind welcome|commit|app, key_package_id, ciphertext bytea, created_at) — deleted on ack, swept after 30 d
 ### franking_tags (message_id, tag bytea, created_at) — R-07.11 commitments, swept with messages
+### mls_send_keys (device_id, client_id, result jsonb, created_at; PK device_id + client_id) — R-07.18 idempotency, swept after 7 d
+### mls_expired (to_device_id, group_id bytea, count, created_at) — R-07.22 swept-unread counts, deleted when reported to the device
 ### media_blobs (id uuid, account_id, storage_key, size, expires_at, created_at) — E2EE ciphertext only; owner can delete
 ### devices.push_token / push_platform — APNs/FCM token per device (content-free pushes)
 ### trusted_contacts — **not stored server-side** beyond relay tokens (F-13).
@@ -139,7 +141,7 @@ Address/door code: E2EE message to accepted guests, never in DB.
 ## Device-only (SQLCipher)
 Chats, private notes & tags, trusted contacts list, health reminders, received media, albums keys, MLS state, recovery phrase (never stored, shown once).
 
-Beta store: one encrypted key-value table (`expo-sqlite` + SQLCipher, key in Keychain). Keys: `convs`, `msgs:{conv}`, `grp:{group}` (MLS state), `g2c:{group}`, `kp:{sha256}` (private key packages), `kp:lastresort:{profile}`, `albums`, `grant:{conv}:{album}`, `note:{profile}`, `quick:custom`. Wiped on sign-out and account delete.
+Beta store: one encrypted key-value table (`expo-sqlite` + SQLCipher, key in Keychain). Keys: `convs`, `msg` table (one row per message, R-07.21), `outbox` table (R-07.17), `pending` (undecrypted ciphertext ≤ 24 h, R-07.20), `grp:{group}` (MLS state), `g2c:{group}`, `kp:{sha256}` (private key packages), `kp:lastresort:{profile}`, `albums`, `grant:{conv}:{album}`, `note:{profile}`, `quick:custom`. Wiped on sign-out and account delete.
 
 ## Retention
 | Data | Retention |
