@@ -14,29 +14,27 @@ defmodule ThirstrWeb.ProfileController do
         options: Fields.options(),
         defaults:
           Map.new(Fields.catalogue(), fn {k, {_, v, kinds}} ->
-            {k, %{visibility: v, kinds: kinds}}
+            {k, %{visibility: v, kinds: kinds, lenses: lenses(kinds)}}
           end),
         health: Fields.health()
       })
+
+  # F-06 R-06.1b: lenses that show a field.
+  defp lenses(:all), do: Fields.lenses()
+
+  defp lenses(kinds) do
+    ["hookup"] ++
+      if("friends" in kinds, do: ["friends", "sport"], else: []) ++
+      if("sport" in kinds and "friends" not in kinds, do: ["sport"], else: [])
+  end
 
   # --- own
 
   def index(conn, _),
     do: json(conn, %{profiles: Enum.map(Profiles.list_own(a(conn)), &MeJSON.profile/1)})
 
-  def create(conn, %{"kind" => kind}) do
-    with {:ok, p} <- Profiles.create(a(conn), kind),
-         do: conn |> put_status(201) |> json(MeJSON.profile(p))
-  end
-
-  def create(_conn, _), do: {:error, {:validation, %{kind: ["required"]}}}
-
   def update(conn, %{"id" => id} = params) do
     with {:ok, p} <- Profiles.update(a(conn), id, params), do: json(conn, MeJSON.profile(p))
-  end
-
-  def delete(conn, %{"id" => id}) do
-    with :ok <- Profiles.delete(a(conn), id), do: send_resp(conn, 204, "")
   end
 
   def create_photo(conn, %{"profile_id" => pid} = params) do
@@ -84,8 +82,8 @@ defmodule ThirstrWeb.ProfileController do
 
   # --- others
 
-  def show(conn, %{"id" => id}) do
-    with {:ok, view} <- Social.view(a(conn), id), do: json(conn, view)
+  def show(conn, %{"id" => id} = params) do
+    with {:ok, view} <- Social.view(a(conn), id, params["mode"]), do: json(conn, view)
   end
 
   def tap(conn, %{"id" => id}) do

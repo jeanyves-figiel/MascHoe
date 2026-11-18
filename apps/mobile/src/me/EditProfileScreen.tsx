@@ -1,5 +1,5 @@
 import { NAME_MAX } from '../onboarding/flow';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, ApiError } from '../api/client';
@@ -7,7 +7,7 @@ import { useOptions } from '../api/options';
 import type { MyProfile, Visibility } from '../api/types';
 import { useSession } from '../app/session';
 import { opt, tx } from '../i18n/app';
-import { availableFor, fieldType, GROUPS, maxLen, optionKey } from '../profile/fieldMeta';
+import { fieldType, GROUPS, maxLen, optionKey } from '../profile/fieldMeta';
 import { color, font, modeColor, radius, space, type } from '../theme/tokens';
 import { Banner, Button, Chip, Chips, ErrorText, Field, Icon, Loading, Section, SectionLabel, Sheet, StickyCta, Toggle } from '../ui';
 import { getLocal, setLocal } from './localFields';
@@ -16,12 +16,12 @@ import { PhotoEditor } from './PhotoEditor';
 import { ProfileLinks } from './ProfileLinks';
 
 type Nav = { goBack: () => void };
+type Params = { id: string; focus?: 'sport' };
 const VIS: Visibility[] = ['public', 'verified', 'chats', 'only_me'];
-const kindMode = { now: 'hookup', friends: 'friends', sport: 'sport' } as const;
 
 // S-41 Edit profile (F-06): every field with its own visibility (R-06.4).
-export function EditProfileScreen({ route, navigation }: { route: { params: { id: string } }; navigation: Nav }) {
-  const { me, refresh } = useSession();
+export function EditProfileScreen({ route, navigation }: { route: { params: Params }; navigation: Nav }) {
+  const { me, refresh, mode } = useSession();
   const options = useOptions();
   const insets = useSafeAreaInsets();
   const initial = (me.profiles ?? []).find((p) => p.id === route.params.id) ?? me.profile!;
@@ -33,7 +33,13 @@ export function EditProfileScreen({ route, navigation }: { route: { params: { id
   const [err, setErr] = useState<string | null>(null);
   const [fieldErr, setFieldErr] = useState<Record<string, string[]>>({});
   const [visFor, setVisFor] = useState<string | null>(null);
-  const accent = modeColor[kindMode[p.kind]];
+  const accent = modeColor[route.params.focus ?? mode];
+  // Turning Sport on in Me opens here at the sport fields (F-11 R-11.1 mini-setup).
+  const scroll = useRef<React.ComponentRef<typeof ScrollView>>(null);
+  const [focusY, setFocusY] = useState<number | null>(null);
+  useEffect(() => {
+    if (focusY !== null) scroll.current?.scrollTo({ y: focusY, animated: true });
+  }, [focusY]);
 
   useEffect(() => {
     getLocal(p.id).then((l) => setVals((v) => ({ ...v, ...l })));
@@ -134,20 +140,24 @@ export function EditProfileScreen({ route, navigation }: { route: { params: { id
 
   return (
     <View style={{ flex: 1, backgroundColor: color.bgBase }}>
-      <ScrollView contentContainerStyle={{ padding: space.l, paddingTop: space.s, gap: space.xl, paddingBottom: 150, maxWidth: 560, width: '100%', alignSelf: 'center' }} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={scroll} contentContainerStyle={{ padding: space.l, paddingTop: space.s, gap: space.xl, paddingBottom: 150, maxWidth: 560, width: '100%', alignSelf: 'center' }} keyboardShouldPersistTaps="handled">
         <Text accessibilityRole="header" style={{ ...type.display, color: color.fgPrimary }}>
           {tx.edit.title}
         </Text>
         <PhotoEditor profile={p} accent={accent} onChange={setP} />
         <Field label={tx.edit.name} value={name} onChangeText={setName} maxLength={NAME_MAX} />
         {GROUPS.map(({ group, keys }) => {
-          const ks = keys.filter((k) => availableFor(options.defaults[k]?.kinds, p.kind));
+          const ks = keys.filter((k) => options.defaults[k]);
           if (!ks.length) return null;
+          const caption = tx.edit.lensCaption[group];
           return (
-            <View key={group} style={{ gap: space.m }}>
-              <Text accessibilityRole="header" style={{ ...type.title, color: color.fgPrimary, marginTop: space.s }}>
-                {tx.profile.sections[group]}
-              </Text>
+            <View key={group} style={{ gap: space.m }} onLayout={group === 'sport' && route.params.focus === 'sport' ? (e) => setFocusY(e.nativeEvent.layout.y) : undefined}>
+              <View style={{ gap: 2, marginTop: space.s }}>
+                <Text accessibilityRole="header" style={{ ...type.title, color: color.fgPrimary }}>
+                  {tx.profile.sections[group]}
+                </Text>
+                {caption ? <Text style={{ ...type.meta, color: group === 'sport' ? color.sport : color.hookup }}>{caption}</Text> : null}
+              </View>
               {group === 'health' ? <Banner tone="trust" text={tx.edit.healthNote} /> : null}
               {ks.map((k) => (
                 <View key={k} style={{ gap: space.s, paddingBottom: space.m, borderBottomWidth: 1, borderBottomColor: color.lineSubtle }}>

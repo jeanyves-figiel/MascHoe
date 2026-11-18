@@ -15,7 +15,7 @@ defmodule Thirstr.Nearby do
     {10_000, "5_10k"}
   ]
 
-  @doc "Viewer context: point, area cells, profile for the mode's kind."
+  @doc "Viewer context: point, area cells, the account's one profile (R-06.1), lens."
   def ctx(%Account{} = a, mode \\ "hookup") do
     kind = Explore.kind_for_mode(mode) || "now"
     point = Location.viewer_point(a)
@@ -26,12 +26,13 @@ defmodule Thirstr.Nearby do
     %{
       account: a,
       mode: mode,
+      lens: Explore.lens(mode),
       kind: kind,
       verified: Account.verified?(a),
       safe_mode: Account.safe_mode_on?(a),
       settings: Settings.get(a),
       point: point,
-      profile_id: Enum.find_value(own, fn [id, k] -> if k == kind, do: id end),
+      profile_id: Enum.find_value(own, fn [id, _] -> id end),
       own_ids: Enum.map(own, &hd/1),
       r5: point && cell(point, 5)
     }

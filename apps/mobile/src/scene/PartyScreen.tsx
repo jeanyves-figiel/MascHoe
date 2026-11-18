@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ScrollView, Text, TextInput, View } from 'react-native';
 import { api, ApiError } from '../api/client';
-import { kindForMode } from '../api/types';
 import { useSession } from '../app/session';
 import * as E from '../chat/engine';
 import { kv } from '../chat/kv';
@@ -37,7 +36,7 @@ export function PartyScreen({ navigation, route }: { navigation: Nav; route: { p
   const [addrOpen, setAddrOpen] = useState(false);
   const [addr, setAddr] = useState('');
   const [note, setNote] = useState<string | null>(null);
-  const mine = (me.profiles ?? []).find((x) => x.kind === kindForMode.hookup) ?? me.profile;
+  const mine = me.profile;
 
   const load = useCallback(
     () => api<Party>('GET', `/parties/${route.params.id}${route.params.code ? `?code=${route.params.code}` : ''}`).then(setP, (e) => setErr(e instanceof ApiError ? e.message : tx.common.error)),

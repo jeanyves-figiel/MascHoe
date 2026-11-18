@@ -27,6 +27,7 @@ defmodule ThirstrWeb.FallbackController do
       })
 
   def error(conn, {:conflict_code, code, msg}), do: send_error(conn, 409, code, msg)
+  def error(conn, {:unprocessable, code, msg}), do: send_error(conn, 422, code, msg)
   def error(conn, {:unavailable, msg}), do: send_error(conn, 409, "unavailable", msg)
   def error(conn, {:not_verified, msg}), do: send_error(conn, 403, "not_verified", msg)
   def error(conn, {:safe_mode_blocked, msg}), do: send_error(conn, 403, "safe_mode_blocked", msg)

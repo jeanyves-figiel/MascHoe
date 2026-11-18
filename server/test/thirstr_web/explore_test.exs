@@ -257,27 +257,128 @@ defmodule ThirstrWeb.ExploreTest do
     end
   end
 
-  test "Sport and Friends profiles are separate and unlinkable; sport mode never shows Now profiles (AC-11.2)",
-       %{viewer: v, other: o} do
-    sp =
-      o.c |> recycle_authed() |> post("/v1/me/profiles", %{kind: "sport"}) |> json_response(201)
+  defp lenses!(u, show_in) do
+    u.c
+    |> recycle_authed()
+    |> patch("/v1/me/profiles/#{u.pid}", %{show_in: show_in})
+  end
 
-    assert sp["kind"] == "sport" and sp["id"] != o.pid
+  defp spicy_photo!(u) do
+    up =
+      u.c
+      |> recycle_authed()
+      |> post("/v1/me/profiles/#{u.pid}/photos", %{slot: 1})
+      |> json_response(201)
+
+    u.c
+    |> recycle_authed()
+    |> post("/v1/me/profiles/#{u.pid}/photos/#{up["photo_id"]}/check")
+    |> json_response(200)
+
+    # DEV classifier passes everything; mark this one as not strict-safe (R-06.3).
+    Thirstr.Repo.query!(
+      "UPDATE photos SET classifier_score = classifier_score || '{\"main_ok\": false}' WHERE id = $1",
+      [Ecto.UUID.dump!(up["photo_id"])]
+    )
+  end
+
+  @tag ac: "AC-06.5"
+  test "one profile per account; show_in comes from Here for and needs at least one lens",
+       %{other: o} do
+    me = o.c |> recycle_authed() |> get("/v1/me") |> json_response(200)
+    assert [%{"show_in" => ["hookup"]}] = me["profiles"]
 
     assert o.c
            |> recycle_authed()
            |> post("/v1/me/profiles", %{kind: "sport"})
-           |> json_response(409)
+           |> response(404)
 
+    assert %{"error" => %{"code" => "show_in_empty"}} = lenses!(o, []) |> json_response(422)
+    assert lenses!(o, ["sport", "bogus"]) |> json_response(422)
+
+    assert %{"show_in" => ["hookup", "sport"]} =
+             lenses!(o, ["sport", "hookup"]) |> json_response(200)
+
+    # sport fields are allowed on the one profile now
     assert o.c
            |> recycle_authed()
-           |> patch("/v1/me/profiles/#{sp["id"]}", %{fields: %{position: "top"}})
-           |> json_response(422)
+           |> patch("/v1/me/profiles/#{o.pid}", %{
+             fields: %{sports: ["climbing"], position: "top"}
+           })
+           |> json_response(200)
+  end
 
-    res = v.c |> recycle_authed() |> get("/v1/explore/grid?mode=sport") |> json_response(200)
-    refute o.pid in ids(res["items"])
-    # no photo yet → not visible (R-06.2)
-    refute sp["id"] in ids(res["items"])
+  @tag ac: "AC-06.4"
+  test "a profile only appears in the modes it is shown in (AC-11.2)", %{viewer: v, other: o} do
+    grid_in = fn mode ->
+      v.c |> recycle_authed() |> get("/v1/explore/grid?mode=#{mode}") |> json_response(200)
+    end
+
+    assert o.pid in ids(grid_in.("hookup")["items"])
+    refute o.pid in ids(grid_in.("sport")["items"])
+    refute o.pid in ids(grid_in.("friends")["items"])
+
+    assert v.c |> recycle_authed() |> get("/v1/profiles/#{o.pid}?mode=sport") |> response(404)
+
+    lenses!(o, ["friends", "sport"]) |> json_response(200)
+    refute o.pid in ids(grid_in.("hookup")["items"])
+    assert o.pid in ids(grid_in.("sport")["items"])
+    assert o.pid in ids(grid_in.("friends")["items"])
+    assert v.c |> recycle_authed() |> get("/v1/profiles/#{o.pid}?mode=hookup") |> response(404)
+  end
+
+  @tag ac: "AC-06.3"
+  test "Friends and Sport lenses hide spicy photos, hookup and health details", %{
+    viewer: v,
+    other: o
+  } do
+    lenses!(o, ["hookup", "friends", "sport"]) |> json_response(200)
+
+    o.c
+    |> recycle_authed()
+    |> patch("/v1/me/profiles/#{o.pid}", %{
+      fields: %{
+        position: "top",
+        hosting: "can_host",
+        looking_for: ["hookup", "friends"],
+        sports: ["climbing"],
+        bio: "Hi there"
+      }
+    })
+    |> json_response(200)
+
+    spicy_photo!(o)
+
+    view = fn mode ->
+      v.c |> recycle_authed() |> get("/v1/profiles/#{o.pid}?mode=#{mode}") |> json_response(200)
+    end
+
+    h = view.("hookup")
+    assert length(h["photos"]) == 2
+    assert h["fields"]["position"] == "top" and h["fields"]["sports"] == ["climbing"]
+
+    f = view.("friends")
+    assert length(f["photos"]) == 1
+    refute Map.has_key?(f["fields"], "position")
+    refute Map.has_key?(f["fields"], "hosting")
+    refute Map.has_key?(f["fields"], "sports")
+    assert f["fields"]["looking_for"] == ["friends"]
+    assert f["fields"]["bio"] == "Hi there"
+
+    s = view.("sport")
+    assert length(s["photos"]) == 1
+    refute Map.has_key?(s["fields"], "position")
+    assert s["fields"]["sports"] == ["climbing"]
+
+    card =
+      v.c
+      |> recycle_authed()
+      |> get("/v1/explore/grid?mode=friends")
+      |> json_response(200)
+      |> Map.fetch!("items")
+      |> Enum.find(&(&1["id"] == o.pid))
+
+    assert card["position"] == nil
   end
 
   @tag ac: "AC-09.2"

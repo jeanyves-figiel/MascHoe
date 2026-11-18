@@ -26,6 +26,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `hello@thirstr.fun` inbound mail (#62): GoDaddy MX → ImprovMX forwarding + SPF; records in `docs/runbooks/fly.md` › Domain.
 
 ### Changed
+- **One profile, three lenses** (#96, D-15): the separate Now / Sport / Friends profiles are gone.
+  - Me: "Show me in" switches for Hookup, Friends and Sport (at least one stays on), a "See yourself in" lens preview with hidden-photo count, and Preview as per lens. Turning Sport on without sports opens Edit profile at the sport fields. One-time notice for existing accounts.
+  - Friends and Sport only show photos that pass the strict check and never hookup or health details (server-enforced on Explore, map, profile view; `GET /profiles/{id}?mode`, 404 when not shown in that mode). Edit profile tags photos "Hookup only" and labels which sections show where.
+  - Explore shows "You're not shown in X · Show me" when you browse a mode you're off in. Activities need Sport on (`409 sport_off`).
+  - Server: `profiles.show_in`, set from "Here for" at onboarding; `POST/DELETE /me/profiles` removed. Migration merges Sport fields and activity posts into the main profile and deletes extra profiles (one profile per account).
 - **Spec: one profile, three lenses** (#96): replaces the separate Now / Sport / Friends profiles. One profile; "Show me in" Hookup / Friends / Sport on Me; Friends and Sport only show safe photos and never hookup or health details; Explore mode is the viewer's lens. Updated F-06, F-04, F-02, F-11, F-15, data model, API, screens, glossary, concept docs; decision D-15.
 - **Chat delivery spec** (F-07 R-07.16–R-07.24, AC-07.5–AC-07.10; api.md, data-model.md, F-17 R-17.5): Sending → Sent → Delivered → Read states; persistent outbox with automatic retry and backoff; idempotent `client_id` send (no duplicates on retry) and all-or-nothing server write; request timeouts and "Waiting for network" chip; no silent drop of undecryptable messages; per-message local store without the 500-message cap; read receipts cover Delivered and typing, enforced both ways, with a per-chat override. Issues #76, #78–#82, #84.
 - **Required vs optional fields** (owner decisions 2026-11-18, [docs/spec/required-fields.md](docs/spec/required-fields.md)):

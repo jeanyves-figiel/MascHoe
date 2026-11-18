@@ -172,6 +172,7 @@ defmodule Thirstr.Seeds do
         gender: gender,
         gender_other: if(gender == "other", do: "Genderfluid"),
         here_for: if(here == [], do: ["chat"], else: here),
+        show_in: Thirstr.Profiles.Profile.lenses_for(if(here == [], do: ["chat"], else: here)),
         visibility_map: %{},
         fields: fake_fields(),
         photo_ids: [],

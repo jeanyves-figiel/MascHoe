@@ -2,30 +2,34 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, ApiError } from '../api/client';
-import type { Kind, MyProfile } from '../api/types';
+import type { Mode, MyProfile } from '../api/types';
 import { useSession } from '../app/session';
 import { LocationSheet } from '../explore/LocationSheet';
 import { tx } from '../i18n/app';
 import { color, modeColor, radius, space, type } from '../theme/tokens';
 import Svg, { Circle } from 'react-native-svg';
-import { Banner, Button, ErrorText, ListRow, Photo, Section, Segmented, Toggle, VerifiedTick, Wordmark } from '../ui';
+import { Banner, Button, ErrorText, ListRow, Photo, Section, SectionLabel, Segmented, Toggle, VerifiedTick, Wordmark } from '../ui';
+import { LENSES } from '../profile/lens';
+import { LensPreview } from './LensPreview';
 import type { Notice } from '../trust/NoticesScreen';
 import { NowSheet } from './NowSheet';
 import { prefs, setPrefs } from './prefs';
 import { SignInEmailSheet } from './SignInEmail';
 
 type Nav = { navigate: (s: string, p?: object) => void };
-const KINDS: Kind[] = ['now', 'friends', 'sport'];
-const kindMode = { now: 'hookup', friends: 'friends', sport: 'sport' } as const;
+// Accounts from before one-profile-three-lenses (D-15, #96) get a one-time notice.
+const LENSES_SHIPPED = Date.parse('2026-11-19T00:00:00Z');
 
-// S-40 Me (F-06, F-07): profile switcher, completeness, preview-as, quick toggles.
+// S-60 Me (F-06, F-07): profile card, "Show me in" lenses, lens preview, quick toggles.
 export function MeScreen({ navigation }: { navigation: Nav }) {
   const { me, setMe, refresh, mode, setMode } = useSession();
   const insets = useSafeAreaInsets();
-  const profiles = me.profiles ?? (me.profile ? [me.profile] : []);
-  // The switcher follows the app mode (tab colour, Explore) and changes it (R-04.1).
-  const kind: Kind = mode === 'hookup' ? 'now' : mode;
-  const setKind = (k: Kind) => setMode(kindMode[k]);
+  const p: MyProfile | undefined = me.profile ?? me.profiles?.[0];
+  const showIn: Mode[] = p?.show_in ?? ['hookup'];
+  // The lens preview follows the app mode and changes it (R-04.1, R-06.7).
+  const [lensNote, setLensNote] = useState<string | null>(null);
+  const [mergedDone, setMergedDone] = useState(!!prefs().lensNoticeDone);
+  const merged = !mergedDone && !!me.created_at && Date.parse(me.created_at) < LENSES_SHIPPED;
   const [loc, setLoc] = useState(false);
   const [now, setNow] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -40,8 +44,7 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
     setPrefs({ emailNudgeDone: true });
   };
   const [err, setErr] = useState<string | null>(null);
-  const p: MyProfile | undefined = profiles.find((x) => x.kind === kind);
-  const accent = modeColor[kindMode[kind]];
+  const accent = modeColor[mode];
   const [notices, setNotices] = useState<Notice[]>([]);
   useEffect(() => {
     api<{ notices: Notice[] }>('GET', '/me/notices').then((r) => setNotices(r.notices), () => {});
@@ -63,6 +66,23 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
   };
 
   const main = p?.photos.find((x) => x.slot === 0);
+
+  // R-06.1a: at least one lens stays on. Turning Sport on without sports opens the sport fields.
+  const setLens = (m: Mode, on: boolean) => {
+    if (!p) return;
+    const next = on ? LENSES.filter((x) => x === m || showIn.includes(x)) : showIn.filter((x) => x !== m);
+    if (next.length === 0) {
+      setLensNote(tx.me.lensLastOne);
+      return;
+    }
+    setLensNote(null);
+    setMode(m);
+    run(async () => {
+      await api('PATCH', `/me/profiles/${p.id}`, { show_in: next });
+      const sports = p.fields.sports;
+      if (m === 'sport' && on && !(Array.isArray(sports) && sports.length)) navigation.navigate('EditProfile', { id: p.id, focus: 'sport' });
+    });
+  };
   const level = me.location?.level ?? 'city';
 
   return (
@@ -71,14 +91,6 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <Wordmark />
         </View>
-        <Segmented
-          grow
-          label="Profile"
-          value={kind}
-          onChange={setKind}
-          fills={{ now: color.hookup, friends: color.friends, sport: color.sport }}
-          options={KINDS.map((k) => ({ value: k, label: tx.modes[kindMode[k]] }))}
-        />
         {me.status === 'paused' ? <Banner tone="warn" text={tx.me.paused} /> : null}
         {p ? (
           <>
@@ -100,14 +112,33 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
               </View>
             </View>
             <Button testID="edit-profile" title={tx.me.editProfile} fill={color.fgPrimary} onPress={() => navigation.navigate('EditProfile', { id: p.id })} />
-            <View style={{ gap: space.xs }}>
-              <Text style={{ ...type.meta, color: color.fgSecondary }}>{tx.me.previewAs}</Text>
+            {merged ? (
+              <Banner
+                tone="personal"
+                text={tx.me.mergedNotice}
+                onPress={() => {
+                  setMergedDone(true);
+                  setPrefs({ lensNoticeDone: true });
+                }}
+              />
+            ) : null}
+            <Section title={tx.me.showMeIn}>
+              {LENSES.map((m) => (
+                <Toggle key={m} label={tx.modes[m]} sub={tx.me.lensWhat[m]} value={showIn.includes(m)} tone={modeColor[m]} disabled={busy} onChange={(v) => setLens(m, v)} />
+              ))}
+            </Section>
+            {lensNote ? <Banner tone="warn" text={lensNote} /> : null}
+            <View style={{ gap: space.s }}>
+              <SectionLabel>{tx.me.seeYourselfIn}</SectionLabel>
+              <Segmented grow label={tx.me.seeYourselfIn} value={mode} onChange={setMode} fills={modeColor} options={LENSES.map((m) => ({ value: m, label: tx.modes[m] }))} />
+              <LensPreview profile={p} mode={mode} shown={showIn.includes(mode)} />
               <View style={{ flexDirection: 'row', gap: space.s }}>
                 {(['stranger', 'verified', 'chats'] as const).map((as) => (
                   <Pressable
                     key={as}
                     accessibilityRole="button"
-                    onPress={() => navigation.navigate('Profile', { id: p.id, preview: as })}
+                    accessibilityLabel={`${tx.me.previewAs} ${tx.me.previews[as]}`}
+                    onPress={() => navigation.navigate('Profile', { id: p.id, preview: as, mode })}
                     style={{ flex: 1, height: 40, justifyContent: 'center', borderRadius: radius.pill, backgroundColor: color.bgRaised, alignItems: 'center' }}
                   >
                     <Text style={{ ...type.meta, color: color.fgPrimary }}>{tx.me.previews[as]}</Text>
@@ -116,12 +147,7 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
               </View>
             </View>
           </>
-        ) : (
-          <View style={{ gap: space.s }}>
-            <Text style={{ ...type.body, color: color.fgSecondary }}>{tx.me.createHint}</Text>
-            <Button testID={`create-${kind}`} title={tx.me.createProfile(tx.modes[kindMode[kind]])} fill={accent} busy={busy} onPress={() => run(() => api('POST', '/me/profiles', { kind }))} />
-          </View>
-        )}
+        ) : null}
 
         {suspended ? (
           <Banner tone="danger" text={tx.notices.suspended(new Date(suspended.ends_at!).toLocaleDateString())} onPress={() => navigation.navigate('Notices')} />
@@ -156,7 +182,6 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
           <ListRow testID="me-safety" title={tx.safety.menu} onPress={() => navigation.navigate('Safety')} />
           <ListRow testID="me-settings" title={tx.me.settings} onPress={() => navigation.navigate('Settings')} />
           <ListRow testID="me-notices" title={tx.notices.title} onPress={() => navigation.navigate('Notices')} />
-          {p && p.kind !== 'now' ? <ListRow title={tx.me.deleteProfile} danger onPress={() => run(() => api('DELETE', `/me/profiles/${p.id}`))} /> : null}
         </Section>
         <ErrorText text={err} />
       </ScrollView>

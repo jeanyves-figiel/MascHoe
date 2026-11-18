@@ -22,7 +22,7 @@ const VIEW_KEY = 'thirstr.exploreView';
 
 // S-10 / S-11 Explore (F-04). AC-04.1: cold start → profile → Message in ≤ 3 taps.
 export function ExploreScreen({ navigation }: { navigation: { navigate: (s: string, p?: object) => void } }) {
-  const { me, setMe, mode, setMode } = useSession();
+  const { me, setMe, mode, setMode, refresh } = useSession();
   // RF-5: no main photo yet = invisible; nudge before the verify banner.
   const hasMain = !!me.profile?.photos.some((x) => x.slot === 0 && x.status === 'ok_main');
   const accent = useAccent();
@@ -109,7 +109,23 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
     setNext(g.next);
   }
 
-  const open = useCallback((c: Card) => navigation.navigate('Profile', { id: c.id }), [navigation]);
+  const open = useCallback((c: Card) => navigation.navigate('Profile', { id: c.id, mode }), [navigation, mode]);
+  // R-04.1: the viewer isn't shown in this mode → one tap turns it on (Sport opens its fields).
+  const own = me.profile ?? me.profiles?.[0];
+  const notShown = !!own && !(own.show_in ?? ['hookup']).includes(mode);
+  const showMe = useCallback(async () => {
+    if (!own) return;
+    const order = ['hookup', 'friends', 'sport'] as const;
+    const next = order.filter((m) => m === mode || (own.show_in ?? []).includes(m));
+    try {
+      await api('PATCH', `/me/profiles/${own.id}`, { show_in: next });
+      await refresh();
+      const sports = own.fields.sports;
+      if (mode === 'sport' && !(Array.isArray(sports) && sports.length)) navigation.navigate('EditProfile', { id: own.id, focus: 'sport' });
+    } catch {
+      // Stays visible; the banner remains so they can retry.
+    }
+  }, [own, mode, refresh, navigation]);
 
   // R-04.13: own device position first (any level, incl. Hidden/City), then pin, last area cell, own coarse cell.
   const dot: LatLng | null = (() => {
@@ -208,6 +224,7 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
       ) : !me.verified ? (
         <Banner text={tx.explore.verifyBanner} onPress={() => navigation.navigate('Verify')} />
       ) : null}
+      {hasMain && notShown ? <Banner testID="lens-banner" tone="warn" text={tx.explore.notShownIn(tx.modes[mode])} onPress={showMe} /> : null}
       {me.safe_mode_active || me.safe_mode === 'on' ? <Banner tone="personal" text={tx.explore.safeMode} /> : null}
     </View>
   );

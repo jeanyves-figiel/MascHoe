@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, ApiError } from '../api/client';
-import { kindForMode } from '../api/types';
 import { useSession } from '../app/session';
 import { tx } from '../i18n/app';
 import { color, font, radius, space, type } from '../theme/tokens';
@@ -54,7 +53,7 @@ function careful(c: E.Conv, list: E.Msg[]) {
 }
 
 export function ChatScreen({ navigation, route }: { navigation: Nav; route: { params: Params } }) {
-  const { me, mode } = useSession();
+  const { me } = useSession();
   const accent = useAccent();
   const insets = useSafeAreaInsets();
   const [cid, setCid] = useState<string | null>(route.params.cid ?? null);
@@ -72,13 +71,13 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
   }, [mediaSheet]);
   const [mopts, setMopts] = useState<SendOpts>({ once: false, expiry: 'keep', save: false });
 
-  // Open by profile id (Profile › Message): pick my profile for the current mode.
+  // Open by profile id (Profile › Message): from my one profile (R-06.1).
   useEffect(() => {
     if (cid || !route.params.profileId) return;
-    const mine = (me.profiles ?? []).find((p) => p.kind === kindForMode[mode]) ?? me.profile;
+    const mine = me.profile;
     if (!mine) return;
     E.openConv(mine.id, route.params.profileId, { name: route.params.name }).then((c) => setCid(c.id));
-  }, [cid, me, mode, route.params.profileId, route.params.name]);
+  }, [cid, me, route.params.profileId, route.params.name]);
 
   const tick = useTopics('convs', cid ? 'msgs:' + cid : 'none', cid ? 'typing:' + cid : 'none2');
   // R-07.19: chip only after 3 s offline, so a quick reconnect doesn't flash it.

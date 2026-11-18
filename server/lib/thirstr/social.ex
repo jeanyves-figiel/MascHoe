@@ -20,7 +20,7 @@ defmodule Thirstr.Social do
              """
              SELECT p.id::text, p.kind, p.display_name, p.age, p.gender, p.gender_other, p.fields,
                     p.visibility_map, a.id::text, a.verified_at, a.inserted_at, a.settings, a.status,
-                    p.seeded, p.public_updated_at
+                    p.seeded, p.public_updated_at, p.show_in
              FROM profiles p JOIN accounts a ON a.id = p.account_id
              WHERE p.id = $1
                AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.account_from = $2 AND b.account_to = a.id)
@@ -28,7 +28,24 @@ defmodule Thirstr.Social do
              """,
              [dump(profile_id), dump(viewer.id)]
            ),
-         [id, kind, name, age, g, go, fields, vis, aid, vat, ins, settings, status, seeded, upd] =
+         [
+           id,
+           kind,
+           name,
+           age,
+           g,
+           go,
+           fields,
+           vis,
+           aid,
+           vat,
+           ins,
+           settings,
+           status,
+           seeded,
+           upd,
+           show_in
+         ] =
            Enum.map(row, &Thirstr.Explore.utc_any/1),
          true <- status == "active" or aid == viewer.id do
       {:ok,
@@ -46,6 +63,7 @@ defmodule Thirstr.Social do
          inserted_at: ins,
          settings: Map.merge(Settings.defaults(), settings || %{}),
          seeded: seeded,
+         show_in: show_in || ["hookup"],
          updated_at: upd
        }}
     else
@@ -55,17 +73,29 @@ defmodule Thirstr.Social do
 
   # ------------------------------------------------------------------ profile view (S-20)
 
-  @doc "GET /profiles/:id — viewer-filtered (AC-06.1), D-09 cap 300 views/hour."
-  def view(%Account{} = viewer, profile_id) do
+  @doc """
+  GET /profiles/:id?mode — viewer-filtered (AC-06.1) through the viewer's lens (F-06 R-06.1b):
+  Friends/Sport show only `main_ok` photos and no hookup/health fields; 404 when the profile
+  isn't shown in that mode (AC-06.4). D-09 cap 300 views/hour.
+  """
+  def view(%Account{} = viewer, profile_id, mode \\ "hookup") do
+    lens = if mode in Fields.lenses(), do: mode, else: "hookup"
+
     with {:ok, _} <- limit(viewer, "views", @views_per_hour, 3600),
-         {:ok, t} <- target(viewer, profile_id) do
+         {:ok, t} <- target(viewer, profile_id),
+         true <- t.account_id == viewer.id or lens in t.show_in or {:error, :not_found} do
       audience = if Account.verified?(viewer), do: :verified, else: :stranger
       {fields, _} = Fields.visible(t.fields || %{}, t.vis || %{}, audience)
+      fields = Fields.lens(fields, lens)
 
       photos =
         Repo.query!(
-          "SELECT storage_key FROM photos WHERE profile_id = $1 AND status IN ('ok_main','ok_public') ORDER BY slot",
-          [dump(t.id)]
+          """
+          SELECT storage_key FROM photos WHERE profile_id = $1 AND status IN ('ok_main','ok_public')
+            AND ($2 = 'hookup' OR (classifier_score->>'main_ok')::boolean IS TRUE)
+          ORDER BY slot
+          """,
+          [dump(t.id), lens]
         ).rows
         |> List.flatten()
         |> Enum.map(&Storage.presigned_get/1)
@@ -76,6 +106,7 @@ defmodule Thirstr.Social do
        %{
          id: t.id,
          kind: t.kind,
+         mode: lens,
          display_name: t.display_name,
          age: t.age,
          gender: t.gender,

@@ -102,8 +102,7 @@ defmodule Thirstr.Venues do
     with :ok <- Social.require_verified(ctx.account),
          :ok <- check(not ctx.safe_mode, :safe_mode, "check-in is off in Safe Mode"),
          {:ok, v} <- venue(id),
-         kind = if(v.kind == "gym", do: "sport", else: ctx.kind),
-         %{} = p <- Profiles.get_by_kind(ctx.account, kind) || {:error, :basics_required},
+         %{} = p <- Profiles.main(ctx.account) || {:error, :basics_required},
          :ok <- Nearby.require_point(ctx),
          :ok <-
            check(
