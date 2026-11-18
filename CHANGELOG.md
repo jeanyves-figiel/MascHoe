@@ -18,6 +18,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Sign-in email** for Apple, Google and passkey accounts: Settings › Account › Sign-in email (`POST /me/email`, confirm by link, only the hash is stored). Offered once on Me a week after sign-up. `GET /me` returns `has_email`.
 
 ### Fixed
+- **App opened to an empty screen on iPhone**: the app drew nothing until its custom font finished loading, so a font that failed or hung left a blank screen. It now falls back to the system font after 3 s, shows a spinner meanwhile, and shows the error message (instead of nothing) if a screen crashes while drawing.
 - **QA pass 1** (issues 65–69), found walking the whole app on DEV in en/fr/de:
   - Profile **Message** and Edit profile **Save** bars no longer run off the right edge of the screen.
   - Cards get proper inner padding: profile details, Edit profile, Settings and Safety rows no longer sit on the card border, and Safety › Help & resources no longer clips its first letter. Toggles in sheets line up with the rest.

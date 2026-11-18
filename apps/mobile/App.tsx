@@ -23,13 +23,22 @@ import { LinkDeviceScreen } from './src/screens/LinkDevice';
 import { WelcomeScreen } from './src/screens/Welcome';
 import { DoneScreen } from './src/screens/Done';
 import { color } from './src/theme/tokens';
+import { StartupGuard } from './src/app/StartupGuard';
 
 export default function App() {
   const [me, setMe] = useState<Me | null>(null);
   const [screen, setScreen] = useState<S | 'loading'>('loading');
   const [mode, setMode] = useState<'signup' | 'login'>('signup');
   const [sent, setSent] = useState<{ email: string; adult: boolean }>({ email: '', adult: true });
-  const [fontsReady] = useFonts({ BricolageGrotesque_400Regular, BricolageGrotesque_500Medium, BricolageGrotesque_700Bold, BricolageGrotesque_800ExtraBold });
+  const [fontsLoaded, fontsError] = useFonts({ BricolageGrotesque_400Regular, BricolageGrotesque_500Medium, BricolageGrotesque_700Bold, BricolageGrotesque_800ExtraBold });
+
+  // Never block on fonts: if they fail or hang, fall back to the system font (blank-screen fix).
+  const [fontsTimedOut, setFontsTimedOut] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setFontsTimedOut(true), 3000);
+    return () => clearTimeout(t);
+  }, []);
+  const fontsReady = fontsLoaded || !!fontsError || fontsTimedOut;
 
   const land = (m: Me) => {
     setMe(m);
@@ -106,7 +115,7 @@ export default function App() {
     <SafeAreaProvider>
       <View style={{ flex: 1, backgroundColor: color.bgBase }}>
         <StatusBar style="light" />
-        {fontsReady ? body : null}
+        <StartupGuard>{fontsReady ? body : <ActivityIndicator style={{ flex: 1 }} color={color.hookup} />}</StartupGuard>
       </View>
     </SafeAreaProvider>
   );
