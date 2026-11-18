@@ -20,18 +20,24 @@ export class StartupGuard extends React.Component<{ children: React.ReactNode },
   render() {
     const { error } = this.state;
     if (!error) return this.props.children;
-    return (
-      <View style={{ flex: 1, backgroundColor: color.bgBase, paddingTop: 80, paddingHorizontal: 24 }}>
-        <Text style={{ color: color.fgPrimary, fontSize: 20, fontWeight: '700', marginBottom: 12 }}>Something went wrong</Text>
-        <Text style={{ color: color.fgSecondary, marginBottom: 16 }}>Please send a screenshot of this screen.</Text>
-        <ScrollView>
-          <Text selectable style={{ color: color.danger, fontFamily: 'Menlo', fontSize: 12 }}>
-            {String(error?.message ?? error)}
-            {'\n\n'}
-            {error?.stack ?? ''}
-          </Text>
-        </ScrollView>
-      </View>
-    );
+    return <ErrorView error={error} />;
   }
+}
+
+// Also used by index.ts for errors outside React (module init, fatal async errors).
+export function ErrorView({ error }: { error: unknown }) {
+  const e = error as { message?: string; stack?: string } | null;
+  return (
+    <View style={{ flex: 1, backgroundColor: color.bgBase, paddingTop: 80, paddingHorizontal: 24 }}>
+      <Text style={{ color: color.fgPrimary, fontSize: 20, fontWeight: '700', marginBottom: 12 }}>Something went wrong</Text>
+      <Text style={{ color: color.fgSecondary, marginBottom: 16 }}>Please send a screenshot of this screen.</Text>
+      <ScrollView>
+        <Text selectable style={{ color: color.danger, fontFamily: 'Menlo', fontSize: 12 }}>
+          {String(e?.message ?? error)}
+          {'\n\n'}
+          {e?.stack ?? ''}
+        </Text>
+      </ScrollView>
+    </View>
+  );
 }

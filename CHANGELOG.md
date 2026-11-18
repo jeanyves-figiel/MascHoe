@@ -6,6 +6,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Fixed
+- **iPhone app still opened to an empty screen** (#88): the screen frame waited for the phone to report its safe-area insets before drawing anything. It now starts from known measurements. Errors during startup are shown on screen instead of nothing. `expo-asset` (needed by fonts) is now a direct dependency.
 - **Chat works on bad networks** (app, #76, #79): every outgoing message, reaction and receipt goes to an encrypted on-device outbox before sending and is retried automatically (1 s → 60 s backoff), also after the app is killed. Reconnect, launch and foreground send at once. Gives up after 24 h with "Not sent. Tap to retry." (same message, never a duplicate). Requests time out (15 s send, 10 s pull/ack) and the chat header shows "Waiting for network" when the connection is down.
 - **No duplicates on retry** (app, #78): the message is encrypted once; retries resend the same ciphertext with `client_id`.
 - **No silently lost messages** (app, #80): a message that can't be decrypted yet is kept up to 24 h and retried after each welcome/commit (e.g. it arrived before its chat setup); then a "couldn't be decrypted" notice is shown and the 1:1 chat re-syncs its keys. Messages expired on the server while away show a notice with the count. Pull acks only after everything is saved; re-deliveries after a kill aren't processed twice.

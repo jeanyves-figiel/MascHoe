@@ -7,8 +7,8 @@ import {
 } from '@expo-google-fonts/bricolage-grotesque';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { ActivityIndicator, Platform, View } from 'react-native';
+import { initialWindowMetrics, SafeAreaProvider, type Metrics } from 'react-native-safe-area-context';
+import { ActivityIndicator, Dimensions, Platform, View } from 'react-native';
 import { api, clearSession, hasSession, Me } from './src/api/client';
 import { verifyEmailToken } from './src/auth/oidc';
 import { screenFor, Screen as S } from './src/onboarding/flow';
@@ -24,6 +24,13 @@ import { WelcomeScreen } from './src/screens/Welcome';
 import { DoneScreen } from './src/screens/Done';
 import { color } from './src/theme/tokens';
 import { StartupGuard } from './src/app/StartupGuard';
+
+// SafeAreaProvider draws nothing until native reports the insets; if that report never
+// comes the whole app stays blank. Start from known metrics so it always draws (#88).
+const startMetrics: Metrics = initialWindowMetrics ?? {
+  frame: { x: 0, y: 0, ...Dimensions.get('window') },
+  insets: { top: Platform.OS === 'ios' ? 47 : 0, bottom: Platform.OS === 'ios' ? 34 : 0, left: 0, right: 0 },
+};
 
 export default function App() {
   const [me, setMe] = useState<Me | null>(null);
@@ -112,7 +119,7 @@ export default function App() {
   }
 
   return (
-    <SafeAreaProvider>
+    <SafeAreaProvider initialMetrics={startMetrics}>
       <View style={{ flex: 1, backgroundColor: color.bgBase }}>
         <StatusBar style="light" />
         <StartupGuard>{fontsReady ? body : <ActivityIndicator style={{ flex: 1 }} color={color.hookup} />}</StartupGuard>
