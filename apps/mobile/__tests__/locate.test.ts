@@ -1,4 +1,5 @@
 // R-04.13: Explore asks once for location and keeps the device fix on the device.
+import { expect, jest, test } from '@jest/globals';
 const perm = { status: 'undetermined', canAskAgain: true };
 jest.mock('expo-location', () => ({
   Accuracy: { Balanced: 3 },
@@ -32,7 +33,7 @@ test('asks once, then centres on the fresh device fix', async () => {
 test('denied permission is not asked again and gives no position', async () => {
   perm.status = 'denied';
   perm.canAskAgain = false;
-  (ExpoLocation.requestForegroundPermissionsAsync as jest.Mock).mockClear();
+  jest.mocked(ExpoLocation.requestForegroundPermissionsAsync).mockClear();
   expect(await locateDevice()).toBeNull();
   expect(ExpoLocation.requestForegroundPermissionsAsync).not.toHaveBeenCalled();
 });
