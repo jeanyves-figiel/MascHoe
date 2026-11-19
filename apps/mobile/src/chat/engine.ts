@@ -35,7 +35,8 @@ export type AlbumItem = { blob: string; key: string; iv: string; mime: string };
 /** Plaintext inside MLS application messages (R-07.4). */
 export type Payload =
   | { t: 'text'; text: string }
-  | { t: 'quick_reply'; text: string }
+  /** `k` = index of a built-in quick reply (R-07.31): the reader shows it in their own language. */
+  | { t: 'quick_reply'; text: string; k?: number }
   | { t: 'media'; media: MediaRef }
   | { t: 'read'; upTo: string }
   | { t: 'delivered'; upTo: string }
@@ -103,6 +104,8 @@ export type Conv = {
   names?: Record<string, string>;
   /** R-07.23 per-chat override: 'off' = no Delivered / Read / typing either way in this chat. */
   receipts?: 'off';
+  /** F-07 R-07.27 per-chat switch, device only: 'off' = no translation in this chat. */
+  translate?: 'off';
 };
 
 /** Group chats only (inside the E2EE payload): `n` sender display name, `g` group title. */
@@ -800,7 +803,7 @@ export async function openConv(mine: string, peer: string, hint?: Partial<Conv>)
   return c;
 }
 
-export async function setConv(id: string, patch: Partial<Pick<Conv, 'starred' | 'muted' | 'archived' | 'receipts'>>) {
+export async function setConv(id: string, patch: Partial<Pick<Conv, 'starred' | 'muted' | 'archived' | 'receipts' | 'translate'>>) {
   if (!convs[id]) return;
   Object.assign(convs[id], patch);
   await saveConvs();

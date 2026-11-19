@@ -15,6 +15,16 @@ export type Filters = {
 
 export const defaultFilters: Filters = { verified_only: true, online_now: false, has_now: false, hide_creators: true, new_members: false };
 
+/** Filters no longer offered (#106: languages; chats translate instead). Dropped from saved filters. */
+const RETIRED = ['languages'];
+
+/** Saved filters (AsyncStorage) on top of the defaults, without retired keys. */
+export function restoreFilters(saved: string | null): Filters {
+  const f: Filters = { ...defaultFilters, ...(saved ? (JSON.parse(saved) as Partial<Filters>) : {}) };
+  for (const k of RETIRED) delete f[k];
+  return f;
+}
+
 export function query(mode: Mode, f: Filters, extra: Record<string, string> = {}): string {
   const p: string[] = ['mode=' + mode];
   for (const [k, v] of Object.entries({ ...f, ...extra })) {

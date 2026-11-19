@@ -10,7 +10,7 @@ import { tx } from '../i18n/app';
 import { color, radius, space, type } from '../theme/tokens';
 import { Banner, EmptyState, ErrorState, Icon, Loading, Sheet, useAccent } from '../ui';
 import { ProfileTile } from './Card';
-import { activeFilterCount, defaultFilters, Filters, loadGrid, loadMap, loadSummary, loadTray } from './explore';
+import { activeFilterCount, defaultFilters, Filters, restoreFilters, loadGrid, loadMap, loadSummary, loadTray } from './explore';
 import { LiveHeader, VerifyRow } from './LiveHeader';
 import { ExploreMap } from './ExploreMap';
 import { GridSheet, Snap, snapHeight } from './GridSheet';
@@ -64,7 +64,7 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
 
   // Filters saved per mode (R-04.8).
   useEffect(() => {
-    AsyncStorage.getItem(FILTER_KEY(mode)).then((f) => setFilters(f ? { ...defaultFilters, ...JSON.parse(f) } : defaultFilters));
+    AsyncStorage.getItem(FILTER_KEY(mode)).then((f) => setFilters(restoreFilters(f)));
   }, [mode]);
 
   // Location refresh on open (R-05.8).

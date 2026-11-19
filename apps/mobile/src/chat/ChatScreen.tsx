@@ -10,6 +10,10 @@ import * as E from './engine';
 import { useTopics } from './hooks';
 import { MediaBubble, pickAndSendMedia, SendOpts } from './media';
 import * as Albums from './albums';
+import { trx } from '../i18n/translate';
+import { prefs } from '../me/prefs';
+import { TranslatedText } from './TranslatedText';
+import { langName, modeFor, targetLang, translateAvailable } from './translate';
 
 type Nav = { navigate: (s: string, p?: object) => void; goBack: () => void; setOptions: (o: object) => void };
 type Params = { cid?: string; profileId?: string; name?: string };
@@ -70,6 +74,9 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
     if (mediaSheet) Albums.listAlbums().then(setAlbums);
   }, [mediaSheet]);
   const [mopts, setMopts] = useState<SendOpts>({ once: false, expiry: 'keep', save: false });
+  // R-07.28: language of the first translated message, for the teal note at the top of the chat.
+  const [trFrom, setTrFrom] = useState<string | null>(null);
+  const onTranslated = useCallback((from: string) => setTrFrom((cur) => cur ?? from), []);
 
   // Open by profile id (Profile › Message): from my one profile (R-06.1).
   useEffect(() => {
@@ -165,6 +172,8 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
   };
 
   const ttlLabel = tx.chat.ttl[conv.ttl];
+  const trMode = modeFor(conv);
+  const trCan = translateAvailable() && prefs().translate !== 'off';
   // Group chats (party / activity / club): no single peer, sender names from the E2EE payload.
   const group = !!conv.ctx;
   const who = (m: E.Msg) => (m.from === 'me' ? tx.chat.you : group ? (m.by && conv.names?.[m.by]) || '…' : conv.name);
@@ -211,11 +220,20 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
         keyExtractor={(x) => x.m.id}
         contentContainerStyle={{ padding: space.l, gap: space.xs }}
         ListFooterComponent={
-          <View style={{ alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: space.m, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: color.bgRaised, marginBottom: space.l }}>
-            <Icon.Lock />
-            <Text style={{ ...type.caption, color: color.trust }}>{group ? tx.group.e2ee : tx.chat.e2ee}</Text>
+          <View style={{ alignItems: 'center', gap: space.s, marginBottom: space.l }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: space.m, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: color.bgRaised }}>
+              <Icon.Lock />
+              <Text style={{ ...type.caption, color: color.trust }}>{group ? tx.group.e2ee : tx.chat.e2ee}</Text>
+            </View>
+            {trFrom ? (
+              <View testID="tr-note" style={{ flexDirection: 'row', alignItems: 'center', gap: space.s, maxWidth: 300, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 16, backgroundColor: `${color.trust}1F` }}>
+                <Icon.Translate size={18} w={2} />
+                <Text style={{ ...type.caption, fontSize: 12, lineHeight: 16, fontFamily: font.medium, color: color.fgSoft, flexShrink: 1 }}>{trx.note(langName(trFrom), langName(targetLang()))}</Text>
+              </View>
+            ) : null}
           </View>
         }
+
         renderItem={({ item: { m, r } }) => {
           if (m.p.t === 'notice') {
             return (
@@ -233,6 +251,22 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
             );
           }
           const mine = m.from === 'me';
+          // R-07.25: incoming text and custom quick replies are translated on this phone.
+          if (!mine && (m.p.t === 'text' || (m.p.t === 'quick_reply' && m.p.k === undefined))) {
+            return (
+              <TranslatedText
+                cid={cid}
+                id={m.id}
+                text={m.p.text}
+                mode={trMode}
+                sender={group ? who(m) : null}
+                senderColor={accent}
+                reactions={r}
+                onLongPress={() => setMsgMenu(m)}
+                onTranslated={onTranslated}
+              />
+            );
+          }
           return (
             <View style={{ alignItems: mine ? 'flex-end' : 'flex-start' }}>
               <Pressable
@@ -287,8 +321,8 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
         <>
           {!group ? (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: space.s, paddingHorizontal: space.l, paddingVertical: space.s }}>
-              {[...tx.chat.quick, ...custom].map((q) => (
-                <Pressable key={q} accessibilityRole="button" onPress={() => send({ t: 'quick_reply', text: q })} style={{ paddingHorizontal: 14, height: 36, justifyContent: 'center', borderRadius: radius.pill, backgroundColor: color.bgRaised }}>
+              {[...tx.chat.quick, ...custom].map((q, i) => (
+                <Pressable key={q + i} accessibilityRole="button" onPress={() => send(i < tx.chat.quick.length ? { t: 'quick_reply', text: q, k: i } : { t: 'quick_reply', text: q })} style={{ paddingHorizontal: 14, height: 36, justifyContent: 'center', borderRadius: radius.pill, backgroundColor: color.bgRaised }}>
                   <Text style={{ ...type.meta, color: color.fgPrimary, fontFamily: font.medium }}>{q}</Text>
                 </Pressable>
               ))}
@@ -369,6 +403,14 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
           />
         </View>
         <View>
+          {trCan ? (
+            <Toggle
+              label={trx.chat}
+              sub={trFrom ? trx.chatSub(langName(trFrom), langName(targetLang())) : trx.chatSubAny}
+              value={conv.translate !== 'off'}
+              onChange={(v) => E.setConv(conv.id, { translate: v ? undefined : 'off' })}
+            />
+          ) : null}
           <Toggle
             label={tx.chat.chatReceipts}
             sub={me.settings?.read_receipts === false ? tx.chat.chatReceiptsGlobalOff : tx.chat.chatReceiptsSub}
@@ -493,8 +535,10 @@ function Bubble({ m, mine, cid, conv }: { m: E.Msg; mine: boolean; cid: string; 
   const fg = mine ? color.onAccent : color.fgPrimary;
   switch (m.p.t) {
     case 'text':
-    case 'quick_reply':
       return <Text style={{ ...type.body, color: fg }} selectable>{m.p.text}</Text>;
+    case 'quick_reply':
+      // R-07.31: built-in quick replies show in the reader's own language.
+      return <Text style={{ ...type.body, color: fg }} selectable>{(m.p.k !== undefined && tx.chat.quick[m.p.k]) || m.p.text}</Text>;
     case 'media':
       return <MediaBubble m={m} media={m.p.media} mine={mine} cid={cid} conv={conv} />;
     case 'album.grant':
