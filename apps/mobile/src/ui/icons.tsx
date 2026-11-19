@@ -83,6 +83,13 @@ export const Icon = {
       <Path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" fill={fill} stroke={c} strokeWidth={2} strokeLinejoin="round" />
     </Svg>
   ),
+  /** Chat translation (F-07 R-07.28): glyph + letter A. */
+  Translate: ({ size = 12, c = color.trust, w = 2.4 }: P) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M4 5h9M8.5 3v2M6 5c.6 3.3 2.6 6 5.5 7.5M11 5c-.8 3.6-3.4 6.6-7 8" {...base(c, w)} />
+      <Path d="M13 21l4-9 4 9M14.4 18h5.2" {...base(c, w)} />
+    </Svg>
+  ),
   Lock: ({ size = 13, c = color.trust, w = 2.2 }: P) => (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Rect x={4} y={11} width={16} height={10} rx={2} {...base(c, w)} />

@@ -1,9 +1,10 @@
-// Device-only app preferences (F-17 R-17.9, concept §3 › App): units, haptics, media auto-delete.
+// Device-only app preferences (F-17 R-17.9, concept §3 › App): units, haptics, media auto-delete, chat translation (F-07 R-07.27).
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export type Prefs = { units: 'km' | 'mi'; haptics: boolean; autoDelete: boolean; emailNudgeDone?: boolean; lensNoticeDone?: boolean };
+export type TranslateMode = 'auto' | 'tap' | 'off';
+export type Prefs = { units: 'km' | 'mi'; haptics: boolean; autoDelete: boolean; translate: TranslateMode; emailNudgeDone?: boolean; lensNoticeDone?: boolean };
 const KEY = 'thirstr.prefs';
-let cur: Prefs = { units: 'km', haptics: true, autoDelete: false };
+let cur: Prefs = { units: 'km', haptics: true, autoDelete: false, translate: 'auto' };
 
 export const prefs = () => cur;
 

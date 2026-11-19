@@ -5,6 +5,7 @@ import app from '../../app.json';
 import { api, clearSession } from '../api/client';
 import { useSession } from '../app/session';
 import { tx } from '../i18n/app';
+import { trx } from '../i18n/translate';
 import { v3 } from '../i18n/v3';
 import { color, font, radius, space, type } from '../theme/tokens';
 import { ErrorText, Icon } from '../ui';
@@ -19,7 +20,7 @@ const hh = (h: number) => `${String(h).padStart(2, '0')}:00`;
 // Search index (R-17.4): every setting label → the category screen that holds it.
 const INDEX: [string, string][] = [
   ...[tx.me.location, S.hideUnverified, S.hideNew, S.hideHidden, S.ages, S.appearOn, ...Object.values(S.surfaces), S.distance, S.online].map((l) => [l, 'PrivacySettings'] as [string, string]),
-  ...[S.whoMessage, S.explicit, S.disappear, S.receipts, tx.prefs.autoDelete, S.quick].map((l) => [l, 'ChatSettings'] as [string, string]),
+  ...[S.whoMessage, S.explicit, S.disappear, S.receipts, tx.prefs.autoDelete, S.quick, trx.setting].map((l) => [l, 'ChatSettings'] as [string, string]),
   ...[S.notifications, ...Object.values(S.push), S.quiet].map((l) => [l, 'NotificationSettings'] as [string, string]),
   ...[S.safeMode, S.appLock, tx.prefs.verification, S.blocked, S.notices].map((l) => [l, 'SafetySettings'] as [string, string]),
   ...[tx.signInEmail.row, tx.devices.title, tx.exportData.title, S.pause, S.logoutAll, S.delete].map((l) => [l, 'AccountSettings'] as [string, string]),

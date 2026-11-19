@@ -9,6 +9,8 @@ export type Row = { id: string; at: number; seq?: number };
 
 const key = (cid: string, id: string) => `m:${cid}\u0001${id}`;
 const prefix = (cid: string) => `m:${cid}\u0001`;
+/** On-device translation cache of one message (F-07 R-07.30). */
+export const trKey = (cid: string, id: string) => `tr:${cid}\u0001${id}`;
 
 const cache = new Map<string, Row[]>();
 const locks = new Map<string, Promise<unknown>>();
@@ -69,7 +71,10 @@ export async function put<T extends Row>(cid: string, m: T): Promise<T> {
 export async function remove(cid: string, ids: string[]) {
   if (!ids.length) return;
   await all(cid);
-  for (const id of ids) await kv.del(key(cid, id));
+  for (const id of ids) {
+    await kv.del(key(cid, id));
+    await kv.del(trKey(cid, id)); // R-07.30: its on-device translation goes with it
+  }
   const set = new Set(ids);
   cache.set(
     cid,
@@ -79,6 +84,7 @@ export async function remove(cid: string, ids: string[]) {
 
 export async function drop(cid: string) {
   await kv.delPrefix(prefix(cid));
+  await kv.delPrefix(`tr:${cid}\u0001`);
   await kv.del('msgs:' + cid);
   cache.delete(cid);
 }

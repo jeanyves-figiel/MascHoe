@@ -11,9 +11,9 @@ const DISTANCES = [1000, 5000, 10000, 25000, 50000];
 
 // Filter groups per mode (R-04.8). Position/hosting need the viewer to be verified (R-06.5).
 const GROUPS: Record<Mode, { key: string; verifiedOnly?: boolean }[]> = {
-  hookup: [{ key: 'position', verifiedOnly: true }, { key: 'hosting', verifiedOnly: true }, { key: 'tribes' }, { key: 'build' }, { key: 'looking_for' }, { key: 'languages' }],
-  friends: [{ key: 'looking_for' }, { key: 'tribes' }, { key: 'languages' }, { key: 'orientation' }],
-  sport: [{ key: 'sports' }, { key: 'sport_level' }, { key: 'schedule' }, { key: 'sport_intent' }, { key: 'languages' }],
+  hookup: [{ key: 'position', verifiedOnly: true }, { key: 'hosting', verifiedOnly: true }, { key: 'tribes' }, { key: 'build' }, { key: 'looking_for' }],
+  friends: [{ key: 'looking_for' }, { key: 'tribes' }, { key: 'orientation' }],
+  sport: [{ key: 'sports' }, { key: 'sport_level' }, { key: 'schedule' }, { key: 'sport_intent' }],
 };
 
 export function FiltersSheet({

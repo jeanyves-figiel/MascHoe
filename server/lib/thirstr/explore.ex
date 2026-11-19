@@ -491,14 +491,13 @@ defmodule Thirstr.Explore do
 
   # ------------------------------------------------------------------ filters (R-04.8)
 
-  # filter key => {jsonb field, :enum | :multi}
+  # filter key => {jsonb field, :enum | :multi}. Not `languages` (#106: chats translate on device instead).
   @field_filters %{
     position: {"position", :enum},
     hosting: {"hosting", :enum},
     tribes: {"tribes", :multi},
     build: {"build", :enum},
     looking_for: {"looking_for", :multi},
-    languages: {"languages", :multi},
     sports: {"sports", :multi},
     sport_level: {"sport_level", :enum},
     schedule: {"schedule", :multi},

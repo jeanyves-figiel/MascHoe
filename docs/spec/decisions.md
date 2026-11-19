@@ -19,6 +19,7 @@ Date: 2026-11-17. Source: [sign-off form](https://claude.ai/artifact/XqFcGc8h7xN
 | D-13 | Age-check fallback | Yoti, zero retention (DPA required) | F-03 R-03.3, I-03 |
 | D-14 | Prod deploy approval | Owner only | ops.md |
 | D-15 | Multiple profiles (2026-11-18, #96) | One profile, three lenses: `show_in` Hookup/Friends/Sport; Friends & Sport show only strict-safe photos, no hookup/health fields. Replaces Now/Sport/Friends profiles. Rejected: no modes (B), separate unlinkable profiles (C; can be added later on top) | F-06 R-06.1–1d, F-04 R-04.1, F-11 R-11.1 |
+| D-16 | Chat translation (2026-11-19, #106) | Language is not an Explore filter. Chats translate automatically **on the device only** (Apple Translation iOS 18+, ML Kit on Android). No server or cloud translation in beta: it would expose E2EE plaintext to us or a third party. Trade-off accepted: older iPhones (< iOS 18) and rarer language pairs get no translation; first use of a language needs a one-time pack download. A cloud option (opt-in, per chat, EU provider, with consent) can be revisited after beta | F-07 R-07.25–R-07.31, F-04 R-04.8 |
 
 ## Open
 - D-01: domain `thirstr.fun` registered 2026-11-17 (`thirstr.app` taken); hosts `api.thirstr.fun` (prod), `staging.thirstr.fun` (#34). Trademark clearance (EUIPO, Swissreg, USPTO; classes 9, 42, 45) by counsel before store submission. Web search 2026-11-17 found no app or mark named Thirstr; nearby marks: "Thirst" drinks apps, "Thirsty Thursday".

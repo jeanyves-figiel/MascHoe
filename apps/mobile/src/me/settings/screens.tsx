@@ -6,14 +6,16 @@ import { useSession } from '../../app/session';
 import { askPushPermission } from '../../chat/engine';
 import { customQuickReplies, setCustomQuickReplies } from '../../chat/quick';
 import { LocationSheet } from '../../explore/LocationSheet';
+import { langName, targetLang, translateAvailable } from '../../chat/translate';
 import { tx } from '../../i18n/app';
+import { trx } from '../../i18n/translate';
 import { v3 } from '../../i18n/v3';
 import { biometrics, biometricsAvailable, getLock } from '../../safety/lock';
 import { color, font, radius, space, type } from '../../theme/tokens';
 import type { Notice } from '../../trust/NoticesScreen';
 import { Button, Field, RangeSlider, Sheet } from '../../ui';
 import { exportData } from '../exportData';
-import { type Prefs, prefs, setPrefs } from '../prefs';
+import { type Prefs, prefs, setPrefs, type TranslateMode } from '../prefs';
 import { SignInEmailSheet } from '../SignInEmail';
 import { Group, Page, Row, SegBlock, SwitchRow, useSettings } from './parts';
 
@@ -92,7 +94,7 @@ export function PrivacySettings() {
   );
 }
 
-// S-68 Chats & media (R-17.6, R-17.5).
+// S-68 Chats & media (R-17.6, R-17.5, R-17.5b translation).
 export function ChatSettings() {
   const { me } = useSession();
   const { st, put, err } = useSettings();
@@ -130,6 +132,20 @@ export function ChatSettings() {
         <SegBlock testID="disappear" tone={tone} title={S.disappear} value={st.disappearing_default} options={(['24h', '7d', 'never'] as const).map((k) => [k, S.disOpts[k]])} onChange={(v) => put({ disappearing_default: v })} />
         <SwitchRow tone={tone} title={S.receipts} sub={tx.settings.receiptsSub} value={st.read_receipts} onChange={(v) => put({ read_receipts: v })} />
         <Row title={S.quick} sub={S.quickSub} value={S.quickCount(quick.filter((x) => x?.trim()).length)} onPress={() => setQuickOpen(true)} />
+      </Group>
+      <Group label={trx.section}>
+        <SegBlock
+          testID="translate"
+          tone={tone}
+          title={trx.setting}
+          value={pf.translate}
+          options={(['auto', 'tap', 'off'] as TranslateMode[]).map((k) => [k, trx.modes[k]])}
+          onChange={(v) => setPrefs({ translate: v }).then(setPf)}
+          caption={translateAvailable() ? `${trx.into(langName(targetLang()))}. ${trx.modeSub[pf.translate]}` : trx.unavailable}
+        />
+        <View style={{ flexDirection: 'row', gap: space.m, marginHorizontal: space.l, marginBottom: space.l, padding: space.m, borderRadius: 16, backgroundColor: `${color.trust}1F` }}>
+          <Text style={{ ...type.meta, color: color.fgSoft, flex: 1 }}>{trx.privacy}</Text>
+        </View>
       </Group>
       <Sheet visible={quickOpen} onClose={() => { setCustomQuickReplies(quick); setQuickOpen(false); }} title={S.quick} closeLabel={tx.common.done}>
         <Text style={{ ...type.meta, color: color.fgMuted }}>{tx.settings.quickHint}</Text>
