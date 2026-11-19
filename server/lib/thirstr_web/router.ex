@@ -185,6 +185,7 @@ defmodule ThirstrWeb.Router do
       get "/explore/grid", ExploreController, :grid
       get "/explore/map", ExploreController, :map
       get "/explore/tray", ExploreController, :tray
+      get "/explore/summary", ExploreController, :summary
 
       # F-09 Now
       put "/me/now", ExploreController, :set_now

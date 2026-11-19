@@ -21,6 +21,14 @@ defmodule ThirstrWeb.ExploreController do
     end
   end
 
+  def summary(conn, params) do
+    mode = params["mode"] || "hookup"
+
+    if mode in @modes,
+      do: json(conn, Explore.summary(conn.assigns.account, mode, Explore.parse_filters(params))),
+      else: {:error, {:validation, %{mode: ["hookup, sport or friends"]}}}
+  end
+
   def map(conn, params) do
     with {:ok, v} <- viewer(conn, params),
          {:ok, res} <- Explore.map(v, params["bbox"], Explore.parse_filters(params)) do

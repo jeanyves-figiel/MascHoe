@@ -4,13 +4,14 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, ApiError } from '../api/client';
-import type { Card, MapData } from '../api/types';
+import type { Card, ExploreSummary, MapData } from '../api/types';
 import { useSession } from '../app/session';
 import { tx } from '../i18n/app';
-import { color, modeColor, radius, space, type } from '../theme/tokens';
-import { Banner, EmptyState, ErrorState, Icon, Loading, Segmented, Sheet, Wordmark, useAccent } from '../ui';
+import { color, radius, space, type } from '../theme/tokens';
+import { Banner, EmptyState, ErrorState, Icon, Loading, Sheet, useAccent } from '../ui';
 import { ProfileTile } from './Card';
-import { defaultFilters, Filters, loadGrid, loadMap, loadTray } from './explore';
+import { activeFilterCount, defaultFilters, Filters, loadGrid, loadMap, loadSummary, loadTray } from './explore';
+import { LiveHeader, VerifyRow } from './LiveHeader';
 import { ExploreMap } from './ExploreMap';
 import { GridSheet, Snap, snapHeight } from './GridSheet';
 import { fitCamera, isNear } from './mapShared';
@@ -44,6 +45,7 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
   const [furtherFrom, setFurtherFrom] = useState<number | null>(null);
   const [tray, setTray] = useState<Card[]>([]);
   const [mapData, setMapData] = useState<MapData | null>(null);
+  const [summary, setSummary] = useState<ExploreSummary | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -84,6 +86,13 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me.location?.level]);
 
+  // R-04.17: header counts; failure keeps the "·" placeholder, never a made-up number.
+  const reloadSummary = useCallback(() => {
+    loadSummary(mode, filters)
+      .then(setSummary)
+      .catch(() => setSummary(null));
+  }, [mode, filters]);
+
   const reload = useCallback(
     () =>
       Promise.all([loadGrid(mode, filters), loadTray(mode, filters), bbox.current ? loadMap(mode, filters, bbox.current) : Promise.resolve(null)]).then(
@@ -104,6 +113,10 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
   useEffect(() => {
     reload();
   }, [reload, me.location?.level, locTick]);
+
+  useEffect(() => {
+    reloadSummary();
+  }, [reloadSummary, me.location?.level, locTick, me.now]);
 
   const onRegion = useCallback(
     (b: [number, number, number, number]) => {
@@ -194,55 +207,30 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
     setRecenter((n) => n + 1);
   }
 
-  const level = me.location?.level ?? 'city';
-  const locLabel = me.incognito ? tx.location.incognito : (tx.location.levels[level] ?? tx.location.levels.city)[0];
-
   const iconBtn = { width: 44, height: 44, borderRadius: radius.pill, backgroundColor: color.bgRaised, alignItems: 'center' as const, justifyContent: 'center' as const };
 
   // App v2 header (design-system.md › App v2 rules): wordmark + location chip + filters; mode switch (no Map/Grid toggle, #100).
+  // R-04.17 live header (#104): place + counts + mode tiles. Verify nudge moved into the sheet.
+  const banner = !hasMain ? (
+    <Banner testID="photo-banner" tone="warn" text={tx.explore.photoBanner} onPress={() => navigation.navigate('EditProfile')} />
+  ) : notShown ? (
+    <Banner testID="lens-banner" tone="warn" text={tx.explore.notShownIn(tx.modes[mode])} onPress={showMe} />
+  ) : me.safe_mode_active || me.safe_mode === 'on' ? (
+    <Banner tone="personal" text={tx.explore.safeMode} />
+  ) : null;
   const header = (
-    <View style={{ paddingTop: insets.top + space.s, paddingHorizontal: space.l, gap: space.m, paddingBottom: space.s }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.s }}>
-        <View style={{ flex: 1 }}>
-          <Wordmark />
-        </View>
-        <Pressable
-          testID="location-pill"
-          accessibilityRole="button"
-          accessibilityLabel={`Location: ${locLabel}`}
-          onPress={() => setShowLocation(true)}
-          style={({ pressed }) => [{ height: 40, paddingHorizontal: 14, borderRadius: radius.pill, backgroundColor: color.bgRaised, flexDirection: 'row', alignItems: 'center', gap: 6 }, pressed && { opacity: 0.8 }]}
-        >
-          <Icon.Pin size={15} c={color.trust} w={2} />
-          <Text style={{ ...type.meta, fontFamily: type.headline.fontFamily, color: color.fgPrimary }}>{locLabel}</Text>
-        </Pressable>
-        <Pressable testID="filters-btn" accessibilityRole="button" accessibilityLabel={tx.explore.filters} onPress={() => setShowFilters(true)} style={({ pressed }) => [iconBtn, pressed && { opacity: 0.8 }]}>
-          <Icon.Filter />
-        </Pressable>
-      </View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.s }}>
-        <View style={{ flex: 1 }}>
-          <Segmented
-            label="Mode"
-            value={mode}
-            onChange={setMode}
-            fills={modeColor}
-            options={[
-              { value: 'hookup', label: tx.modes.hookup },
-              { value: 'friends', label: tx.modes.friends },
-              { value: 'sport', label: tx.modes.sport },
-            ]}
-          />
-        </View>
-      </View>
-      {!hasMain ? (
-        <Banner testID="photo-banner" tone="warn" text={tx.explore.photoBanner} onPress={() => navigation.navigate('EditProfile')} />
-      ) : !me.verified ? (
-        <Banner text={tx.explore.verifyBanner} onPress={() => navigation.navigate('Verify')} />
-      ) : null}
-      {hasMain && notShown ? <Banner testID="lens-banner" tone="warn" text={tx.explore.notShownIn(tx.modes[mode])} onPress={showMe} /> : null}
-      {me.safe_mode_active || me.safe_mode === 'on' ? <Banner tone="personal" text={tx.explore.safeMode} /> : null}
-    </View>
+    <LiveHeader
+      me={me}
+      mode={mode}
+      onMode={setMode}
+      summary={summary}
+      filtersOn={activeFilterCount(filters)}
+      topInset={insets.top}
+      onFilters={() => setShowFilters(true)}
+      onLocation={() => setShowLocation(true)}
+      onNow={() => (me.verified ? setShowNow(true) : navigation.navigate('Verify'))}
+      banner={banner}
+    />
   );
 
   const card = (icon: React.ReactNode, title: string, sub: string, action: string | null, onPress: () => void, testID: string, tint: string) => (
@@ -281,11 +269,14 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
       </View>
     ) : quiet ? (
       <View>
+        {!me.verified ? <VerifyRow onPress={() => navigation.navigate('Verify')} /> : null}
         <Text style={{ ...type.meta, color: color.fgSecondary, marginBottom: space.l }}>{tx.explore.quietBody}</Text>
         {beFirst}
         {plans > 0 ? card(<Icon.Moon c={accent} />, tx.explore.tonightRow(plans), tx.tabs.tonight, null, () => navigation.navigate('Tonight'), 'tonight-row', accent) : null}
         <Text style={{ ...type.caption, fontSize: 12, letterSpacing: 0.8, color: color.fgMuted, marginBottom: space.s }}>{tx.explore.further.toUpperCase()}</Text>
       </View>
+    ) : items && !me.verified ? (
+      <VerifyRow onPress={() => navigation.navigate('Verify')} />
     ) : null;
 
   const sheetTitle = tray.length > 0 ? tx.explore.activeNow(tray.length) : quiet ? tx.explore.quietTitle : tx.explore.nearby;
@@ -345,6 +336,7 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
                 tintColor={accent}
                 onRefresh={async () => {
                   setRefreshing(true);
+                  reloadSummary();
                   await reload();
                   setRefreshing(false);
                 }}

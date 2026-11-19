@@ -504,4 +504,42 @@ defmodule ThirstrWeb.ExploreTest do
     Thirstr.Valkey.command!(["SET", "rl:#{account_of(v.pid).id}:views", "300", "EX", "3600"])
     assert v.c |> recycle_authed() |> get("/v1/profiles/#{o.pid}") |> json_response(429)
   end
+
+  @tag ac: "AC-04.10"
+  test "summary: per-mode counts, Now count, city-level place (R-04.17)", %{viewer: v, other: o} do
+    %{rows: [[r5]]} =
+      Thirstr.Repo.query!("SELECT h3_lat_lng_to_cell(point(8.5417, 47.3769), 5)::text")
+
+    Thirstr.Repo.query!(
+      "INSERT INTO cities (name, country, lat, lng, cell_r5) VALUES ('Zürich', 'CH', 47.3769, 8.5417, $1::text::h3index::bigint)",
+      [r5]
+    )
+
+    Thirstr.Valkey.command!(["DEL", "cityname:" <> r5])
+
+    sum = fn q ->
+      v.c |> recycle_authed() |> get("/v1/explore/summary?mode=" <> q) |> json_response(200)
+    end
+
+    res = sum.("hookup")
+    assert res["place"] == "Zürich"
+    assert res["counts"]["hookup"] >= 1
+    assert res["now"] == 0
+    assert Map.keys(res["counts"]) |> Enum.sort() == ~w(friends hookup sport)
+
+    o.c
+    |> recycle_authed()
+    |> put("/v1/me/now", %{status: "now", ttl_s: 3600})
+    |> json_response(200)
+
+    assert sum.("hookup")["now"] == 1
+    assert sum.("sport")["now"] == 0
+
+    # Blocked people are never counted.
+    before = sum.("hookup")["counts"]["hookup"]
+    v.c |> recycle_authed() |> post("/v1/profiles/#{o.pid}/block") |> response(204)
+    assert sum.("hookup")["counts"]["hookup"] == before - 1
+
+    assert v.c |> recycle_authed() |> get("/v1/explore/summary?mode=nope") |> json_response(422)
+  end
 end
