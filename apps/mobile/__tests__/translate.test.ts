@@ -127,9 +127,9 @@ describe('on-device translation (#106)', () => {
 describe('AC-07.13 built-in quick replies are keyed', () => {
   it('every language has the same 6 quick replies in the same order', () => {
     expect(txEn.chat.quick).toHaveLength(6);
-    expect(de.chat.quick).toHaveLength(6);
-    expect(fr.chat.quick).toHaveLength(6);
-    expect(de.chat.quick[0]).toBe('Ja 🔥');
+    expect(de.chat?.quick).toHaveLength(6);
+    expect(fr.chat?.quick).toHaveLength(6);
+    expect(de.chat?.quick?.[0]).toBe('Ja 🔥');
   });
 });
 

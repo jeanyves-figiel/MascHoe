@@ -431,7 +431,10 @@ defmodule ThirstrWeb.ExploreTest do
     refute o.pid in ids(grid(v.c)["items"])
   end
 
-  test "languages is not a filter: old clients sending it are ignored (#106)", %{viewer: v, other: o} do
+  test "languages is not a filter: old clients sending it are ignored (#106)", %{
+    viewer: v,
+    other: o
+  } do
     refute Map.has_key?(Thirstr.Explore.parse_filters(%{"languages" => "ja"}), :languages)
     assert o.pid in ids(grid(v.c, "&languages=ja")["items"])
   end
