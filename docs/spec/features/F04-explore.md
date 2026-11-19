@@ -4,7 +4,7 @@
 Home tab. See who's around now, fastest path to a message.
 
 ## Layout (S-10 map, S-11 grid)
-Top: wordmark · location pill (current level, tap → S-30) · Filters button. Row 2: mode switch **Hookup · Friends · Sport** (full width). Body (#100, concept A of the [blend mockup](https://claude.ai/artifact/J74uiYDyi1vJ9URjttLke9)): the map fills the screen and a pull-up **grid sheet** sits over it (R-04.14). There is no Map/Grid toggle: the sheet's full state is the grid. Tab bar: Explore · Tonight · Chats · Me.
+Top: **live header** (R-04.17, #104, option A of the [top bar mockup](https://claude.ai/artifact/WsFGPds2rrv37q3AP6RcU1)): row 1 wordmark · Filters button · own avatar (Now); row 2 place name + level chip + live counts (tap → S-30); row 3 mode tiles **Hookup · Friends · Sport** with counts. Body (#100, concept A of the [blend mockup](https://claude.ai/artifact/J74uiYDyi1vJ9URjttLke9)): the map fills the screen and a pull-up **grid sheet** sits over it (R-04.14). There is no Map/Grid toggle: the sheet's full state is the grid. Tab bar: Explore · Tonight · Chats · Me.
 
 ## Rules
 - R-04.1 Mode is the viewer's lens (F-06 R-06.1a/b): it shows profiles whose `show_in` includes the mode, rendered through that lens, and recolours UI (mode tokens, design-system). Mode persists across launches. Switching mode never changes the viewer's own profile. If the viewer isn't shown in the current mode: one-line banner "You're not shown in Friends · Show me" (turns it on; Sport runs the mini-setup first).
@@ -28,6 +28,13 @@ Top: wordmark · location pill (current level, tap → S-30) · Filters button. 
   - Quiet: nobody within 2 km (first grid card is `further` or its bucket ≥ 2–5 km) and at least one card: sheet title "Quiet right here", sub "Nobody active within 2 km yet. Here's who's further out."; a "Be the first one here" card (Post a Now → Now sheet; unverified → Verify) ; then the grid under a "Further away" label; then, if `GET /tonight` returns plans, one row "Tonight near you · N plans" → Tonight tab.
   - Unverified viewer with no cards: sheet shows a teal card "Verify to see who's here. Most guys only show to verified members." → Verify. The map keeps count bubbles only (R-04.10).
   - Nobody at all (verified, 100 km): existing empty state (title "Nobody visible here yet", Filters action) inside the sheet, plus the Post a Now card.
+- R-04.17 Live header (#104). Replaces the static top bar.
+  - Row 1: wordmark (left). Filters button (44 pt round `bg.raised`, badge = number of filters that differ from the defaults, hidden at 0). Own avatar button (44 pt; main photo or initials): ring dashed in the mode colour when the viewer has no Now status, solid when Now is on; tap → Now sheet (F-09).
+  - Row 2 (one button, tap → Location sheet S-30): place name as a 30 pt headline + chevron. Place = name of the nearest city (`cities` table) to the viewer's own query cell, never a finer place; "Somewhere" when unknown. Under it: teal level chip (pin icon + "Area · ~200 m", "City", "Exact", "Hidden" or "Incognito"), a mode-colour live dot, then "**N** around · **M** Now" (Sport: "**N** around" only, no Now in Sport).
+  - Row 3: three equal mode tiles (74 pt, radius 20): icon (flame / two people / dumbbell), count top-right, label bottom. Active tile filled with the mode colour, ink text, soft coloured shadow; inactive `bg.raised` with the icon on a mode-tinted disc. Tap switches mode (same as the old segmented control, `tablist` semantics).
+  - Behind the header, a soft radial glow of the active mode colour (22 % alpha) fades into ink; it cross-fades on mode switch (Reduce Motion: instant).
+  - Counts come from `GET /explore/summary` (api.md): N = people the viewer can see in that mode within 10 km (same visibility rules as the grid, R-04.9, R-04.10); active mode with the viewer's filters, other modes with default filters; M = those with an active Now status. Shown as is up to 99, then "99+". No count yet / error: the number slot shows "·" (never a made-up number). 0 is shown as 0.
+  - Banners: the verify nudge leaves the header and becomes a slim teal row at the top of the grid sheet ("Verify to see faces and message first" + "Verify"). Missing main photo, "not shown in this mode" (R-04.1) and Safe Mode banners keep the slot under row 3, one at a time in that order.
 
 ## Interactions
 | Gesture | Result |
@@ -57,3 +64,4 @@ Top: wordmark · location pill (current level, tap → S-30) · Filters button. 
 - AC-04.7 With 12+ people within 1 km, the map opens at the zoom fitting `fit_m` = 1 000 m above the sheet, not at zoom 10/12.
 - AC-04.8 Tapping a pin highlights the same person's tile; tapping the chip opens their profile (AC-04.1 still ≤ 3 taps).
 - AC-04.9 Nobody within 2 km: "Quiet right here" + Further away; no number on screen that is not a real count.
+- AC-04.10 Header counts match `GET /explore/summary` for each mode; a profile hidden from the viewer (blocked, hidden, hide-from-unverified…) is never counted; place name is city-level only.

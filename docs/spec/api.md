@@ -79,6 +79,7 @@ Blind signature (R-03.4, Chaum RSA-FDH): client picks random `token` and `r`, se
 Common query: `mode=hookup|friends|sport`, `age_min`, `age_max`, `distance_max` (m), `verified_only` (default true), `online_now`, `has_now`, `hide_creators` (default true), `new_members`, and comma lists for `position, hosting, tribes, build, looking_for, languages, sports, sport_level, schedule, sport_intent, orientation` (position/hosting apply only for verified viewers and only to values visible to them).
 
 | GET | /explore/grid | &cursor → {items:[Card], next, further_from, reason, fit_m}. `fit_m` = auto-fit radius (R-04.15, bucketed, null if none). 60/page; sparse areas widen to 100 km with a "Further away" index |
+| GET | /explore/summary | ?mode=&filters → `{place, counts: {hookup, friends, sport}, now}` (R-04.17, #104). `place` = nearest city name to the viewer's own cell (null if unknown). `counts` = visible people within 10 km per mode (grid rules; `mode` uses the given filters, others defaults); `now` = active Now in `mode` (0 for sport). Exact integers, client caps at 99+ |
 | GET | /explore/map | &bbox=w,s,e,n → {cells:[{cell, res, count}], pins:[Card], avatars:[Card]}. Unverified and Safe Mode viewers get counts only (r7 / r5) |
 | GET | /explore/tray | → {items:[Card]} up to 20 active (pin, Now, online) |
 

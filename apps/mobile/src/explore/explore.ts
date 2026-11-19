@@ -1,5 +1,5 @@
 import { api } from '../api/client';
-import type { Card, Grid, MapData, Mode } from '../api/types';
+import type { Card, ExploreSummary, Grid, MapData, Mode } from '../api/types';
 
 export type Filters = {
   age_min?: number;
@@ -30,3 +30,18 @@ export const loadGrid = (mode: Mode, f: Filters, cursor?: string | null) => api<
 export const loadTray = (mode: Mode, f: Filters) => api<{ items: Card[] }>('GET', '/explore/tray?' + query(mode, f));
 export const loadMap = (mode: Mode, f: Filters, bbox: [number, number, number, number]) =>
   api<MapData>('GET', '/explore/map?' + query(mode, f, { bbox: bbox.map((n) => n.toFixed(5)).join(',') }));
+export const loadSummary = (mode: Mode, f: Filters) => api<ExploreSummary>('GET', '/explore/summary?' + query(mode, f));
+
+/** R-04.17: number of filters that differ from the defaults (badge on the Filters button). */
+export function activeFilterCount(f: Filters): number {
+  let n = 0;
+  for (const [k, v] of Object.entries(f)) {
+    const d = (defaultFilters as Record<string, unknown>)[k];
+    if (v === undefined || v === null || v === '' || (Array.isArray(v) && v.length === 0)) continue;
+    if (typeof v === 'boolean' ? v !== (d ?? false) : true) n++;
+  }
+  return n;
+}
+
+/** R-04.17: header counts, exact up to 99 then "99+"; unknown → "·". */
+export const countLabel = (n: number | null | undefined) => (n == null ? '·' : n > 99 ? '99+' : String(n));

@@ -47,6 +47,8 @@ export type Card = {
   lng?: number;
 };
 
+/** GET /explore/summary (R-04.17, #104). */
+export type ExploreSummary = { place: string | null; counts: Record<Mode, number>; now: number };
 export type Grid = { items: Card[]; next: string | null; further_from: number | null; reason: string | null; fit_m?: number | null };
 export type MapData = { cells: { cell: string; res: number; count: number }[]; pins: Card[]; avatars: Card[] };
 

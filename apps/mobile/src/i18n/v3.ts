@@ -2,6 +2,20 @@ import { getLocales } from 'expo-localization';
 
 // Me + Settings v3 copy (#102, S-60/S-61/S-64/S-66–S-70). en/fr/de; English is the fallback.
 const en = {
+  // Explore live header (#104, F-04 R-04.17).
+  header: {
+    around: 'around',
+    now: 'Now',
+    somewhere: 'Somewhere',
+    level: { hidden: 'Hidden', city: 'City', area: 'Area · ~200 m', exact: 'Exact', incognito: 'Incognito' } as Record<string, string>,
+    changeLocation: 'Change location',
+    filters: (n: number) => (n ? `Filters, ${n} on` : 'Filters'),
+    nowOn: 'Your Now status is on. Change it',
+    nowOff: 'Set your Now status',
+    mode: (m: string, n: string) => `${m}, ${n} around`,
+    verifyRow: 'Verify to see faces and message first',
+    verify: 'Verify',
+  },
   me: {
     qr: 'My QR code',
     nextStep: 'Next: finish your profile',
@@ -148,6 +162,19 @@ type V = typeof en;
 type P<T> = { [K in keyof T]?: T[K] extends (...a: never[]) => unknown ? T[K] : T[K] extends object ? P<T[K]> : T[K] };
 
 const fr: P<V> = {
+  header: {
+    around: 'autour',
+    now: 'Now',
+    somewhere: 'Quelque part',
+    level: { hidden: 'Caché', city: 'Ville', area: 'Zone · ~200 m', exact: 'Exacte', incognito: 'Incognito' },
+    changeLocation: 'Changer de position',
+    filters: (n: number) => (n ? `Filtres, ${n} actifs` : 'Filtres'),
+    nowOn: 'Ton statut Now est actif. Le modifier',
+    nowOff: 'Activer ton statut Now',
+    mode: (m: string, n: string) => `${m}, ${n} autour`,
+    verifyRow: 'Vérifie-toi pour voir les visages et écrire en premier',
+    verify: 'Vérifier',
+  },
   me: {
     qr: 'Mon code QR',
     nextStep: 'Ensuite : complète ton profil',
@@ -287,6 +314,19 @@ const fr: P<V> = {
 };
 
 const de: P<V> = {
+  header: {
+    around: 'in der Nähe',
+    now: 'Now',
+    somewhere: 'Irgendwo',
+    level: { hidden: 'Versteckt', city: 'Stadt', area: 'Bereich · ~200 m', exact: 'Genau', incognito: 'Inkognito' },
+    changeLocation: 'Standort ändern',
+    filters: (n: number) => (n ? `Filter, ${n} aktiv` : 'Filter'),
+    nowOn: 'Dein Now-Status ist an. Ändern',
+    nowOff: 'Now-Status setzen',
+    mode: (m: string, n: string) => `${m}, ${n} in der Nähe`,
+    verifyRow: 'Verifiziere dich, um Gesichter zu sehen und zuerst zu schreiben',
+    verify: 'Verifizieren',
+  },
   me: {
     qr: 'Mein QR-Code',
     nextStep: 'Als Nächstes: Profil vervollständigen',

@@ -84,7 +84,7 @@ Generated to TS (RN theme) by Style Dictionary in CI. Hard-coded colours/sizes i
 
 ### App v2 rules (issue 58, mockup approved 2026-11-17)
 - Bottom nav: icon on every tab; label only on the active tab, which grows (flex 1.6) and fills with the mode colour; inactive icons `navInactive`. Chats badge = coral count with a white ring.
-- Explore header: wordmark 27 pt left; location chip (`bg.raised`, teal pin icon, level label) and round filter icon button right; second row = mode switch, full width (Map/Grid toggle removed in #100). On the map the header sits on an ink-to-transparent scrim.
+- Explore header (#104, live header, F-04 R-04.17): row 1 wordmark 26 pt · filter button (count badge) · own avatar (Now ring); row 2 place name 30 pt heavy + chevron, teal level chip, mode-colour live dot + "N around · M Now"; row 3 three mode tiles (74 pt, radius 20, icon + count + label, active = mode-colour fill + ink text). Soft radial mode-colour glow behind. Verify nudge lives in the grid sheet, not the header.
 - Photo tiles and tray cards: bottom scrim from transparent to ink 85–90 %; name + age 800, distance `fg.secondary`; Now badge top-left in the person's mode colour; online dot = lime with ink ring; tray card outlined in mode colour when Now.
 - Tab-root titles are 34/38 800 (Tonight, Chats, Me); captions above in `fg.secondary` 13.
 - Profile actions: white round 44 pt buttons over photos; sticky bottom row = 58 pt round favourite + 58 pt coral Message pill.

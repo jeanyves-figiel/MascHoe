@@ -115,6 +115,55 @@ defmodule Thirstr.Explore do
     end
   end
 
+  @doc """
+  GET /explore/summary (R-04.17): live header data. Per-mode count of people the viewer can see
+  within the near radius (grid rules), Now count for the active mode, and the viewer's own
+  city-level place name. `filters` apply to the active mode only; other modes use defaults.
+  """
+  def summary(%Account{} = a, mode, filters) do
+    v = viewer(a, mode)
+
+    case v.point do
+      nil ->
+        %{place: nil, counts: %{hookup: 0, friends: 0, sport: 0}, now: 0}
+
+      point ->
+        near = fn rows -> Enum.reject(rows, &(&1.dist_m > @near_m)) end
+        active = candidates(v, filters, "show_in_grid") |> near.()
+
+        counts =
+          Map.new(~w(hookup friends sport), fn m ->
+            n =
+              if m == mode,
+                do: length(active),
+                else:
+                  viewer(a, m)
+                  |> candidates(parse_filters(%{}), "show_in_grid")
+                  |> near.()
+                  |> length()
+
+            {String.to_atom(m), n}
+          end)
+
+        %{
+          place: place(point),
+          counts: counts,
+          now: if(mode == "sport", do: 0, else: Enum.count(active, & &1.now))
+        }
+    end
+  end
+
+  @doc "City-level name for a point (nearest `cities` row to its r5 cell); nil when unknown."
+  def place(%{lat: lat, lng: lng}) do
+    [[r5]] =
+      Repo.query!("SELECT h3_lat_lng_to_cell(point($1::float8, $2::float8), 5)::text", [lng, lat]).rows
+
+    case city_name(r5) do
+      "" -> nil
+      n -> n
+    end
+  end
+
   # R-04.4 sort: exact by metres → Now → area by distance → online recency
   defp sorted(rows) do
     Enum.sort_by(rows, fn r ->
