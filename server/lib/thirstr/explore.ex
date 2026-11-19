@@ -125,7 +125,7 @@ defmodule Thirstr.Explore do
 
     case v.point do
       nil ->
-        %{place: nil, counts: %{hookup: 0, friends: 0, sport: 0}, now: 0}
+        %{place: nil, counts: %{"hookup" => 0, "friends" => 0, "sport" => 0}, now: 0}
 
       point ->
         near = fn rows -> Enum.reject(rows, &(&1.dist_m > @near_m)) end
@@ -142,7 +142,7 @@ defmodule Thirstr.Explore do
                   |> near.()
                   |> length()
 
-            {String.to_atom(m), n}
+            {m, n}
           end)
 
         %{
