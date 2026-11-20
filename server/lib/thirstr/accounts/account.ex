@@ -25,6 +25,8 @@ defmodule Thirstr.Accounts.Account do
     field :incognito, :boolean, default: false
     field :hidden, :boolean, default: false
     field :safe_mode_active, :boolean, default: false
+    # testing.md › Chat test bot: staging-only automated account (never in prod)
+    field :test_bot, :boolean, default: false
     has_many :passkeys, Thirstr.Accounts.Passkey
     has_many :devices, Thirstr.Accounts.Device
     has_many :profiles, Thirstr.Profiles.Profile
