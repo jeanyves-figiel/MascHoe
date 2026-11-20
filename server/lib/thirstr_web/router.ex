@@ -280,6 +280,12 @@ defmodule ThirstrWeb.Router do
       get "/share/:slug", AccountDataController, :resolve
     end
 
+    # testing.md › Chat test bot (staging only): the bot service gets its session here.
+    scope "/testbot" do
+      pipe_through :auth_limit
+      post "/session", TestBotController, :session
+    end
+
     scope "/auth" do
       pipe_through :device_link_limit
       post "/device-link", AccountDataController, :link_claim

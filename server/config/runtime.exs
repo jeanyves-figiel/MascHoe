@@ -51,6 +51,9 @@ config :thirstr,
      end),
   # Admin console (admin-console.md, R-AD.12): owner account ids; empty = console off (404).
   admin_account_ids: String.split(System.get_env("ADMIN_ACCOUNT_IDS") || "", ",", trim: true),
+  # testing.md › Chat test bot: shared key for the bot service; unset = feature off (404).
+  # Never honoured when DEPLOY_ENV is prod/production (Thirstr.TestBot.enabled?/0).
+  testbot_key: System.get_env("TESTBOT_KEY"),
   webauthn: [
     origin: env.("WEBAUTHN_ORIGIN", app_url),
     rp_id: env.("WEBAUTHN_RP_ID", URI.parse(app_url).host),
