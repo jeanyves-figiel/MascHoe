@@ -22,14 +22,26 @@
 - Seed generator: 5k fake profiles across 3 cities with realistic cell density, no real photos (generated avatars).
 - Never use production data in DEV/staging.
 
-## Chat test bot (staging only, #109)
-A simulated user so testers can try chat end to end from the TestFlight build.
-- **Who**: one account flagged `accounts.test_bot`, profile "Testbot 🤖", bio starts with "TEST ACCOUNT", verified, age 30, all lenses, area location at Zurich Altstetten (47.3914, 8.4887), no photo (listed like seeded profiles), Now status "Test bot · write help". Nobody else can be flagged.
-- **E2EE**: the bot is a normal chat client (`apps/testbot`, Node). It bundles the app's own `apps/mobile/src/chat/mls.ts` + `bytes.ts`, holds its MLS keys on a private Fly volume, uploads key packages and only ever sends/receives ciphertext through the same API as the app (`/mls/*`). The server never sees plaintext.
-- **Session**: `POST /v1/testbot/session` with header `x-testbot-key` = `TESTBOT_KEY`. Creates/refreshes the account, removes earlier bot devices (their key packages and queued ciphertext go with them) and returns tokens + `profile_id`. 404 when `TESTBOT_KEY` is unset/short, the key is wrong, or `DEPLOY_ENV` is `prod`/`production`. The bot refreshes tokens like the app and only asks for a new session when refresh fails.
-- **Behaviour**: on each message: Delivered receipt, Read receipt (~1 s), typing, then the reply. Replies in German by default. Commands (first word): `help`, `lang de|pt|fr|es|it|en|ja`, `mix` / `mix off` (rotate languages), `long` (long paragraph, translation test), `burst N` (≤ 10 messages), `later N` (reply after N s, ≤ 600, push test), `quick` (built-in quick reply with `k`), `echo <text>`, `noread` / `read on|off`, `receipts on|off`, `status`. Non-text (photos etc.): short text reply. 1:1 only; party/club chats are ignored. A message it can't decrypt for 10 min triggers the R-07.20 resync.
-- **Run**: Fly app `thirstr-bot-staging` (fra, 256 MB, volume `botdata` at `/data`), secret `TESTBOT_KEY` (same value on `thirstr-api-staging`). Deployed by `.github/workflows/testbot.yml` on main pushes touching the bot. No prod app exists, and the prod API refuses the endpoint.
-- **Tests**: `apps/testbot` `npm test`: reply rules, and an end-to-end run of the built bot against a mock delivery service with a second client (the app's MLS code): join, Delivered, Read, German reply, `lang pt` → Portuguese, `quick` → `k`. Server: `test/thirstr_web/test_bot_test.exs`.
+## Chat test bots (staging only, #109, #200)
+Simulated users so testers can try chat, photos, albums, location modes, plans and parties end to end from the TestFlight build.
+- **Who** (`apps/testbot/src/personas.ts`): every bot has 🤖 in its name, a bio that starts with "TEST ACCOUNT" (enforced by the server) and generated abstract photos labelled "TEST BOT n" (no real people). All verified. Accounts carry `accounts.test_bot` + a unique `test_bot_handle`; max 12.
+
+| Bot | Lang | Shows | Location | Tests |
+|---|---|---|---|---|
+| Testbot | de | all lenses | Area, Altstetten (server-kept, seeded) | receipts, typing, translation commands, Now |
+| Luca | it | Hookup | Exact pin near Altstetten station (4 h, renewed) | 5 public photos, private album "Notte" (4), photos and view-once photos in chat, Now "hosting" |
+| Tiago | pt | Friends + Hookup | City (Lisbon) | trip to Zurich (F-20): shows as Visiting, from Lisbon, for 7 days, re-planned when it ends |
+| Jonas | de | Sport + Friends | Area, Letzigrund | gym activity in 2 h; group chat with everyone who joins |
+| Rémi | fr | Hookup | Area, Altstetten | hosts a party, accepts every request, runs the guest group chat |
+| Kenji | ja | Hookup + Friends | Area, Hardbrücke | non-binary; read receipts off (you only see Sent); Tonight plan (drinks first), re-posted when it expires |
+| Ghost | en | Hookup | Hidden (never on Explore) | writes first, once, to anyone who chatted with another bot |
+
+- **E2EE**: each bot is a normal chat client (`apps/testbot`, Node). It bundles the app's own `apps/mobile/src/chat/mls.ts` + `bytes.ts`, keeps MLS keys on a private Fly volume (one file per key) and only sends/receives ciphertext through `/mls/*`. Photos and album items in chat are encrypted on the bot with a fresh AES-GCM key per item (`/media/upload`), like the app. The server never sees plaintext.
+- **Setup goes through the public API** like the app: `PUT /me/location` (+ `PUT /me/pin` for Exact), `POST /me/profiles/:id/photos` + check, `PUT /me/now`, `POST /tonight`, `POST /trips`, `POST /parties` + `…/requests/:pid/accept`, `POST /activities`, `POST /profiles/:id/tap` (taps back), `POST /me/profiles/:id/share`.
+- **Session**: `POST /v1/testbot/session` with header `x-testbot-key` = `TESTBOT_KEY` and the persona (`handle`, `name`, `age`, `gender`, `here_for`, `show_in`, `fields`, `settings`, `seeded`, `server_location`). Creates/updates that bot, removes its earlier devices (their key packages and queued ciphertext go with them) and returns tokens + `profile_id`. With `new_session: false` it only applies the persona. Only whitelisted fields and settings are kept. 404 when `TESTBOT_KEY` is unset/short, the key is wrong, or `DEPLOY_ENV` is `prod`/`production`.
+- **Chat behaviour**: Delivered, Read (~1 s, unless off for that bot), typing, then the reply in the bot's language. Commands (first word): `help`, `lang de|pt|fr|es|it|en|ja`, `mix`, `long`, `burst N` (≤ 10), `later N` (≤ 600 s), `quick`, `echo <text>`, `noread`, `read on|off`, `receipts on|off`, `status`, `photo`, `once` (view once), `album` / `revoke` (private album; Luca has one), `location` (live location 1 h), `link` (profile share link). The "Pics?" quick reply shares the album (or a photo). Group chats (party, activity): a short reply to each message. A message it can't decrypt for 10 min triggers the R-07.20 resync.
+- **Run**: Fly app `thirstr-bot-staging` (fra, 512 MB, volume `botdata` at `/data`), all bots in one process (`BOTS=a,b` limits it), secret `TESTBOT_KEY` (same value on `thirstr-api-staging`). Deployed by `.github/workflows/testbot.yml` on main pushes touching the bots. No prod app exists, and the prod API refuses the endpoint.
+- **Tests**: `apps/testbot` `npm test`: reply rules, and end to end with the built bots against a mock API and a second client (the app's MLS code): setup calls, Delivered/Read, language switch, quick reply `k`, photos / view-once / album the peer decrypts, live location, party request accepted and group chat answered. Server: `test/thirstr_web/test_bot_test.exs`.
 
 ## Release criteria (closed beta)
 - 100 % of Milestone-1 ACs automated or manually signed off.

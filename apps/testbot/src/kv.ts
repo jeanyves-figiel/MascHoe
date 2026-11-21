@@ -1,57 +1,83 @@
-// Bot replacement for the app's device store (apps/mobile/src/chat/kv.ts): one JSON file on the
-// bot's private volume, rewritten atomically after each change. Same interface as the app's kv.
+// Bot replacement for the app's device store (apps/mobile/src/chat/kv.ts): one small file per key
+// on the bot's private volume, each written atomically. Same interface as the app's kv. Shared by
+// every bot in the process: MLS keys are unique (key package hash, group id), bot state is
+// prefixed with the bot's handle.
 import fs from 'node:fs';
 import path from 'node:path';
 
-const file = path.join(process.env.BOT_DATA_DIR ?? './data', 'kv.json');
-let mem: Record<string, unknown> | null = null;
+const dir = () => path.join(process.env.BOT_DATA_DIR ?? './data', 'kv');
+const file = (k: string) => path.join(dir(), encodeURIComponent(k));
+let ready = false;
 
-function load() {
-  if (mem) return mem;
-  try {
-    mem = JSON.parse(fs.readFileSync(file, 'utf8')) as Record<string, unknown>;
-  } catch {
-    mem = {};
+function init() {
+  if (ready) return;
+  fs.mkdirSync(dir(), { recursive: true });
+  // v1 (#109) kept everything in one kv.json: split it once.
+  const legacy = path.join(process.env.BOT_DATA_DIR ?? './data', 'kv.json');
+  if (fs.existsSync(legacy)) {
+    try {
+      const m = JSON.parse(fs.readFileSync(legacy, 'utf8')) as Record<string, unknown>;
+      for (const [k, v] of Object.entries(m)) write(k, v);
+    } catch {
+      // unreadable: start fresh
+    }
+    fs.renameSync(legacy, legacy + '.migrated');
   }
-  return mem;
+  ready = true;
 }
 
-function flush() {
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  const tmp = file + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify(mem));
-  fs.renameSync(tmp, file);
+/** v1 bot state had no handle prefix; it belonged to "testbot". */
+const V1 = ['auth', 'seen', 'pending'];
+const legacyKey = (k: string) => V1.includes(k) || k.startsWith('conv:') || k.startsWith('g2p:');
+
+function write(k: string, v: unknown) {
+  const key = legacyKey(k) && !ready ? 'testbot:' + k : k;
+  const f = file(key);
+  fs.writeFileSync(f + '.tmp', JSON.stringify(v));
+  fs.renameSync(f + '.tmp', f);
 }
+
+function read<T>(k: string): T | null {
+  try {
+    return JSON.parse(fs.readFileSync(file(k), 'utf8')) as T;
+  } catch {
+    return null;
+  }
+}
+
+const names = () => fs.readdirSync(dir()).filter((n) => !n.endsWith('.tmp')).map(decodeURIComponent);
 
 export const kv = {
   async get<T>(k: string): Promise<T | null> {
-    const v = load()[k];
-    return v === undefined ? null : (structuredClone(v) as T);
+    init();
+    return read<T>(k);
   },
   async set(k: string, v: unknown) {
-    load()[k] = structuredClone(v);
-    flush();
+    init();
+    write(k, v);
   },
   async del(k: string) {
-    delete load()[k];
-    flush();
+    init();
+    fs.rmSync(file(k), { force: true });
   },
   async keys(prefix: string) {
-    return Object.keys(load()).filter((k) => k.startsWith(prefix));
+    init();
+    return names().filter((k) => k.startsWith(prefix));
   },
   async getPrefix<T>(prefix: string): Promise<T[]> {
-    const m = load();
-    return Object.keys(m)
+    init();
+    return names()
       .filter((k) => k.startsWith(prefix))
-      .map((k) => structuredClone(m[k]) as T);
+      .map((k) => read<T>(k))
+      .filter((v): v is T => v !== null);
   },
   async delPrefix(prefix: string) {
-    const m = load();
-    for (const k of Object.keys(m)) if (k.startsWith(prefix)) delete m[k];
-    flush();
+    init();
+    for (const k of names()) if (k.startsWith(prefix)) fs.rmSync(file(k), { force: true });
   },
   async wipe() {
-    mem = {};
-    flush();
+    init();
+    fs.rmSync(dir(), { recursive: true, force: true });
+    fs.mkdirSync(dir(), { recursive: true });
   },
 };
