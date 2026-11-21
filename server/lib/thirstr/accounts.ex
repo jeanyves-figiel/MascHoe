@@ -215,6 +215,18 @@ defmodule Thirstr.Accounts do
     n
   end
 
+  @doc """
+  Test bots (testing.md › Chat test bots): fresh tokens for a device the bot already has, so its
+  queue, key packages and chats survive a lost refresh token.
+  """
+  def reissue_tokens(%Account{} = a, %Device{} = d) do
+    Repo.update_all(from(x in Device, where: x.id == ^d.id),
+      set: [revoked_at: nil, last_seen_day: Date.utc_today()]
+    )
+
+    {:ok, issue_tokens(a, d)}
+  end
+
   @refresh_race_s 60
 
   @doc "R-01.5: rotate on use. Re-use of a spent token revokes the device (theft signal)."

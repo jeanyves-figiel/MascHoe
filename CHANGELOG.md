@@ -6,6 +6,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Fixed
+- **Test bots keep their device** (staging, #208): a bot whose refresh token is lost or rejected resumes its existing device (`resume: true` on `POST /v1/testbot/session`) instead of replacing it, so chats with it no longer break with 422 unknown device; refreshes are single-flight.
 - **Duplicate migration version** (server, #200): test bot handles migration renamed to `20261121160001` (clashed with precise distance `20261121150001`, broke `mix test` on main).
 
 ### Changed
