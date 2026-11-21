@@ -24,7 +24,7 @@ import { GestureDetector, useCompetingGestures, useExclusiveGestures, usePanGest
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import { gx } from '../i18n/gestures';
-import { commits, nextIndex, photoZone, rubber } from '../ui/gestureMath';
+import { commits, nextIndex, photoZone, rubber, TAP_SLOP } from '../ui/gestureMath';
 import { feel } from '../ui/haptics';
 import { settle } from '../ui/motion';
 import { PhotoViewer } from '../ui/PhotoViewer';
@@ -208,6 +208,7 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
     },
   });
   const single = useTapGesture({
+    maxDistance: TAP_SLOP,
     onActivate: (e) => {
       'worklet';
       scheduleOnRN(flip, photoZone(e.x, W));
@@ -215,6 +216,7 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
   });
   const double = useTapGesture({
     numberOfTaps: 2,
+    maxDistance: TAP_SLOP,
     maxDelay: 250,
     onActivate: (e) => {
       'worklet';

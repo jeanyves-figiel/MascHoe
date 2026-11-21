@@ -18,6 +18,7 @@ Beta: G1–G18 below. Jean-Yves picked all 18 on the mockup (2026-11-21). Out of
 - R-19.7 **Undo.** Any gesture that moves or hides content (archive, close profile with unsent note) shows a 4 s toast with Undo.
 - R-19.8 **Haptics** (G17). Four tokens only, in `ui/haptics.ts`: `tick` (selection, threshold, sheet stop), `tap` (action done), `success` (Tap sent, reply sent from gesture), `warning` (Block, Report, SOS). Off when Settings → Haptics is off (iOS also mutes them in Low Power Mode). Never on scroll or per frame.
 - R-19.9 **Web build.** Gestures that need touch (G1, G2, G5, G8–G13) are no-ops on web; the visible alternative is used.
+- R-19.10 **Taps never block swipes.** Every tap / double-tap gesture fails once the finger moves 10 pt (`TAP_SLOP`), so a pan or swipe on the same element starts at once. Map markers open on one tap via the marker's own press (iOS annotation tap), deduplicated with the inner button.
 
 ## Gestures
 

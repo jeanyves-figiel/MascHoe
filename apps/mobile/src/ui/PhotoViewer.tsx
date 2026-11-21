@@ -10,7 +10,7 @@ import { scheduleOnRN } from 'react-native-worklets';
 import { gx } from '../i18n/gestures';
 import { tx } from '../i18n/app';
 import { color, radius, space, type } from '../theme/tokens';
-import { clamp, commits, rubber } from './gestureMath';
+import { clamp, commits, rubber, TAP_SLOP } from './gestureMath';
 import { feel } from './haptics';
 import { Icon } from './icons';
 import { settle } from './motion';
@@ -63,6 +63,8 @@ function Stage<T>({ items, start, src, onClose, single, footer }: { items: T[]; 
   const startX = useSharedValue(0);
   const startY = useSharedValue(0);
   const axis = useSharedValue(0); // 0 none, 1 page, 2 close, 3 move
+  // Current photo for the worklets (a captured `i` could be stale on the UI thread).
+  const at = useSharedValue(i);
 
   const go = useCallback(
     (d: number) => {
@@ -78,7 +80,8 @@ function Stage<T>({ items, start, src, onClose, single, footer }: { items: T[]; 
     tx_.set(0);
     ty.set(0);
     page.set(0);
-  }, [i, scale, base, tx_, ty, page]);
+    at.set(i);
+  }, [i, scale, base, tx_, ty, page, at]);
 
   const pinch = usePinchGesture({
     onBegin: () => {
@@ -117,7 +120,8 @@ function Stage<T>({ items, start, src, onClose, single, footer }: { items: T[]; 
         ty.set(startY.get() + e.translationY);
       } else if (a === 1) {
         const t = e.translationX;
-        const edge = (t > 0 && i === 0) || (t < 0 && i >= n - 1);
+        const k = at.get();
+        const edge = (t > 0 && k === 0) || (t < 0 && k >= n - 1);
         page.set(edge ? rubber(t, 60) : t);
       } else down.set(Math.max(0, e.translationY));
     },
@@ -131,7 +135,8 @@ function Stage<T>({ items, start, src, onClose, single, footer }: { items: T[]; 
       } else if (a === 1) {
         const t = page.get();
         const d = commits(t, e.velocityX, W, 0.25) ? (t < 0 ? 1 : -1) : 0;
-        if (d !== 0 && i + d >= 0 && i + d < n) {
+        const k = at.get();
+        if (d !== 0 && k + d >= 0 && k + d < n) {
           page.set(withTiming(-d * W, { duration: 180 }, (done) => {
             if (done) scheduleOnRN(go, d);
           }));
@@ -146,8 +151,11 @@ function Stage<T>({ items, start, src, onClose, single, footer }: { items: T[]; 
     },
   });
 
+  // maxDistance: a finger that moves is a swipe, so the tap fails at once and the pan can take over.
+  // Without it the pan waited for the double-tap to fail and swipes between photos never ran.
   const doubleTap = useTapGesture({
     numberOfTaps: 2,
+    maxDistance: TAP_SLOP,
     maxDelay: 250,
     onActivate: (e) => {
       'worklet';

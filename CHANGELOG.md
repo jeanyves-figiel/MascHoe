@@ -6,6 +6,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Fixed
+- **Map pins open on one tap; swipe between photos works** (app, #187 follow-up): on iPhone a map pin (person, place, visitors bubble) needed two taps, because the map's own tap took the first one. Now one tap opens it. In the full-screen photo viewer, a swipe was held back by the double-tap zoom and never changed photo; any finger movement now ends the tap at once, so swiping works (same fix on the profile photo and chat bubbles).
 - **Duplicate migration version** (server, #200): test bot handles migration renamed to `20261121160001` (clashed with precise distance `20261121150001`, broke `mix test` on main).
 
 ### Changed

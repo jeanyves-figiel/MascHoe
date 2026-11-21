@@ -84,3 +84,16 @@ test('gesture strings exist in en, fr, de', () => {
   expect(Object.keys(gxFr).sort()).toEqual(keys);
   expect(Object.keys(gxDe).sort()).toEqual(keys);
 });
+
+describe('map marker taps (#187 follow-up)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { once } = require('../src/explore/mapShared') as typeof import('../src/explore/mapShared');
+  test('runs once when the marker and its Pressable both fire', () => {
+    const fn = jest.fn();
+    expect(once('a', fn, 1000)).toBe(true);
+    expect(once('a', fn, 1100)).toBe(false);
+    expect(once('b', fn, 1150)).toBe(true);
+    expect(once('b', fn, 2000)).toBe(true);
+    expect(fn).toHaveBeenCalledTimes(3);
+  });
+});
