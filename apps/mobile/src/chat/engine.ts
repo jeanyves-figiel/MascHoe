@@ -13,6 +13,8 @@ import * as MediaCache from './mediaCache';
 import * as mls from './mls';
 import * as store from './store';
 import * as people from './people';
+import * as vc from './vcheck';
+import { vcx } from '../i18n/vcheck';
 import { ppl } from '../i18n/people';
 import { getLocal } from '../me/localFields';
 
@@ -62,7 +64,9 @@ export type Payload =
   | { t: 'location.share'; lat: number; lng: number; until: number }
   | { t: 'screenshot' }
   /** F-07 R-07.36 (#115): mutual friends, only inside the 1:1 E2EE chat. */
-  | { t: 'friend'; op: people.FriendOp };
+  | { t: 'friend'; op: people.FriendOp }
+  /** F-18 R-18.8–R-18.16 (#159): video check, only inside the 1:1 E2EE chat. */
+  | vc.VcPayload;
 
 export type Msg = {
   id: string;
@@ -176,6 +180,7 @@ export async function start(account: Me) {
   store.reset();
   convs = (await kv.get<Record<string, Conv>>('convs')) ?? {};
   await people.loadPeople();
+  await vc.loadVc();
   await migrateStars();
   emit('convs');
   await ensureKeyPackages().catch(() => {});
@@ -223,6 +228,7 @@ export function stop() {
   online = false;
   me = null;
   people.resetPeople();
+  vc.resetVc();
 }
 
 /** Sign-out / account delete: wipe everything on the device (data-model.md › Device-only). */
@@ -560,6 +566,11 @@ async function receive(cid: string, w: Wire, serverAt: number, from?: string, ra
     const show = await people.applyFriend(c.peer, p.op, mine);
     if (!show) return false;
   }
+  if (p.t === 'vcheck') {
+    // R-18.8–R-18.16: request, clip, confirm and screenshot show as rows; the rest is quiet.
+    if (c.ctx || !c.peer) return false;
+    if (!(await vc.apply(c.peer, p, mine))) return false;
+  }
   switch (p.t) {
     case 'disappearing':
       c.ttl = p.ttl;
@@ -632,6 +643,8 @@ export function preview(p: Payload): string {
       return '⏱';
     case 'friend':
       return p.op === 'accept' ? ppl.previewAccept : ppl.previewRequest;
+    case 'vcheck':
+      return '◉ ' + vcx.preview;
     default:
       return '';
   }
@@ -878,6 +891,19 @@ export async function dropFriend(cid: string) {
   const op = cur === 'out' ? 'cancel' : cur === 'in' ? 'decline' : 'remove';
   await people.applyFriend(c.peer, op, true);
   await send(cid, { t: 'friend', op }, { silent: true });
+}
+
+// ------------------------------------------------------------------ video check (F-18 R-18.7–R-18.18, #159)
+
+const VC_QUIET: vc.VcOp[] = ['decline', 'cancel', 'done'];
+
+/** Applies a video check payload on this phone, then sends it E2EE to the peer. */
+export async function sendVc(cid: string, p: Omit<vc.VcPayload, 't'>) {
+  const c = convs[cid];
+  if (!c || c.ctx || !c.peer) return;
+  const body: vc.VcPayload = { t: 'vcheck', ...p };
+  const show = await vc.apply(c.peer, body, true);
+  await send(cid, body, { silent: !show || VC_QUIET.includes(p.op) });
 }
 
 /** The 1:1 chat with a peer, if any. */

@@ -24,6 +24,12 @@ defmodule Thirstr.Storage do
     url
   end
 
+  @doc "Short-lived GET from now, not cache-windowed: video check one-time blobs (R-18.12)."
+  def presigned_get(key, ttl) when is_integer(ttl) do
+    {:ok, url} = ExAws.S3.presigned_url(public_cfg(), :get, bucket(), key, expires_in: ttl)
+    url
+  end
+
   defp window_start do
     now = System.system_time(:second)
 

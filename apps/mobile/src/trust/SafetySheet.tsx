@@ -9,6 +9,7 @@ import { color, radius, space, type } from '../theme/tokens';
 import { Banner, Button, Icon, Sheet } from '../ui';
 import { toast } from '../ui/Toast';
 import { forgetFriend } from '../chat/people';
+import { forgetVc } from '../chat/vcheck';
 
 // S-51 shared safety sheet (#111, F-15 R-15.17–R-15.20): same Hide / Block / Report tiles on the
 // profile ⋯, map peek ⋯, grid tile long-press, chat ⋯ and inbox long-press. `lead` rows sit above
@@ -84,6 +85,8 @@ export function SafetySheet({ visible, target, onClose, onReport, onGone, onRest
       await api('POST', `/profiles/${t.id}/block`);
       // #115 R-07.36: blocking drops the friendship on this phone; nothing is sent.
       await forgetFriend(t.id).catch(() => {});
+      // #159 R-18.7: open video checks and the badge go too; nothing is sent.
+      await forgetVc(t.id).catch(() => {});
       buzz();
       close();
       onGone?.('block', t);

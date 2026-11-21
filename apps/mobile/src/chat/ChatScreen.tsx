@@ -23,6 +23,9 @@ import { ppl } from '../i18n/people';
 import * as P from './people';
 import { NoteSheet, NoteStrip } from '../profile/PrivateNote';
 import { findHits, Marked } from './find';
+import * as V from './vcheck';
+import { vcAvailable, VcAskSheet, VcBadge, VcRecorder, VcRow, VcViewer } from './VideoCheck';
+import { vcx } from '../i18n/vcheck';
 
 type Nav = { navigate: (s: string, p?: object) => void; goBack: () => void; setOptions: (o: object) => void };
 type Params = { cid?: string; profileId?: string; name?: string };
@@ -87,6 +90,11 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
   const [hitAt, setHitAt] = useState(0);
   const listRef = useRef<FlatList<{ m: E.Msg; r: string[] }>>(null);
   P.usePeople();
+  V.useVc();
+  // F-18 R-18.8–R-18.14 (#159) video check: request sheet, recorder, viewer.
+  const [vcAsk, setVcAsk] = useState(false);
+  const [vcRec, setVcRec] = useState<{ rid: string; move: number; offer?: boolean } | null>(null);
+  const [vcWatch, setVcWatch] = useState<V.Vc | null>(null);
   // R-08.11 media tray in the keyboard slot (replaces the "Send a photo" sheet, #135).
   const [tray, setTray] = useState(false);
   const [kbH, setKbH] = useState(lastKb);
@@ -297,6 +305,10 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
               </View>
             );
           }
+          if (m.p.t === 'vcheck') {
+            if (group) return null;
+            return <VcRow m={m} conv={conv} onRecord={(v) => setVcRec({ rid: v.rid, move: v.move })} onWatch={setVcWatch} />;
+          }
           if (m.p.t === 'friend') {
             // R-07.36 friend request / accepted.
             if (m.p.op === 'accept') {
@@ -457,6 +469,7 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
                 </View>
               ) : null}
             </View>
+            {!group ? <VcBadge peer={conv.peer} /> : null}
             {offline ? (
               <View testID="chat-offline" style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: color.fgMuted }} />
@@ -684,6 +697,17 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
                 <SheetRow testID="menu-friend" title={ppl.addFriend} onPress={() => { setMenu(false); askFriend(); }} />
               ) : null}
               <SheetRow testID="menu-note" title={P.noteFor(conv.peer) ? ppl.editNote : ppl.addNote} onPress={() => { setMenu(false); setNoteOpen(true); }} />
+              {vcAvailable && (conv.iWrote || conv.theyWrote) && V.canAsk(conv.peer) ? (
+                <SheetRow
+                  testID="menu-vcheck"
+                  title={vcx.menu(conv.name)}
+                  onPress={() => {
+                    setMenu(false);
+                    if (!me.verified) setProblem(vcx.verifyFirst);
+                    else setVcAsk(true);
+                  }}
+                />
+              ) : null}
               <SheetRow last testID="chat-checkin" title={tx.safety.checkin} onPress={() => { setMenu(false); navigation.navigate('CheckinStart', { cid: conv.id }); }} />
             </>
           }
@@ -692,6 +716,13 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
       )}
 
       {!group ? <NoteSheet peer={conv.peer} visible={noteOpen} onClose={() => setNoteOpen(false)} /> : null}
+      {!group && vcAvailable ? (
+        <>
+          <VcAskSheet key={vcAsk ? 'open' : 'shut'} conv={conv} visible={vcAsk} onClose={() => setVcAsk(false)} onRecordMine={(rid, move) => setVcRec({ rid, move, offer: true })} />
+          <VcRecorder key={vcRec?.rid ?? 'none'} conv={conv} rec={vcRec} onClose={() => setVcRec(null)} />
+          <VcViewer key={vcWatch?.rid ?? 'none'} conv={conv} v={vcWatch} onClose={() => setVcWatch(null)} onReport={() => navigation.navigate('Report', { profileId: conv.peer, cid: conv.id })} />
+        </>
+      ) : null}
 
       <Sheet visible={!!msgMenu} onClose={() => setMsgMenu(null)} title="" closeLabel={tx.common.close}>
         {msgMenu ? (

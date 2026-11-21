@@ -60,6 +60,9 @@ Tab bar (4): **Explore** S-10 · **Tonight** S-13 · **Chats** S-40 · **Me** S-
 | S-44 | Share target (extension) | I-01 | preview, recipients, message | send | not logged in → open app |
 
 ## Safety
+| S-45 | Video check request sheet [#159, [mockup](https://claude.ai/artifact/KExcdnKfZCDiJLLPPMq8d2)] | F-18 R-18.8 | title, line, His move card + ⟳ Another, Send mine too switch, teal Ask for video check, E2EE note | ask, shuffle | not verified → verify first (S-21) · open request → "Waiting for ‹name›" |
+| S-46 | Video check recorder [#159] | F-18 R-18.10 | full screen front camera, face oval, move card on top, 3-2-1, REC timer, ring shutter (3–5 s), 🎤 chip, Retake / Send | record, retake, send | no camera access → Allow / Settings; capture on (iOS) → black card |
+| S-47 | Video check viewer [#159] | F-18 R-18.14–R-18.16 | full screen, blurred until held (A), progress bar, move card, diagonal name + time watermark; end: face-match line, "Did he do the move?" Yes / No, "The video is gone" | hold to play, confirm | capture on → black card; download failed → "Couldn't load. Ask again" |
 | S-50 | Report flow | F-15 | reasons, attach messages, note | submit → block offer | — |
 | S-51 | Check-in start sheet [v2, #112] | F-13 R-13.15 | bottom sheet: "Meeting ‹name›?", tiles 1 h / 2 h (default) / 3 h / Other with due times, contacts card + 2 toggles, Start · due HH:MM | start | no contacts → add contact first |
 | S-52 | Check-in due | F-13 | "All good?", I'm OK, +30 min | biometrics | duress path |

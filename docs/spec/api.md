@@ -144,8 +144,9 @@ One MLS identity per (own profile, device): credential identity = `{"p": profile
 | GET | /mls/messages?after= | → {messages: [{id, to_profile_id, from_profile_id, group_id, kind, key_package_id, ciphertext, at}], expired: [{group_id, count}]} for this device, ≤ 200, ordered by id. `expired` = messages swept unread for this device since last pull (R-07.22) |
 | POST | /mls/messages/ack | {ids} → deletes them (R-07.12); unacked swept after 30 d |
 | POST | /media/upload | {size ≤ 210 MB, ttl_s?, album?: bool} → 201 {blob_id, put_url}; ciphertext only (AES-256-GCM on device). Chat media ≤ 30 d; album items until deleted |
-| GET | /media/{blob_id} | → {url} signed GET (1 h) |
-| DELETE | /media/{blob_id} | owner only; album revoke and item delete |
+| POST | /media/upload (once) | `once: true` (video check, R-18.12): size ≤ 3 MB, TTL 24 h fixed, 20 per account per day |
+| GET | /media/{blob_id} | → {url} signed GET (1 h). Once blob (R-18.12): first call binds to the caller (`fetched_by`), URL valid 2 min; repeat only by that account ≤ 10 min after first fetch, else 404 |
+| DELETE | /media/{blob_id} | owner only; album revoke and item delete. Once blob: owner or `fetched_by` |
 | PUT | /me/push | {token, platform: ios\|android} → 204 (device push token) |
 
 Welcome wire (client convention): `sha256(recipient key package) ‖ MLS Welcome`, so the receiver finds its private key package without trial decryption. Plaintext inside MLS app messages is JSON `{v: 1, id, at, fk, t, …}` with `t` from R-07.4 plus `read`, `disappearing`, `screenshot`. `fk` is the franking key; `franking_tag = HMAC-SHA256(fk, plaintext)` goes to the server (R-07.11).
