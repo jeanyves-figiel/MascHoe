@@ -6,7 +6,7 @@ import { ApiError } from '../api/client';
 import { useSession } from '../app/session';
 import { tx } from '../i18n/app';
 import { color, radius, space, type } from '../theme/tokens';
-import { Banner, Button, ErrorText, Field, Icon, ListRow, Section, SectionLabel, Sheet } from '../ui';
+import { afterSheet, Banner, Button, ErrorText, Field, Icon, ListRow, Section, SectionLabel, Sheet } from '../ui';
 import { HoldButton } from './parts';
 import { Resources } from './SafeModeAuto';
 import * as S from './safety';
@@ -81,7 +81,8 @@ export function SafetyScreen({ navigation }: { navigation: Nav }) {
       setAdding(false);
       setLabel('');
       load();
-      share(c);
+      // #124: share only once the sheet is gone (iOS freezes otherwise).
+      afterSheet(() => share(c));
     } catch (e) {
       setErr(e instanceof ApiError && e.code === 'contacts_full' ? tx.safety.full : errText(e));
     } finally {

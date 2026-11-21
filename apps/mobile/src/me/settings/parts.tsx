@@ -142,7 +142,8 @@ export function Seg<T extends string>({ label, value, options, onChange, tone = 
             accessibilityLabel={l}
             accessibilityState={{ checked: on }}
             onPress={() => onChange(k)}
-            style={{ flex: compact ? undefined : 1, minWidth: compact ? 52 : undefined, height: compact ? 34 : 40, paddingHorizontal: compact ? space.m : 0, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? tone : 'transparent' }}
+            // #124: full-width segments size to their label (long fr/de words), then share the rest.
+            style={{ flexGrow: compact ? 0 : 1, flexShrink: 1, flexBasis: 'auto', minWidth: compact ? 52 : undefined, height: compact ? 34 : 40, paddingHorizontal: compact ? space.m : space.s, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? tone : 'transparent' }}
           >
             <Text numberOfLines={1} style={{ ...type.meta, fontFamily: font.bold, fontSize: 14, color: on ? color.onAccent : color.fgSecondary }}>
               {l}

@@ -156,7 +156,8 @@ export function Segmented<T extends string>({
             accessibilityState={{ checked: on }}
             accessibilityLabel={o.label}
             onPress={() => onChange(o.value)}
-            style={[s.segBtn, grow && { flex: 1 }, { backgroundColor: bg }]}
+            // #124: grown tabs size to their label (long fr/de words) and share the rest, instead of equal slots.
+            style={[s.segBtn, grow && { flexGrow: 1, flexShrink: 1, flexBasis: 'auto', paddingHorizontal: space.s }, { backgroundColor: bg }]}
           >
             <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[s.segText, on && { color: color.onAccent }]}>
               {o.label}
@@ -351,9 +352,28 @@ export function Scrim({ height = '60%', max = 0.9, steps = 10 }: { height?: View
 }
 
 /** Bottom sheet (S-12, S-30, …). */
+// #124: iOS can't show the system share sheet (or any other native modal) on top of a closing
+// RN Modal: after "Cancel" the dead Modal keeps the touches and the screen freezes. Close the
+// sheet, then run the action from `afterSheet` once the Modal is gone (onDismiss, or a timeout
+// where onDismiss doesn't exist).
+let afterDismiss: (() => void) | null = null;
+let afterTimer: ReturnType<typeof setTimeout> | null = null;
+const flushAfterSheet = () => {
+  if (afterTimer) clearTimeout(afterTimer);
+  afterTimer = null;
+  const fn = afterDismiss;
+  afterDismiss = null;
+  fn?.();
+};
+export function afterSheet(fn: () => void) {
+  afterDismiss = fn;
+  if (afterTimer) clearTimeout(afterTimer);
+  afterTimer = setTimeout(flushAfterSheet, Platform.OS === 'ios' ? 900 : 350);
+}
+
 export function Sheet({ visible, onClose, title, children, closeLabel = 'Close' }: { visible: boolean; onClose: () => void; title: string; children: React.ReactNode; closeLabel?: string }) {
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} onDismiss={flushAfterSheet}>
       <Pressable style={s.scrim} onPress={onClose} accessibilityLabel={closeLabel} />
       <View style={s.sheet} accessibilityViewIsModal>
         <View style={s.sheetHead}>

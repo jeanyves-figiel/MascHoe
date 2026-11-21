@@ -443,7 +443,7 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
                 onPress={() => {
                   const c = quick;
                   setQuick(null);
-                  if (!me.verified) toast(tx.explore.unverifiedMessage);
+                  if (!me.verified) toast(tx.explore.unverifiedMessage, { label: tx.me.verifyNow, on: () => navigation.navigate('Verify') });
                   else open(c);
                 }}
               />
