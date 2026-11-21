@@ -5,7 +5,9 @@ import { api, ApiError } from '../api/client';
 import type { Mode, MyProfile, ProfileView, Visibility } from '../api/types';
 import { useSession } from '../app/session';
 import { distanceLabel, tx } from '../i18n/app';
-import { color, radius, space, type } from '../theme/tokens';
+import { color, font, modeColor, radius, space, type } from '../theme/tokens';
+import { v3 } from '../i18n/v3';
+import { AUDIENCES, allowedFor, cycle } from '../me/look';
 import { Badge, Banner, Button, ErrorState, Icon, Loading, Photo, Scrim, useAccent, VerifiedTick } from '../ui';
 import { getLocal } from '../me/localFields';
 import { FieldList } from './FieldList';
@@ -13,15 +15,15 @@ import { PrivateNote } from './PrivateNote';
 import { convWith, dropFriend, answerFriend, getConvs, requestFriend } from '../chat/engine';
 import * as People from '../chat/people';
 import { ppl } from '../i18n/people';
-import { lensFields, lensPhoto } from './lens';
+import { LENSES, lensFields, lensPhoto } from './lens';
 import { SafetySheet, SheetRow } from '../trust/SafetySheet';
 
-type Nav = { navigate: (s: string, p?: object) => void; goBack: () => void };
+type Nav = { navigate: (s: string, p?: object) => void; goBack: () => void; setParams?: (p: Partial<Params>) => void };
 type Params = { id: string; preview?: 'stranger' | 'verified' | 'chats'; mode?: Mode };
 
 /** Preview-as (R-06.7): own profile filtered the way the chosen audience sees it through a lens. */
 export function previewOf(p: MyProfile, as: 'stranger' | 'verified' | 'chats', local: Record<string, unknown>, verified: boolean, mode: Mode = 'hookup'): ProfileView {
-  const allowed: Visibility[] = as === 'stranger' ? ['public'] : as === 'verified' ? ['public', 'verified'] : ['public', 'verified', 'chats'];
+  const allowed: Visibility[] = allowedFor(as);
   const all = { ...p.fields, ...(as === 'chats' ? local : {}) };
   const fields: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(all)) {
@@ -170,7 +172,20 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
           ) : null}
         </View>
         <View style={{ marginTop: -64, paddingHorizontal: space.xl, gap: 14, maxWidth: 560, width: '100%', alignSelf: 'center' }}>
-          {preview ? <Banner tone="personal" text={`${tx.me.previewAs}: ${tx.me.previews[preview]}`} /> : null}
+          {preview ? (
+            // #114 full-screen preview: "Seen by <viewer> in <lens>", each pill cycles.
+            <View testID="preview-pills" style={{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', padding: 4, paddingLeft: 12, borderRadius: radius.pill, backgroundColor: color.scrim }}>
+              <Text style={{ ...type.meta, color: color.fgSecondary }}>{v3.look.seenBy}</Text>
+              <Pressable testID="preview-aud" accessibilityRole="button" onPress={() => navigation.setParams?.({ preview: cycle(AUDIENCES, preview) })} style={{ height: 36, paddingHorizontal: 12, borderRadius: radius.pill, backgroundColor: color.bgInverse, justifyContent: 'center' }}>
+                <Text style={{ ...type.meta, fontFamily: font.heavy, color: color.onAccent }}>{v3.look.aud[preview]} ▾</Text>
+              </Pressable>
+              <Text style={{ ...type.meta, color: color.fgSecondary }}>{v3.look.in}</Text>
+              <Pressable testID="preview-lens" accessibilityRole="button" onPress={() => navigation.setParams?.({ mode: cycle(LENSES, mode) })} style={{ height: 36, paddingHorizontal: 12, borderRadius: radius.pill, backgroundColor: modeColor[mode], justifyContent: 'center' }}>
+                <Text style={{ ...type.meta, fontFamily: font.heavy, color: color.onAccent }}>{tx.modes[mode]} ▾</Text>
+              </Pressable>
+            </View>
+          ) : null}
+          {preview && own && !(own.show_in ?? ['hookup']).includes(mode) ? <Banner tone="warn" text={v3.look.off(tx.modes[mode])} /> : null}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.s }}>
             <Text style={{ ...type.display, fontSize: 34, lineHeight: 38, color: color.fgPrimary, flexShrink: 1 }} accessibilityRole="header">
               {p.display_name}, {p.age}
