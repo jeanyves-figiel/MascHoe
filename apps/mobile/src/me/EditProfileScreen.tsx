@@ -128,6 +128,7 @@ export function EditProfileScreen({ route, navigation }: { route: { params: Para
       accessibilityRole="button"
       accessibilityLabel={`${tx.edit.visibility}: ${tx.edit.vis[visOf(k)]}`}
       onPress={() => setVisFor(k)}
+      hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
       style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6, height: 32, paddingHorizontal: space.m, borderRadius: radius.pill, backgroundColor: `${color.trust}1A` }}
     >
       <Icon.Lock size={12} />

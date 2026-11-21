@@ -143,7 +143,8 @@ export function Segmented<T extends string>({
   grow,
 }: {
   value: T;
-  options: { value: T; label: string }[];
+  /** badge: small coral count after the label (#211 Unread); hidden at 0. */
+  options: { value: T; label: string; badge?: number }[];
   onChange: (v: T) => void;
   fills?: Partial<Record<T, string>>;
   label: string;
@@ -160,14 +161,21 @@ export function Segmented<T extends string>({
             key={o.value}
             accessibilityRole="radio"
             accessibilityState={{ checked: on }}
-            accessibilityLabel={o.label}
+            accessibilityLabel={o.badge ? `${o.label}, ${o.badge}` : o.label}
             onPress={() => onChange(o.value)}
             // #124: grown tabs size to their label (long fr/de words) and share the rest, instead of equal slots.
             style={[s.segBtn, grow && { flexGrow: 1, flexShrink: 1, flexBasis: 'auto', paddingHorizontal: space.s }, { backgroundColor: bg }]}
           >
-            <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[s.segText, on && { color: color.onAccent }]}>
-              {o.label}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[s.segText, on && { color: color.onAccent }, { flexShrink: 1 }]}>
+                {o.label}
+              </Text>
+              {o.badge ? (
+                <View style={{ minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, backgroundColor: color.hookup, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ ...type.caption, color: color.onAccent }}>{o.badge > 99 ? '99+' : o.badge}</Text>
+                </View>
+              ) : null}
+            </View>
           </Pressable>
         );
       })}

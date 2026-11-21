@@ -1005,6 +1005,8 @@ type Item = {
   next: number;
   /** Gave up after 24 h: shown as Not sent, waits for Retry. */
   dead?: boolean;
+  /** #206: the 1:1 group was rebuilt once for a stale device. */
+  rebuilt?: boolean;
   /** Sealed once; retries resend the same ciphertext (never re-encrypt). */
   sealed?: { gid: string; wire: string; to: mls.Member[] };
 };
@@ -1019,6 +1021,8 @@ const isReceipt = (t: Payload['t']) => t === 'read' || t === 'delivered';
 
 /** Errors a retry can't fix (R-07.17). Everything else (offline, timeout, 5xx, 429) is retried. */
 const permanent = (e: unknown) => e instanceof ApiError && [400, 403, 404, 422].includes(e.status);
+/** 422 `to_device_id: unknown device`: a member device of the group was deleted on the server. */
+export const staleDevice = (e: unknown) => e instanceof ApiError && e.status === 422 && !!e.fields?.to_device_id;
 
 /** 1 s, 2 s, 4 s … capped at 60 s, ± 20 % jitter. */
 export const backoff = (tries: number, rnd = Math.random()) => Math.min(60_000, 1000 * 2 ** Math.max(0, tries - 1)) * (0.8 + 0.4 * rnd);
@@ -1070,6 +1074,8 @@ async function attempt(it: Item): Promise<'ok' | 'retry' | Error> {
     return 'ok';
   }
   try {
+    // #206: sealed into a 1:1 group that was since dropped (stale device rebuild) → seal again.
+    if (it.sealed && !c.ctx && !c.groups.includes(it.sealed.gid)) it.sealed = undefined;
     if (!it.sealed) {
       if (c.ctx && !c.groups.length) throw new Error('group_pending');
       const gid = await ensureGroup(c);
@@ -1099,6 +1105,17 @@ async function attempt(it: Item): Promise<'ok' | 'retry' | Error> {
     if (it.t !== 'profile.private' && !isReceipt(it.t) && it.t !== 'resync') sharePrivate(c).catch(() => {});
     return 'ok';
   } catch (e) {
+    // #206 (R-07.20): a device in the 1:1 group no longer exists (the other person reinstalled,
+    // signed out, or a test bot restarted). Rebuild the group with their current devices once
+    // and send again, instead of showing "Not sent".
+    if (staleDevice(e) && it.sealed && !c.ctx && !it.rebuilt) {
+      const bad = it.sealed.gid;
+      it.sealed = undefined;
+      it.rebuilt = true;
+      await putItem(it);
+      await dropGroup(c.id, bad);
+      return attempt(it);
+    }
     if (permanent(e)) {
       await delItem(it);
       if (it.visible) await setStatus(it.cid, it.id, 'failed');
