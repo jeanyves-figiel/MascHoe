@@ -4,7 +4,8 @@ import { useSyncExternalStore } from 'react';
 
 export type Cols = 2 | 3 | 4;
 const KEY = 'thirstr.explore.cols';
-let cur: Cols = 3;
+// #223: smallest tiles (4 per row) by default.
+let cur: Cols = 4;
 const subs = new Set<() => void>();
 
 AsyncStorage.getItem(KEY)

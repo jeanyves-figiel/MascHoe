@@ -39,7 +39,8 @@ const FILTER_KEY = (m: string) => 'thirstr.filters.' + m;
 // #113: one filter set for the merged map; chips and place layers saved on the device.
 const MERGED_FILTERS = 'thirstr.filters.explore';
 const INTENTS_KEY = 'thirstr.exploreIntents';
-const LAYERS_KEY = 'thirstr.exploreLayers';
+// #223: v2 so the new defaults (Clubs, Saunas off) reach every phone once.
+const LAYERS_KEY = 'thirstr.exploreLayers.v2';
 const SNAP_KEY = 'thirstr.exploreSnap';
 const HOLD_KEY = 'thirstr.holdHintSeen';
 /** Floating tab bar (16 pt inset + 64 pt + 18 pt) the sheet content must clear. */
