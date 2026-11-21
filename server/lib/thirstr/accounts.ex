@@ -144,6 +144,8 @@ defmodule Thirstr.Accounts do
     end
   end
 
+  @refresh_race_s 60
+
   @doc "R-01.5: rotate on use. Re-use of a spent token revokes the device (theft signal)."
   def refresh(token) when is_binary(token) do
     hash = Ids.hash("refresh", token)
@@ -153,9 +155,14 @@ defmodule Thirstr.Accounts do
       nil ->
         {:error, :unauthorized}
 
+      # #116: a token spent seconds ago is a client refresh race (parallel 401s), not theft.
       %RefreshToken{used_at: used} = rt when not is_nil(used) ->
-        Repo.delete(rt.device)
-        {:error, :unauthorized}
+        if DateTime.diff(now, used) < @refresh_race_s do
+          {:error, :refresh_race}
+        else
+          Repo.delete(rt.device)
+          {:error, :unauthorized}
+        end
 
       %RefreshToken{expires_at: exp} = rt ->
         cond do
@@ -166,17 +173,21 @@ defmodule Thirstr.Accounts do
             {:error, :forbidden}
 
           true ->
-            {1, _} =
-              Repo.update_all(
-                from(r in RefreshToken, where: r.id == ^rt.id and is_nil(r.used_at)),
-                set: [used_at: now]
-              )
+            case Repo.update_all(
+                   from(r in RefreshToken, where: r.id == ^rt.id and is_nil(r.used_at)),
+                   set: [used_at: now]
+                 ) do
+              {1, _} ->
+                Repo.update_all(from(d in Device, where: d.id == ^rt.device_id),
+                  set: [last_seen_day: Date.utc_today()]
+                )
 
-            Repo.update_all(from(d in Device, where: d.id == ^rt.device_id),
-              set: [last_seen_day: Date.utc_today()]
-            )
+                {:ok, issue_tokens(rt.account, rt.device)}
 
-            {:ok, issue_tokens(rt.account, rt.device)}
+              # a parallel request spent it between our read and write
+              {0, _} ->
+                {:error, :refresh_race}
+            end
         end
     end
   end
