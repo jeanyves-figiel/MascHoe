@@ -47,25 +47,30 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Pick photos for your profile, or to send in a chat. Nothing leaves your phone until you send it."
+          "photosPermission": "Pick photos for your profile, or photos and videos to send in a chat. Nothing leaves your phone until you send it.",
+          "cameraPermission": "Thirstr uses the camera for the selfie check, to take a photo or record a video to send in a chat, and to record a video check someone asked you for.",
+          "microphonePermission": "Thirstr uses the microphone only when you record a video to send in a chat. The video check records without sound."
         }
       ],
       [
         "expo-camera",
         {
-          "cameraPermission": "Thirstr uses the camera for the selfie check (checked on your phone and deleted), to take a photo to send in a chat, and to record a video check someone asked you for.",
-          "microphonePermission": false,
+          "cameraPermission": "Thirstr uses the camera for the selfie check (checked on your phone and deleted), to take a photo or record a video to send in a chat, and to record a video check someone asked you for.",
+          "microphonePermission": "Thirstr uses the microphone only when you record a video to send in a chat. The video check records without sound.",
           "recordAudioAndroid": false
         }
       ],
       [
         "expo-media-library",
         {
-          "photosPermission": "Pick photos for your profile, or to send in a chat. Nothing leaves your phone until you send it.",
+          "photosPermission": "Pick photos for your profile, or photos and videos to send in a chat. Nothing leaves your phone until you send it.",
           "savePhotosPermission": false,
           "isAccessMediaLocationEnabled": false,
           "preventAutomaticLimitedAccessAlert": true,
-          "granularPermissions": ["photo"]
+          "granularPermissions": [
+            "photo",
+            "video"
+          ]
         }
       ],
       "expo-apple-authentication",
@@ -93,6 +98,13 @@
         "expo-sensors",
         {
           "motionPermission": "Thirstr uses motion only for shake-to-erase, when you turn it on."
+        }
+      ],
+      [
+        "expo-video",
+        {
+          "supportsBackgroundPlayback": false,
+          "supportsPictureInPicture": false
         }
       ]
     ],

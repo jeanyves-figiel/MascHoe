@@ -96,11 +96,20 @@ defmodule Thirstr.Moderation.NudeNetClassifier do
   def classify(key, slot, kind) do
     url = Application.fetch_env!(:thirstr, :classifier_url)
 
-    case Req.post(url <> "/detect",
-           json: %{url: Thirstr.Storage.internal_presigned_get(key)},
-           receive_timeout: 20_000,
-           retry: :transient
-         ) do
+    token = Application.get_env(:thirstr, :classifier_token)
+    headers = if token, do: [authorization: "Bearer " <> token], else: []
+
+    opts =
+      [
+        json: %{url: Thirstr.Storage.internal_presigned_get(key)},
+        headers: headers,
+        receive_timeout: 20_000,
+        retry: :transient,
+        # .flycast / .internal names resolve to IPv6 only (Fly private network).
+        inet6: true
+      ] ++ Application.get_env(:thirstr, :classifier_req_options, [])
+
+    case Req.post(url <> "/detect", opts) do
       {:ok, %{status: 200, body: %{"detections" => det}}} -> Classifier.decide(det, slot, kind)
       # Service down: never auto-approve; queue for human review (hidden until reviewed).
       _ -> {:review, %{"error" => true, "main_ok" => false}}
