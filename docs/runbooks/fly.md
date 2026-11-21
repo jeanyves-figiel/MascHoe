@@ -5,13 +5,13 @@ Created 2026-11-17 in Fly org `personal`, region `fra` (EU only, enforced by `sc
 | App | Role | Notes |
 |---|---|---|
 | `thirstr-api-staging` / `thirstr-api-prod` | Phoenix API (`infra/fly/api-<env>.toml`) | public IPv6 + shared IPv4; deployed by digest only; serves the marketing site (W-01) on non-API paths, no web client |
-| `thirstr-db-staging` / `thirstr-db-prod` | Postgres 16 + h3 machine, encrypted volume (1 GB / 3 GB) | image `registry.fly.io/thirstr-db-<env>:pg16-h3`, built by `infra-images.yml`; reachable at `thirstr-db-<env>.internal:5432` (6PN only) |
+| `thirstr-db-staging` / `thirstr-db-prod` | Postgres 16 + h3 + pgBackRest machine, encrypted volume (1 GB / 3 GB), `stop_config` SIGINT / 30 s | image `registry.fly.io/thirstr-db-<env>:pg16-h3`, built by `infra-images.yml`; reachable at `thirstr-db-<env>.internal:5432` (6PN only) |
 | `thirstr-valkey-staging` / `thirstr-valkey-prod` | Valkey, RAM only (`--save "" --appendonly no`), password auth | no volume by design (ADR-0001) |
 | Tigris buckets `thirstr-public-staging` / `thirstr-public-prod` | public photos (private bucket, presigned URLs) | created as Fly add-ons, primary region `fra` |
 
 ## Secrets (set as Fly app secrets, never in git)
 - API: `SECRET_KEY_BASE`, `ID_PEPPER`, `DATABASE_URL`, `VALKEY_URL`, `S3_*`.
-- DB: `POSTGRES_PASSWORD`. Valkey: `VALKEY_PASSWORD`.
+- DB: `POSTGRES_PASSWORD`, `PGBACKREST_REPO1_S3_BUCKET`, `PGBACKREST_REPO1_S3_KEY`, `PGBACKREST_REPO1_S3_KEY_SECRET`, `PGBACKREST_REPO1_CIPHER_PASS` (#141). Valkey: `VALKEY_PASSWORD`.
 - Rotate: set new value on the dependent app and the API in one change, then restart both.
 
 ## GitHub (owner setup)
@@ -48,7 +48,7 @@ scripts/smoke.sh https://staging.thirstr.fun
 ```
 
 ## Known gaps (tracked in GitHub)
-- Single Postgres machine per env: no replica, no PITR yet (ops.md backup/DR targets not met).
+- Single Postgres machine per env: no standby yet (EN-01 #160). Backups + PITR: pgBackRest → `thirstr-backups-<env>` (#141, [`db-backups.md`](db-backups.md)).
 - `ID_PEPPER` is a Fly secret; spec wants it in an EU KMS.
 - No SMTP provider yet: email magic links are not delivered on staging/prod.
 - Tigris EU-only placement to confirm.
