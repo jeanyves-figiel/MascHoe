@@ -5,6 +5,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+- **App version 0.9.0** (app, #198): first v1 release candidate; was 0.1.0. Shown in TestFlight and the App Store as 0.9.0. Build numbers unchanged (CI run number + offset), so TestFlight keeps accepting every build.
+
 ### Added
 - **Gestures across the app** (app, F-19 #187): every gesture also has a visible button and a screen reader action.
   - Chat: swipe a message right to reply (quote above the composer and in the bubble), double-tap their message for ❤️, hold a message to lift it with a reaction bar (slide to an emoji and let go) and actions (Reply, Copy, Report, Delete for me), swipe the chat left to see send times. One reaction per person per message; the same emoji again takes it back.
