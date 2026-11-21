@@ -633,6 +633,11 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
         keyboardShouldPersistTaps="handled"
         data={visible}
         keyExtractor={(x) => x.m.id}
+        // SR-15 / EN-18: render the newest screenful first, then small batches while scrolling.
+        initialNumToRender={20}
+        maxToRenderPerBatch={20}
+        windowSize={9}
+        removeClippedSubviews={Platform.OS === 'android'}
         contentContainerStyle={{ padding: space.l, gap: space.xs }}
         ListFooterComponent={
           <View style={{ alignItems: 'center', gap: space.s, marginBottom: space.l }}>
