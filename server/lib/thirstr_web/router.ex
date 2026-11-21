@@ -26,6 +26,11 @@ defmodule ThirstrWeb.Router do
     plug ThirstrWeb.Plugs.RateLimit, bucket: "relay", limit: 60, window: 60
   end
 
+  # R-01.7: 5 recovery sign-ins per 10 min per IP
+  pipeline :recovery_limit do
+    plug ThirstrWeb.Plugs.RateLimit, bucket: "recov", limit: 5, window: 600
+  end
+
   pipeline :device_link_limit do
     plug ThirstrWeb.Plugs.RateLimit, bucket: "dlink", limit: 10, window: 60
   end
@@ -140,6 +145,7 @@ defmodule ThirstrWeb.Router do
       post "/passkey/login/options", AuthController, :passkey_login_options
       post "/passkey/login", AuthController, :passkey_login
       post "/oidc", AuthController, :oidc
+      post "/recovery/options", AuthController, :recovery_options
       post "/email/verify", AuthController, :email_verify
       post "/refresh", AuthController, :refresh
     end
@@ -149,6 +155,11 @@ defmodule ThirstrWeb.Router do
       pipe_through [:client_report_limit]
       post "/errors", ClientController, :error
       post "/sessions", ClientController, :session
+    end
+
+    scope "/auth" do
+      pipe_through [:recovery_limit, :maybe_auth]
+      post "/recovery", AuthController, :recovery
     end
 
     scope "/auth" do
@@ -308,6 +319,12 @@ defmodule ThirstrWeb.Router do
       get "/me/devices", AccountDataController, :devices
       delete "/me/devices/:id", AccountDataController, :remove_device
       post "/devices/link", AccountDataController, :link_start
+      # R-01.7 recovery phrase + sealed backup (#25)
+      get "/me/recovery", AccountDataController, :recovery_status
+      put "/me/recovery", AccountDataController, :recovery_put
+      delete "/me/recovery", AccountDataController, :recovery_delete
+      get "/me/recovery/vault", AccountDataController, :vault_get
+      put "/me/recovery/vault", AccountDataController, :vault_put
       # #25 device attestation (iOS App Attest)
       get "/devices/attest", AccountDataController, :attest_status
       post "/devices/attest/challenge", AccountDataController, :attest_challenge

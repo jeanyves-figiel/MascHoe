@@ -6,6 +6,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Security
+- **Recovery phrase + sealed backup** (server + app, #25, F-01 R-01.7, option B): Settings › Account › Recovery phrase (offered once after verification) shows 12 words once, behind Face ID, hold-to-show, with a 3-word check. The words derive an Ed25519 sign-in key (server keeps only the public key) and an AES-256-GCM key that seals a backup of private albums, notes, favorites and friends (uploaded at most hourly when changed, ≤ 1 MB, server can't read it). "Lost your phone? Use recovery phrase" on the sign-in screen: 12 fields with suggestions and Paste → signed in, every other phone signed out, backup restored, "You're back" lists what came back (chats don't). Make new words / Turn off. New `/auth/recovery(/options)`, `/me/recovery`, `/me/recovery/vault`; export includes the recovery status. New: `@scure/bip39`.
 - **App Attest on iPhone** (server + app, #25, security.md › Device attestation): each install creates a Secure Enclave key that Apple attests; the server checks Apple's certificate chain, the challenge, our app id and the key, and stores only the public key. Once a day (foreground only, two small requests) the app proves it is still the same genuine app on the same phone. New `GET /devices/attest`, `POST /devices/attest/challenge`, `POST /devices/attest`, `POST /devices/assert`. Soft in beta: nothing is blocked; groundwork for anti-bot limits (A3/A9).
 
 ### Fixed

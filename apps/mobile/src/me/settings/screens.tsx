@@ -12,6 +12,7 @@ import { mx } from '../../i18n/media';
 import { toast } from '../../ui/Toast';
 import { LocationSheet } from '../../explore/LocationSheet';
 import { langName, targetLang, translateAvailable } from '../../chat/translate';
+import { rx } from '../../i18n/recovery';
 import { tx } from '../../i18n/app';
 import { tr } from '../../i18n/travel';
 import { trx } from '../../i18n/translate';
@@ -23,6 +24,7 @@ import { Button, Field, RangeSlider, Sheet } from '../../ui';
 import { ExportCancelled, exportData, ExportProgress, ExportStage } from '../exportData';
 import { type Prefs, prefs, setPrefs, type TranslateMode } from '../prefs';
 import { SignInEmailSheet } from '../SignInEmail';
+import { recoveryRowValue } from '../RecoveryScreen';
 import { Group, Page, Row, SegBlock, SwitchRow, useSettings } from './parts';
 
 type Nav = { navigate: (s: string, p?: object) => void; goBack?: () => void };
@@ -324,9 +326,11 @@ export function AccountSettings({ navigation }: { navigation: Nav }) {
   const [packing, setPacking] = useState<Partial<Record<ExportStage, ExportProgress>> | null>(null);
   const cancelExport = React.useRef(false);
   const [devices, setDevices] = useState<number | null>(null);
+  const [recovery, setRecovery] = useState<{ on: boolean; since: string | null; backup_at: string | null } | null>(null);
   useFocusEffect(
     useCallback(() => {
       api<{ devices: unknown[] }>('GET', '/me/devices').then((r) => setDevices(r.devices.length), () => {});
+      api<{ on: boolean; since: string | null; backup_at: string | null }>('GET', '/me/recovery').then(setRecovery, () => {});
     }, []),
   );
   const call = async (fn: () => Promise<unknown>) => {
@@ -342,6 +346,7 @@ export function AccountSettings({ navigation }: { navigation: Nav }) {
     <Page title={S.account} err={err}>
       <Group label={S.signIn}>
         <Row testID="settings-email" title={tx.signInEmail.row} sub={me.has_email ? undefined : tx.signInEmail.rowSub} value={me.has_email ? tx.signInEmail.added : undefined} valueTone={me.has_email ? color.trust : undefined} onPress={me.has_email ? undefined : () => setEmailSheet(true)} />
+        <Row testID="settings-recovery" title={rx.row} sub={recovery?.on ? undefined : rx.rowSub} value={recoveryRowValue(recovery)} valueTone={recovery?.on ? color.trust : undefined} onPress={() => navigation.navigate('Recovery')} />
         <Row testID="settings-devices" title={tx.devices.title} sub={S.devicesSub} value={devices != null ? String(devices) : undefined} onPress={() => navigation.navigate('Devices')} />
       </Group>
       <Group label={S.yourData}>

@@ -5,6 +5,9 @@ defmodule ThirstrWeb.FallbackController do
   def call(conn, {:error, reason}), do: error(conn, reason)
 
   def error(conn, :unauthorized), do: send_error(conn, 401, "unauthorized", "Sign in again")
+  def error(conn, :recovery_invalid),
+    do: send_error(conn, 401, "recovery_invalid", "These words don't match an account")
+
   def error(conn, :forbidden), do: send_error(conn, 403, "forbidden", "Not allowed")
   def error(conn, {:forbidden, msg}), do: send_error(conn, 403, "forbidden", msg)
   def error(conn, :not_found), do: send_error(conn, 404, "not_found", "Not found")
