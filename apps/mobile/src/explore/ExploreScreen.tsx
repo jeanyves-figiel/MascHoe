@@ -325,7 +325,7 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
       await api('PATCH', `/me/profiles/${own.id}`, { show_in: next });
       await refresh();
       const sports = own.fields.sports;
-      if (mode === 'sport' && !(Array.isArray(sports) && sports.length)) navigation.navigate('EditProfile', { id: own.id, focus: 'sport' });
+      if (mode === 'sport' && !(Array.isArray(sports) && sports.length)) navigation.navigate('EditSection', { id: own.id, section: 'sport' });
     } catch {
       // Stays visible; the banner remains so they can retry.
     }

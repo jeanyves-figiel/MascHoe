@@ -1,5 +1,5 @@
 import * as ImagePicker from 'expo-image-picker';
-import React, { useRef, useState } from 'react';
+import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { api, ApiError, Me, Photo as P } from '../api/client';
 import { uploadPublicPhoto } from '../api/photoUpload';
@@ -12,7 +12,9 @@ import { feel } from '../ui/haptics';
 const G = space.s;
 
 // F-06 photos: slot 0 = vanilla main (R-06.2), 4 extra; reorder, replace, remove.
-export function PhotoEditor({ profile, accent, onChange }: { profile: MyProfile; accent: string; onChange: (p: MyProfile) => void }) {
+export type PhotoEditorHandle = { addNext: () => void };
+
+export const PhotoEditor = forwardRef<PhotoEditorHandle, { profile: MyProfile; accent: string; onChange: (p: MyProfile) => void }>(function PhotoEditor({ profile, accent, onChange }, ref) {
   const [busy, setBusy] = useState<number | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [sel, setSel] = useState<string | null>(null);
@@ -87,6 +89,9 @@ export function PhotoEditor({ profile, accent, onChange }: { profile: MyProfile;
   const selIdx = sel ? ids.indexOf(sel) : -1;
   const selected = selIdx >= 0 ? live[selIdx] : null;
   const freeSlot = [0, 1, 2, 3, 4].find((s) => !live.some((x) => x.slot === s));
+  // #219: Quick wins "Add photos" opens the picker for the next free slot.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useImperativeHandle(ref, () => ({ addNext: () => freeSlot !== undefined && add(freeSlot) }), [freeSlot]);
 
   // App v2 mosaic (issue 63): main photo big, two on the right, two wide below.
   // #213: plain flex layout (no absolute tiles, no onLayout height) so every tile hit-tests on iOS.
@@ -143,17 +148,18 @@ export function PhotoEditor({ profile, accent, onChange }: { profile: MyProfile;
 
   return (
     <View style={{ gap: space.s }}>
-      <View style={{ gap: G }}>
-        <View style={{ flexDirection: 'row', gap: G }}>
-          {tile(0, { flex: 2, aspectRatio: 0.95 })}
-          <View style={{ flex: 1, gap: G }}>
-            {tile(1, { flex: 1 })}
-            {tile(2, { flex: 1 })}
+      {/* #219 S-74: compact grid, main photo left over two rows, 2×2 on the right. */}
+      <View style={{ flexDirection: 'row', gap: G }}>
+        {tile(0, { flex: 1.1 })}
+        <View style={{ flex: 2, gap: G }}>
+          <View style={{ flexDirection: 'row', gap: G }}>
+            {tile(1, { flex: 1, aspectRatio: 1.35 })}
+            {tile(2, { flex: 1, aspectRatio: 1.35 })}
           </View>
-        </View>
-        <View style={{ flexDirection: 'row', gap: G }}>
-          {tile(3, { flex: 1, aspectRatio: 1.45 })}
-          {tile(4, { flex: 1, aspectRatio: 1.45 })}
+          <View style={{ flexDirection: 'row', gap: G }}>
+            {tile(3, { flex: 1, aspectRatio: 1.35 })}
+            {tile(4, { flex: 1, aspectRatio: 1.35 })}
+          </View>
         </View>
       </View>
       <Meta>{tx.edit.photosHint}</Meta>
@@ -170,7 +176,7 @@ export function PhotoEditor({ profile, accent, onChange }: { profile: MyProfile;
       <ErrorText text={err} />
     </View>
   );
-}
+});
 
 function Act({ label, onPress, danger }: { label: string; onPress: () => void; danger?: boolean }) {
   return (
