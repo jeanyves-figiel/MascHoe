@@ -12,7 +12,9 @@ defmodule ThirstrWeb.Endpoint do
   end
 
   plug Plug.RequestId
-  plug Plug.RewriteOn, [:x_forwarded_for, :x_forwarded_proto]
+  # Client IP = Fly-Client-IP, which the Fly proxy always overwrites. X-Forwarded-For is not
+  # trusted: Plug takes its first entry, which the client controls (rate limits, R-02.2 city).
+  plug Plug.RewriteOn, [{:remote_ip, "fly-client-ip"}, :x_forwarded_proto]
   plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint]
 
   plug Plug.Parsers,

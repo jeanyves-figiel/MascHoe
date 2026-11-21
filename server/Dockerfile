@@ -12,6 +12,15 @@ WORKDIR /site
 COPY web/site ./
 RUN node build.mjs /site/dist
 
+# Offline IP → city (R-02.2, #26): DB-IP City Lite, CC BY 4.0. Own stage so the download is
+# cached per DBIP_MONTH (deploy workflow passes YYYY-MM); the IP never leaves our machines.
+FROM ${BUILDER_IMAGE} AS geo
+RUN apt-get update -y && apt-get install -y ca-certificates && apt-get clean && rm -f /var/lib/apt/lists/*_*
+ARG DBIP_MONTH=
+WORKDIR /geo
+COPY server/lib/thirstr/geo/geo_db_builder.ex server/rel/geo/build.exs ./
+RUN mkdir -p out && elixir -r geo_db_builder.ex build.exs out/city.tgeo ${DBIP_MONTH}
+
 FROM ${BUILDER_IMAGE} AS builder
 RUN apt-get update -y && apt-get install -y build-essential git && apt-get clean && rm -f /var/lib/apt/lists/*_*
 WORKDIR /app
@@ -24,6 +33,7 @@ COPY server/config/config.exs server/config/${MIX_ENV}.exs config/
 RUN mix deps.compile
 COPY server/priv priv
 COPY --from=site /site/dist priv/static/site
+COPY --from=geo /geo/out priv/geo
 COPY server/lib lib
 RUN mix compile
 COPY server/config/runtime.exs config/

@@ -45,6 +45,13 @@ Indexes: (account_id), (city_id, last_day). Deleted by `ExpirySweep` (every 15 m
 ### trip_creates (F-20 rate limit)
 | account_id · at | rows older than 30 d swept by `ExpirySweep` |
 
+### moments (F-21, #212)
+| id uuid · account_id · profile_id · storage_key · thumb_key · caption ≤ 80 · caption_style · audience (everyone, chats, favorites) · intents text[] · main_ok bool · status (uploading, live, review, rejected, hidden) · reject_reason · ttl_s · expires_at · created_at |
+Indexes: (profile_id, status, expires_at), (account_id, created_at), (expires_at). No location of any kind. Hard-deleted with their files by `ExpirySweep` at `expires_at` (uploads never published: after 1 h); files deleted with the account.
+
+### moment_audience · moment_views · moment_mutes (F-21)
+| moment_audience: moment_id · profile_id (chats / favorites list) | moment_views: moment_id · viewer_profile_id · at · tapped · screenshot (deleted with the Moment) | moment_mutes: account_id · profile_id · created_at (viewer mutes a poster) |
+
 ### devices
 | id uuid · account_id · platform enum(ios, android, web) · attestation_ok bool · push_token_enc bytea (encrypted at rest) · mls_client_id bytea · last_seen_day date |
 
@@ -163,3 +170,5 @@ Beta store: one encrypted key-value table (`expo-sqlite` + SQLCipher, key in Key
 | Tonight / Now / activity posts | expiry + 1 h |
 | Reports | 1 y (legal), franked payload deleted after decision + 90 d |
 | Deleted account | hard delete ≤ 24 h; backups roll off ≤ 30 d |
+
+Enforcement is measured (EN-17): `Thirstr.Retention` counts rows past each deadline + grace and exports `thirstr_retention_overdue{rule}`; alert when > 0 for 1 h (`docs/runbooks/monitoring.md`). A new retention rule adds a probe there.

@@ -301,6 +301,8 @@ defmodule ThirstrWeb.AuthTest do
 
   defp extract_token do
     assert_email_sent(fn email ->
+      # #26: sender is on our own domain (thirstr.app belongs to someone else).
+      assert email.from == {"Thirstr", "hello@thirstr.fun"}
       send(self(), {:token, Regex.run(~r/token=([\w-]+)/, email.text_body) |> List.last()})
       true
     end)

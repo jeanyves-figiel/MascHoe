@@ -66,6 +66,19 @@ export async function biometrics(prompt: string): Promise<boolean> {
   return r.success;
 }
 
+/**
+ * Owner check for sensitive account actions (device link R-01.6, recovery phrase R-01.7):
+ * Face ID / Touch ID with the phone passcode as fallback, asked whether or not App lock is on.
+ * A phone with no passcode at all has nothing to ask → true.
+ */
+export async function deviceAuth(prompt: string): Promise<boolean> {
+  if (Platform.OS === 'web') return true;
+  const LA = await import('expo-local-authentication');
+  if ((await LA.getEnrolledLevelAsync()) === LA.SecurityLevel.NONE) return true;
+  const r = await LA.authenticateAsync({ promptMessage: prompt, disableDeviceFallback: false });
+  return r.success;
+}
+
 export async function biometricsAvailable() {
   if (Platform.OS === 'web') return false;
   const LA = await import('expo-local-authentication');

@@ -13,7 +13,7 @@ import * as Albums from './albums';
 import * as E from './engine';
 import * as Lib from './library';
 import { decryptToUri, loadOpts, pickPhotos, saveOpts, SendOpts, Source, takePhoto } from './media';
-import { MAX_PICK, Pick, toggle } from './pick';
+import { holdTray, MAX_PICK, Pick, toggle } from './pick';
 import * as Recent from './recent';
 
 const EXPIRIES: SendOpts['expiry'][] = ['keep', '1h', '24h', '7d'];
@@ -377,6 +377,12 @@ function Camera() {
 
 function NewAlbumSheet({ visible, onClose, onCreated }: { visible: boolean; onClose: () => void; onCreated: (a: Albums.Album) => void }) {
   const [name, setName] = useState('');
+  // #222: keep the tray (and this sheet) open while the name keyboard is up.
+  useEffect(() => {
+    if (!visible) return;
+    holdTray(true);
+    return () => holdTray(false);
+  }, [visible]);
   return (
     <Sheet visible={visible} onClose={onClose} title={mx.newAlbum} closeLabel={tx.common.close}>
       <Field label={mx.newName} value={name} onChangeText={setName} maxLength={40} autoFocus testID="tray-album-name" />
