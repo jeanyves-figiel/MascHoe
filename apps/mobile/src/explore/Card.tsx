@@ -7,6 +7,9 @@ import { Photo, Scrim, useAccent, VerifiedTick } from '../ui';
 import { IntentBar } from './IntentRing';
 import { a11yLabel, dayLabel, rangeLabel, tileTag, TravelLabel } from '../travel/travel';
 import { tr } from '../i18n/travel';
+import { TileRing } from '../moments/Ring';
+import { watchedAll } from '../moments/api';
+import { mx } from '../i18n/moments';
 
 // R-04.5 grid card / R-04.4 tray card: photo, name, tick, online dot, distance, Now/Exact badge.
 export function ProfileTile({ card, onPress, onLongPress, tray, selected }: { card: Card; onPress: () => void; onLongPress?: () => void; tray?: boolean; selected?: boolean }) {
@@ -16,7 +19,10 @@ export function ProfileTile({ card, onPress, onLongPress, tray, selected }: { ca
   // F-20 R-20.10: visitors (and travellers already here) carry a sky outline + reason.
   const trip = card.trip ?? null;
   const where = trip ? (trip.here ? tr.visitingUntil(dayLabel(trip.last_day)) : `${tr.visiting} ${rangeLabel(trip.first_day, trip.last_day)}`) : distanceLabel(card.distance);
-  const label = `${card.display_name}, ${card.age}${card.verified ? ', verified' : ''}, ${trip ? a11yLabel(trip) : distanceLabel(card.distance)}${card.now ? ', ' + tx.now[card.now.status] : ''}`;
+  // F-21 R-21.9 (#212): gradient ring = new Moment, grey = all seen.
+  const moments = card.moments && card.moments.live > 0 ? card.moments : null;
+  const unseen = !!moments?.unseen && !watchedAll(card.id);
+  const label = `${card.display_name}, ${card.age}${card.verified ? ', verified' : ''}, ${trip ? a11yLabel(trip) : distanceLabel(card.distance)}${card.now ? ', ' + tx.now[card.now.status] : ''}${moments ? ', ' + mx.openA11y('', moments.live, unseen).replace(/^: /, '') : ''}`;
   return (
     <Pressable
       testID={`tile-${card.id}`}
@@ -36,6 +42,7 @@ export function ProfileTile({ card, onPress, onLongPress, tray, selected }: { ca
       <Photo uri={card.photo} id={card.id} label={`${card.display_name}'s photo`} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
       <Scrim height="60%" max={tray ? 0.92 : 0.85} />
       {trip ? <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 18, borderWidth: 2.5, borderColor: color.travel }} /> : null}
+      {moments && !trip ? <TileRing unseen={unseen} radius={tray ? radius.tray : 18} /> : null}
       {card.online ? (
         <View accessible accessibilityLabel="Online" style={{ position: 'absolute', top: 8, right: 8, width: 12, height: 12, borderRadius: 6, backgroundColor: color.sport, borderWidth: 2, borderColor: color.bgBase }} />
       ) : null}
