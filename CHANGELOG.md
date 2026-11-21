@@ -6,7 +6,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
-- **Moments spec** (docs, #212, F-21): temporary story-style photos (1 h / 6 h / 24 h, max 10 live), audience per Moment (Everyone who can see me · People I chat with · Favorites), on-device blur brush and Blur faces, no location data, screenshot block (Android) / notice (iOS), permissive classifier (no genitals), hard delete + CDN purge at expiry. New screens S-74 composer, S-75 viewer; new token `moment`. Placement (D-21a) and who-viewed list (D-21b) pending owner pick ([mockup](https://claude.ai/artifact/Ctum8QhK6cBFwWytjziZu1)).
+- **Moments spec** (docs, #212, F-21): temporary story-style photos (1 h / 6 h / 24 h, max 10 live), audience per Moment (Everyone who can see me · People I chat with · Favorites), on-device blur brush and Blur faces, no location data, screenshot block (Android) / notice (iOS), permissive classifier (no genitals), hard delete + CDN purge at expiry. New screens S-74 composer, S-75 viewer; new token `moment`. Placement: Moments row on the grid + rings (D-21a B, picked). Who-viewed list (D-21b) pending owner pick ([mockup](https://claude.ai/artifact/Ctum8QhK6cBFwWytjziZu1)).
 
 ### Fixed
 - **Test bots keep their device** (staging, #208): a bot whose refresh token is lost or rejected resumes its existing device (`resume: true` on `POST /v1/testbot/session`) instead of replacing it, so chats with it no longer break with 422 unknown device; refreshes are single-flight.
