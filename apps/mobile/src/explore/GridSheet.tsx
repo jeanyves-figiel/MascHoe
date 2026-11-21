@@ -63,14 +63,14 @@ export function GridSheet({ h, bottom, snap, onSnap, title, right, above, childr
   }, [snap, onSnap]);
 
   useEffect(() => {
-    y.value = settle(h - snapHeight(snap, h, bottom), reduce);
+    y.set(settle(h - snapHeight(snap, h, bottom), reduce));
   }, [snap, h, bottom, y, reduce]);
 
   const release = useCallback(
     (visible: number, vy: number) => {
       const L = live.current;
       const next = snapAfterDrag(visible, vy, h, bottom, L.snap);
-      if (next === L.snap) y.value = settle(h - snapHeight(next, h, bottom), reduce);
+      if (next === L.snap) y.set(settle(h - snapHeight(next, h, bottom), reduce));
       else feel('tick');
       L.onSnap(next);
     },
@@ -85,20 +85,20 @@ export function GridSheet({ h, bottom, snap, onSnap, title, right, above, childr
     onBegin: () => {
       'worklet';
       cancelAnimation(y);
-      start.value = y.value;
+      start.set(y.get());
     },
     onUpdate: (e) => {
       'worklet';
-      const t = start.value + e.translationY;
-      y.value = t < top ? top + rubber(t - top) : Math.min(low, t);
+      const t = start.get() + e.translationY;
+      y.set(t < top ? top + rubber(t - top) : Math.min(low, t));
     },
     onDeactivate: (e) => {
       'worklet';
-      const visible = h - clamp(y.value, 0, h);
+      const visible = h - clamp(y.get(), 0, h);
       scheduleOnRN(release, visible, e.velocityY / 1000);
     },
   });
-  const style = useAnimatedStyle(() => ({ transform: [{ translateY: y.value }] }));
+  const style = useAnimatedStyle(() => ({ transform: [{ translateY: y.get() }] }));
 
   return (
     <Animated.View

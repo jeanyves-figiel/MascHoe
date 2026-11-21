@@ -11,6 +11,7 @@ import { Banner, Button, Chip, Chips, ErrorText, Hero, Icon, ListRow, Loading, S
 import { resyncHostGroups } from './groupSync';
 import { Who } from './TonightScreen';
 import type { Party } from './types';
+import { usePull } from '../ui/pull';
 import { day, time } from './types';
 
 type Nav = { navigate: (s: string, p?: object) => void; goBack: () => void };
@@ -45,6 +46,7 @@ export function PartyScreen({ navigation, route }: { navigation: Nav; route: { p
   useEffect(() => {
     load();
   }, [load]);
+  const refresh = usePull(load); // F-19 G6
 
   if (!p) return err ? <Banner tone="danger" text={err} /> : <Loading />;
   const host = p.my_state === 'host';
@@ -86,6 +88,7 @@ export function PartyScreen({ navigation, route }: { navigation: Nav; route: { p
 
   return (
     <ScrollView keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets
+      refreshControl={refresh}
       style={{ flex: 1, backgroundColor: color.bgBase }}
       contentContainerStyle={{
         padding: space.l,

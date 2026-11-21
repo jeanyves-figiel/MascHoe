@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, SectionList, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '../api/client';
@@ -8,7 +8,9 @@ import { ppl } from '../i18n/people';
 import { color, font, radius, space, type } from '../theme/tokens';
 import { EmptyState, Icon, ListRow, Photo, Segmented, Sheet, VerifiedTick } from '../ui';
 import { v2 } from '../i18n/v2';
-import { answerFriend, Conv, deleteConv, getConvs, refreshPeer, setConv } from './engine';
+import { answerFriend, Conv, deleteConv, getConvs, pull, refreshPeer, setConv } from './engine';
+import { usePull } from '../ui/pull';
+
 import { useTopics } from './hooks';
 import * as P from './people';
 import { SafetySheet, SheetRow } from '../trust/SafetySheet';
@@ -40,11 +42,18 @@ export function InboxScreen({ navigation }: { navigation: Nav }) {
   const [tab, setTab] = useState<Tab>('all');
   const [q, setQ] = useState('');
 
+  const loadTaps = useCallback(
+    () =>
+      api<{ taps: Tap[] }>('GET', '/taps')
+        .then((r) => setTaps(r.taps.filter((t) => !t.seen).length))
+        .catch(() => setTaps(0)),
+    [],
+  );
   useEffect(() => {
-    api<{ taps: Tap[] }>('GET', '/taps')
-      .then((r) => setTaps(r.taps.filter((t) => !t.seen).length))
-      .catch(() => setTaps(0));
-  }, [tapsTick]);
+    loadTaps();
+  }, [tapsTick, loadTaps]);
+  // F-19 G6 (#187): pull = fetch waiting messages + Taps now.
+  const refresh = usePull(useCallback(() => Promise.all([pull(), loadTaps()]), [loadTaps]));
 
   const all = getConvs().filter((c) => c.last || c.groups.length);
   const byPeer = useMemo(() => new Map(all.filter((c) => !c.ctx).map((c) => [c.peer, c])), [all]);
@@ -155,6 +164,7 @@ export function InboxScreen({ navigation }: { navigation: Nav }) {
         />
       </View>
       <SectionList keyboardDismissMode="on-drag"
+        refreshControl={refresh}
         sections={sections}
         keyExtractor={(r) => (r.kind === 'fav' ? 'f:' + r.peer : (r.kind === 'request' ? 'r:' : '') + r.c.id)}
         contentContainerStyle={{ paddingBottom: 120 }}

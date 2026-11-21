@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { FlatList, Pressable, Text, View } from 'react-native';
 import { api } from '../api/client';
 import type { Tap } from '../api/types';
 import { tx } from '../i18n/app';
 import { color, radius, space, type } from '../theme/tokens';
+import { usePull } from '../ui/pull';
 import { EmptyState, Icon, Loading, Photo, VerifiedTick } from '../ui';
 
 type Nav = { navigate: (s: string, p?: object) => void };
@@ -12,14 +13,20 @@ type Nav = { navigate: (s: string, p?: object) => void };
 export function TapsScreen({ navigation }: { navigation: Nav }) {
   const [list, setList] = useState<Tap[] | null>(null);
   const [back, setBack] = useState<Record<string, boolean>>({});
+  const load = useCallback(
+    () =>
+      api<{ taps: Tap[] }>('GET', '/taps')
+        .then((r) => {
+          setList(r.taps);
+          api('POST', '/taps/seen').catch(() => {});
+        })
+        .catch(() => setList((l) => l ?? [])),
+    [],
+  );
   useEffect(() => {
-    api<{ taps: Tap[] }>('GET', '/taps')
-      .then((r) => {
-        setList(r.taps);
-        api('POST', '/taps/seen').catch(() => {});
-      })
-      .catch(() => setList([]));
-  }, []);
+    load();
+  }, [load]);
+  const refresh = usePull(load); // F-19 G6
   if (!list) return <Loading />;
   return (
     <View style={{ flex: 1, backgroundColor: color.bgBase, paddingTop: space.s }}>
@@ -28,6 +35,7 @@ export function TapsScreen({ navigation }: { navigation: Nav }) {
         <EmptyState title={tx.me.noTaps} />
       ) : (
         <FlatList
+          refreshControl={refresh}
           data={list}
           keyExtractor={(t) => t.profile.id + t.at}
           contentContainerStyle={{ padding: space.l, gap: space.s, paddingBottom: 140 }}

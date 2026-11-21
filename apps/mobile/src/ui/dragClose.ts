@@ -18,20 +18,20 @@ export function useDragClose(onClose: () => void, enabled = true) {
     onUpdate: (e) => {
       'worklet';
       const t = e.translationY;
-      y.value = t > 0 ? t : rubber(t, 40);
+      y.set(t > 0 ? t : rubber(t, 40));
     },
     onDeactivate: (e) => {
       'worklet';
-      if (y.value > 0 && commits(y.value, e.velocityY, h.value)) {
-        y.value = withTiming(h.value, { duration: 180 }, (done) => {
+      if (y.get() > 0 && commits(y.get(), e.velocityY, h.get())) {
+        y.set(withTiming(h.get(), { duration: 180 }, (done) => {
           if (done) scheduleOnRN(onClose);
-        });
-      } else y.value = settle(0, reduce, e.velocityY);
+        }));
+      } else y.set(settle(0, reduce, e.velocityY));
     },
   });
-  const sheetStyle = useAnimatedStyle(() => ({ transform: [{ translateY: y.value }] }));
-  const scrimStyle = useAnimatedStyle(() => ({ opacity: 1 - Math.min(1, Math.max(0, y.value) / Math.max(1, h.value)) }));
-  const onLayout = useCallback((e: LayoutChangeEvent) => (h.value = e.nativeEvent.layout.height), [h]);
-  const reset = useCallback(() => (y.value = 0), [y]);
+  const sheetStyle = useAnimatedStyle(() => ({ transform: [{ translateY: y.get() }] }));
+  const scrimStyle = useAnimatedStyle(() => ({ opacity: 1 - Math.min(1, Math.max(0, y.get()) / Math.max(1, h.get())) }));
+  const onLayout = useCallback((e: LayoutChangeEvent) => h.set(e.nativeEvent.layout.height), [h]);
+  const reset = useCallback(() => y.set(0), [y]);
   return { pan, sheetStyle, scrimStyle, onLayout, reset };
 }
