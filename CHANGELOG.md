@@ -5,6 +5,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- **Record a video in chat** (app, #231, F-08 R-08.12/R-08.17): the tray's camera now records videos (up to 3 min) as well as photos. The app asks for the microphone the first time you record (iOS). The video goes through the same 50 MB cap and location/device metadata removal as any video. The video check still records without sound.
+
 ### Security
 - **App Attest on iPhone** (server + app, #25, security.md › Device attestation): each install creates a Secure Enclave key that Apple attests; the server checks Apple's certificate chain, the challenge, our app id and the key, and stores only the public key. Once a day (foreground only, two small requests) the app proves it is still the same genuine app on the same phone. New `GET /devices/attest`, `POST /devices/attest/challenge`, `POST /devices/attest`, `POST /devices/assert`. Soft in beta: nothing is blocked; groundwork for anti-bot limits (A3/A9).
 
