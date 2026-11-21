@@ -6,7 +6,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
-- **Places import from GitHub Actions** (#113, F-12 R-12.9): new manual workflow "Places import" (staging or production) queues the OpenStreetMap venue import on the server (same job as admin › Places › Import now), waits for it and shows added / updated / removed and the venue count in the run summary.
+- **Places import from GitHub Actions** (#113, F-12 R-12.9): new manual workflow "Places import" (staging or production) queues the OpenStreetMap venue import on the server (same job as admin › Places › Import now), waits for it and shows added / updated / removed and the venue count in the run summary. Fixed: the first version never queued the job (the start flag didn't reach the server) and waited until cancelled.
 
 ### Fixed
 - **Selfie verification always failed** (iPhone, #131, F-03 R-03.1): Look up could never pass and head turns rarely did, because Apple Vision's landmark check alone uses an older face detector (no head tilt, head turn in 45° steps); blinks were checked on 3 still photos and almost never caught. The check now uses Vision's newer face detector (smooth turn and tilt) with a backup from the nose position, keeps taking photos for up to 6 s per step until the move is seen, shows a ✓ after each step, and no longer asks to blink. If the phone can't see your face at the start, it says so and the try doesn't count. Photos are still checked on the phone and deleted at once.

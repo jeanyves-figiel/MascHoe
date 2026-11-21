@@ -1,7 +1,8 @@
 # F-12 R-12.9 (#113): run on a Fly machine via `bin/thirstr rpc`. Queues the OSM import job
-# (same as admin › Places › Import now) or prints the latest import row.
+# (same as admin › Places › Import now) or prints the latest import row. `action` comes from the
+# eval binding: env vars set on the rpc client never reach the server node.
 alias Thirstr.Repo
-case System.get_env("PLACES_ACTION", "status") do
+case binding()[:action] do
   "start" ->
     {:ok, job} = Oban.insert(Thirstr.Jobs.PlaceImport.new(%{}))
     IO.puts("queued job #{job.id} enabled=#{Thirstr.Places.OsmImport.enabled?()}")
