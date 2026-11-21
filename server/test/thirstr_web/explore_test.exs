@@ -23,6 +23,23 @@ defmodule ThirstrWeb.ExploreTest do
     refute res |> Jason.encode!() =~ "account"
   end
 
+  # SR-09 (#149): later pages come from page 1's cached order; visibility rules still re-applied.
+  test "grid pages reuse the cached order and still drop blocked profiles", %{
+    viewer: v,
+    conn: conn
+  } do
+    _ = for k <- [1, 3], do: onboarded(conn, cell: zurich_ring(k))
+    first = ids(grid(v.c)["items"])
+    assert length(first) >= 3
+
+    page2 = grid(v.c, "&cursor=1")
+    assert ids(page2["items"]) == Enum.drop(first, 1)
+
+    blocked = Enum.at(first, 1)
+    v.c |> recycle_authed() |> post("/v1/profiles/#{blocked}/block") |> response(204)
+    refute blocked in ids(grid(v.c, "&cursor=1")["items"])
+  end
+
   @tag ac: "AC-04.7"
   test "grid returns a bucketed auto-fit radius (R-04.15)", %{viewer: v} do
     fit = grid(v.c)["fit_m"]

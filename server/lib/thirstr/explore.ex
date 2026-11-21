@@ -93,18 +93,100 @@ defmodule Thirstr.Explore do
         %{items: [], next: nil, further_from: nil, reason: "no_location", fit_m: nil}
 
       _ ->
-        all = candidates(v, filters, "show_in_grid") |> sorted()
-        page = Enum.slice(all, offset, @page)
-        next = if length(all) > offset + @page, do: Integer.to_string(offset + @page)
-        further_from = Enum.find_index(all, & &1.further)
+        case offset > 0 && cached_order(v, filters) do
+          {order, fit} -> grid_page(v, filters, order, offset, fit)
+          _ -> grid_fresh(v, filters, offset)
+        end
+    end
+  end
 
-        %{
-          items: Enum.map(page, &card(&1, v)),
-          next: next,
-          further_from: further_from && further_from - offset,
-          reason: nil,
-          fit_m: fit_m(all, v)
-        }
+  defp grid_fresh(v, filters, offset) do
+    all = candidates(v, filters, "show_in_grid") |> sorted()
+    page = Enum.slice(all, offset, @page)
+    next = if length(all) > offset + @page, do: Integer.to_string(offset + @page)
+    further_from = Enum.find_index(all, & &1.further)
+    fit = fit_m(all, v)
+    put_order(v, filters, all, fit)
+
+    %{
+      items: Enum.map(page, &card(&1, v)),
+      next: next,
+      further_from: further_from && further_from - offset,
+      reason: nil,
+      fit_m: fit
+    }
+  end
+
+  # SR-09 (#149): later pages re-read only their own 60 profiles (primary-key lookups, all
+  # visibility rules applied again) in the order page 1 computed, instead of the full candidate
+  # query + enrichment of up to 1 500 rows per scroll.
+  defp grid_page(v, filters, order, offset, fit) do
+    slice = Enum.slice(order, offset, @page)
+    further = Map.new(slice)
+
+    rows =
+      candidates(v, filters, "show_in_grid", Enum.map(slice, &elem(&1, 0)))
+      |> Map.new(&{&1.id, %{&1 | further: Map.get(further, &1.id, false)}})
+
+    further_from = Enum.find_index(order, &elem(&1, 1))
+
+    %{
+      items: for({id, _} <- slice, r = rows[id], do: card(r, v)),
+      next: if(length(order) > offset + @page, do: Integer.to_string(offset + @page)),
+      further_from: further_from && further_from - offset,
+      reason: nil,
+      fit_m: fit
+    }
+  end
+
+  @order_cache :thirstr_grid_order
+  @order_ttl_s 120
+  @order_max 2_000
+
+  @doc "Creates the grid order cache (called once from Application.start)."
+  def init_cache do
+    if :ets.whereis(@order_cache) == :undefined,
+      do: :ets.new(@order_cache, [:named_table, :public, :set, read_concurrency: true])
+
+    :ok
+  end
+
+  defp order_key(v, filters),
+    do:
+      {v.account.id,
+       :erlang.phash2(
+         {v.intents, v.mode, v.point, v.verified, v.hidden, v.new, v.safe_mode, v.age, filters}
+       )}
+
+  # online_now is decided per page (presence moves fast), so those pages are never cached.
+  defp put_order(_v, %{online_now: true}, _all, _fit), do: :ok
+
+  defp put_order(v, filters, all, fit) do
+    if :ets.info(@order_cache, :size) >= @order_max, do: :ets.delete_all_objects(@order_cache)
+
+    # packed 17 bytes per profile (uuid + further flag) keeps 1 500 rows ≈ 25 KB
+    packed =
+      for r <- all, into: <<>>, do: <<dump(r.id)::binary-16, if(r.further, do: 1, else: 0)>>
+
+    :ets.insert(
+      @order_cache,
+      {order_key(v, filters), System.monotonic_time(:second), packed, fit}
+    )
+
+    :ok
+  end
+
+  defp cached_order(_v, %{online_now: true}), do: nil
+
+  defp cached_order(v, filters) do
+    now = System.monotonic_time(:second)
+
+    case :ets.lookup(@order_cache, order_key(v, filters)) do
+      [{_, at, packed, fit}] when now - at <= @order_ttl_s ->
+        {for(<<id::binary-16, f <- packed>>, do: {Ecto.UUID.load!(id), f == 1}), fit}
+
+      _ ->
+        nil
     end
   end
 
@@ -323,9 +405,22 @@ defmodule Thirstr.Explore do
   @doc false
   # The interpolated WHERE fragment is built from fixed clauses; all values are bound params.
   # sobelow_skip ["SQL.Query"]
-  def candidates(v, filters, surface) do
+  def candidates(v, filters, surface, ids \\ nil) do
     {where, params} = filter_sql(v, filters, surface)
-    radius = if Map.has_key?(filters, :cells), do: nil, else: filters[:distance_max] || @far_m
+
+    {where, params} =
+      if ids,
+        do:
+          {where <> " AND p.id = ANY($#{10 + length(params)}::uuid[])",
+           params ++ [Enum.map(ids, &dump/1)]},
+        else: {where, params}
+
+    radius =
+      cond do
+        ids -> nil
+        Map.has_key?(filters, :cells) -> nil
+        true -> filters[:distance_max] || @far_m
+      end
 
     disk_k =
       case radius do
