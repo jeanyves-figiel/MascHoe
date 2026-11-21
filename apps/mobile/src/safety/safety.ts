@@ -10,7 +10,7 @@ export type Contact = { id: string; rid: string; key: string; label: string; acc
 export type Loc = { lat: number; lng: number; acc?: number; at: string };
 export type Who = { name: string; age?: number; link?: string };
 export type ChatLine = { me: boolean; text: string; at: string };
-export type Active = { token: string; due: string; ext: number; name: string; who?: Who; msgs?: ChatLine[]; live: boolean; notif?: string };
+export type Active = { token: string; due: string; ext: number; name: string; who?: Who; msgs?: ChatLine[]; live: boolean; notif?: string; cid?: string; peer?: string; started?: string };
 type Env = { k: 'invite' | 'notice' | 'alert' | 'panic' | 'ok' | 'loc'; from: string; at: string; due?: string; loc?: Loc; who?: Who; msgs?: ChatLine[] };
 
 // Contact page lives on the site host (api.thirstr.fun → thirstr.fun; staging and DEV same origin).
@@ -19,6 +19,8 @@ const SITE = API.replace('://api.', '://');
 const K_CONTACTS = 'safety:contacts';
 const K_ACTIVE = 'safety:checkin';
 const K_NAME = 'safety:name';
+/** R-13.19: notification category with I'm OK / +30 min actions. */
+export const CATEGORY = 'checkin';
 
 // ------------------------------------------------------------------ envelope
 
@@ -91,12 +93,27 @@ async function envs(list: Contact[], body: Omit<Env, 'at'>) {
 
 export const active = () => kv.get<Active>(K_ACTIVE);
 
+// R-13.16: the live bar, chat shield and quick sheet follow the running check-in.
+const subs = new Set<(a: Active | null) => void>();
+export function onActive(cb: (a: Active | null) => void) {
+  subs.add(cb);
+  return () => {
+    subs.delete(cb);
+  };
+}
+const emit = (a: Active | null) => subs.forEach((cb) => cb(a));
+async function save(a: Active) {
+  await kv.set(K_ACTIVE, a);
+  emit(a);
+  return a;
+}
+
 async function scheduleDue(a: Active) {
   if (Platform.OS === 'web') return a;
   const N = await import('expo-notifications');
   if (a.notif) await N.cancelScheduledNotificationAsync(a.notif).catch(() => {});
   const notif = await N.scheduleNotificationAsync({
-    content: { title: 'Thirstr', body: 'All good?', data: { checkin: true }, sound: 'default' },
+    content: { title: 'Thirstr', body: 'All good?', data: { checkin: true }, sound: 'default', categoryIdentifier: CATEGORY },
     trigger: { type: N.SchedulableTriggerInputTypes.DATE, date: new Date(a.due) },
   }).catch(() => undefined);
   return { ...a, notif };
@@ -109,9 +126,10 @@ async function clearActive() {
     await N.cancelScheduledNotificationAsync(a.notif).catch(() => {});
   }
   await kv.del(K_ACTIVE);
+  emit(null);
 }
 
-export async function startCheckin(o: { minutes: number; name: string; who?: Who; msgs?: ChatLine[]; live: boolean }): Promise<Active> {
+export async function startCheckin(o: { minutes: number; name: string; who?: Who; msgs?: ChatLine[]; live: boolean; cid?: string; peer?: string }): Promise<Active> {
   const list = await accepted();
   if (!list.length) throw new Error('no_contacts');
   const due = new Date(Date.now() + o.minutes * 60_000).toISOString();
@@ -119,9 +137,8 @@ export async function startCheckin(o: { minutes: number; name: string; who?: Who
   const notices = await envs(list, { k: 'notice', from: o.name, due });
   const alerts = await envs(list, { k: 'alert', from: o.name, due, loc, who: o.who, msgs: o.msgs });
   const r = await api<{ token: string; due_at: string }>('POST', '/checkin', { due_at: due, notices, alerts });
-  const a = await scheduleDue({ token: r.token, due: r.due_at, ext: 0, name: o.name, who: o.who, msgs: o.msgs, live: o.live });
-  await kv.set(K_ACTIVE, a);
-  return a;
+  const a = await scheduleDue({ token: r.token, due: r.due_at, ext: 0, name: o.name, who: o.who, msgs: o.msgs, live: o.live, cid: o.cid, peer: o.peer, started: new Date().toISOString() });
+  return save(a);
 }
 
 /** Every 5 min while the app runs: fresh location in the held alert; live → also a `loc` now. */
@@ -144,8 +161,15 @@ export async function extendCheckin(): Promise<Active | null> {
   const due = new Date(new Date(a.due).getTime() + 30 * 60_000).toISOString();
   const alerts = await envs(list, { k: 'alert', from: a.name, due, loc: await here(), who: a.who, msgs: a.msgs });
   const r = await api<{ due_at: string }>('POST', `/checkin/${a.token}/extend`, { alerts });
-  const next = await scheduleDue({ ...a, due: r.due_at, ext: a.ext + 1 });
-  await kv.set(K_ACTIVE, next);
+  return save(await scheduleDue({ ...a, due: r.due_at, ext: a.ext + 1 }));
+}
+
+/** R-13.17: live location on/off for the running check-in; on → a `loc` goes out now. */
+export async function setLive(on: boolean) {
+  const a = await active();
+  if (!a) return null;
+  const next = await save({ ...a, live: on });
+  if (on) await refreshCheckin().catch(() => {});
   return next;
 }
 

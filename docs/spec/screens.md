@@ -54,18 +54,20 @@ Tab bar (4): **Explore** S-10 · **Tonight** S-13 · **Chats** S-40 · **Me** S-
 
 ## Chats & media
 | S-40 | Inbox [v2 Chats] | F-07 | 34 pt title, segmented All / Unread / Requests, Taps row, rows (56 pt avatar, online dot, bold preview + coral count when unread), Parties & groups, E2EE footer (teal) | swipe: archive/mute; long-press star | empty → "Say hi to someone nearby" |
-| S-41 | Chat [v2 Chat] | F-07, F-08 | header (back, avatar, name, distance · status, sunflower timer chip), E2EE pill (teal tint), bubbles (own = mode colour, incoming `bg.overlay`, 22 radius with 6 pt tail), typing, quick-reply chips, pill composer (+, field, coral send). Translation [#106, R-07.28–29]: caption under translated bubbles (teal translate icon, "Translated from X · Show original"), expanded original, "Translate X" chip when a pack is missing, teal note under the E2EE pill; chat ⋯ "Translate this chat" switch | send, react, show original, translate, long-press message menu (reply, report, delete for me) | blocked → "Not delivered" |
+| S-41 | Chat [v2 Chat] | F-07, F-08 | header (back, avatar, name, distance · status, sunflower timer chip), E2EE pill (teal tint), bubbles (own = mode colour, incoming `bg.overlay`, 22 radius with 6 pt tail), typing, quick-reply chips, pill composer (+, field, coral send). Translation [#106, R-07.28–29]: caption under translated bubbles (teal translate icon, "Translated from X · Show original"), expanded original, "Translate X" chip when a pack is missing, teal note under the E2EE pill; chat ⋯ "Translate this chat" switch. Date safety [#112, R-13.14, R-13.18]: teal shield (or running pill with time left) left of ⋯; meetup prompt card above the composer | send, react, show original, translate, long-press message menu (reply, report, delete for me) | blocked → "Not delivered" |
 | S-42 | Albums | F-08 | album grid, shared-with | grant/revoke | — |
 | S-43 | Media viewer | F-08 | full-screen, view-once timer, blur overlay | tap to reveal; close | screenshot notice |
 | S-44 | Share target (extension) | I-01 | preview, recipients, message | send | not logged in → open app |
 
 ## Safety
 | S-50 | Report flow | F-15 | reasons, attach messages, note | submit → block offer | — |
-| S-51 | Check-in start sheet | F-13 | due time, options, contacts | start | no contacts → add contact first |
+| S-51 | Check-in start sheet [v2, #112] | F-13 R-13.15 | bottom sheet: "Meeting ‹name›?", tiles 1 h / 2 h (default) / 3 h / Other with due times, contacts card + 2 toggles, Start · due HH:MM | start | no contacts → add contact first |
 | S-52 | Check-in due | F-13 | "All good?", I'm OK, +30 min | biometrics | duress path |
 | S-53 | Trusted contacts | F-13 | list, add, invite | add/remove | — |
 | S-54 | Safe Mode intro [SafeMode] | F-14 | protections list, Keep me safe | toggles | — |
 | S-55 | App lock / decoy | F-13 | PIN pad | unlock / duress | — |
+| S-56 | Live check-in bar [#112] | F-13 R-13.16 | teal top bar on every screen while a check-in runs: shield, time left, due, Open; danger when past due | tap → S-57 (S-52 past due) | — |
+| S-57 | Safety quick sheet [#112] | F-13 R-13.17 | ring + time left, I’m OK, +30 min, live location toggle, SOS hold, open chat | ok / extend / SOS | no app lock → OK at once |
 
 ## Me & settings
 | S-60 | Me [v3 Me, #102] | F-06, F-05, F-09 | Header: 34 pt "Me", QR + gear (→ S-61) buttons. **One banner slot** (highest only: suspended > unseen notices > verify > sign-in email nudge > paused). Profile card: completeness ring, name/age/tick, "Profile N% complete", next-step link, Edit profile (white) / Preview. **How you show up right now** (teal label, card): Location segmented Hidden / City / Area / Exact with "Others see" caption (one tap applies Hidden/City/Area; Exact opens S-30 for TTL, audience, confirm; Hidden/Exact disabled until verified → S-21), Incognito switch, Now row (value → Now sheet). **Show me in**: 3 lens tiles (mode colour border + check, caption of what shows; ≥1 stays on, R-06.1a) + "See how you look" link → S-66. **Yours**: Private albums (count), Date check-in (contacts count) | lens toggle, location level | locked level → verify ([mockup](https://claude.ai/artifact/ARHgwzBiimAcTigGa2AA59)) |
