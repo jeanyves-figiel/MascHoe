@@ -99,7 +99,7 @@ Rule for every cache: inside the encrypted store or an AES-GCM file whose key is
 ## Prioritized backlog
 | P | ID | Issue | Effort |
 |---|---|---|---|
-| P0 | SR-01 Postgres backups, PITR, restore drill | #141 | ✔ staging 2026-11-21 (drill passed), prod next ([runbook](../runbooks/db-backups.md)) |
+| P0 | SR-01 Postgres backups, PITR, restore drill | #141 | ✔ staging + prod 2026-11-21 (drill passed on staging, [runbook](../runbooks/db-backups.md)) |
 | P0 | SR-07 Metrics + alerts | #147 | ✔ 2026-11-21 |
 | P0 | SR-02 Push retries, Android-safe, FCM | #142 | ✔ 2026-11-21 |
 | P0 | SR-03 Graceful deploys | #143 | ✔ 2026-11-21 |
