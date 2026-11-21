@@ -27,11 +27,14 @@ defmodule ThirstrWeb.RecoveryTest do
     })
   end
 
-  test "turn on, back up, sign in with the words; other devices signed out", %{u: u, c: c} = ctx do
+  test "turn on, back up, sign in with the words; other devices signed out",
+       %{u: u, c: c} = ctx do
     assert %{"on" => false} = authed(u) |> get("/v1/me/recovery") |> json_response(200)
 
     assert %{"on" => true} =
-             authed(u) |> put("/v1/me/recovery", %{public_key: b64(ctx.pub)}) |> json_response(200)
+             authed(u)
+             |> put("/v1/me/recovery", %{public_key: b64(ctx.pub)})
+             |> json_response(200)
 
     sealed = :crypto.strong_rand_bytes(400)
 
@@ -52,6 +55,7 @@ defmodule ThirstrWeb.RecoveryTest do
     new = c |> recycle() |> put_req_header("authorization", "Bearer " <> body["access_token"])
     assert %{"vault" => v} = new |> get("/v1/me/recovery/vault") |> json_response(200)
     assert Base.decode64!(v) == sealed
+
     assert %{"devices" => [_]} =
              new
              |> recycle()
