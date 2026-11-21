@@ -1,10 +1,16 @@
 # API & realtime contract
 
-Base: `https://api.thirstr.fun/v1` (staging: `https://staging.thirstr.fun/v1`; DEV: `https://localhost:7443/v1`). JSON. Auth: short-lived access token (15 min) + refresh (30 d, device-bound) issued after passkey/OIDC/magic-link. Every request signed with device key + attestation token (iOS App Attest / Play Integrity) refreshed daily.
+Base: `https://api.thirstr.fun/v1` (staging: `https://staging.thirstr.fun/v1`; DEV: `https://localhost:7443/v1`). JSON. Auth: short-lived access token (15 min) + refresh (30 d, device-bound) issued after passkey/OIDC/magic-link. Devices attest once and re-assert daily (iOS App Attest; Android Play Integrity with the Android build), see security.md › Device attestation; beta does not block unattested clients.
 
 Errors: `{ "error": { "code": "rate_limited", "message": "...", "retry_after": 30 } }`. Codes: `unauthorized`, `forbidden`, `not_verified`, `rate_limited`, `not_found`, `conflict`, `validation`, `safe_mode_blocked`, `quarantined` (never returned to the quarantined client; it gets fake success).
 
 ## REST
+
+### App config, flags, minimum build (EN-13 #172, EN-14 #173)
+- `GET /v1/config` (no account) → `{min_build: {ios, android}, upgrade_required, store_url: {ios, android}, flags: {name: bool}}`. Cached 60 s by the client, kept on the phone for offline use; fetched at start and on every foreground.
+- Every request may send `x-thirstr-platform` and `x-thirstr-build` (native build number). A native build below `min_build` gets **426** `upgrade_required` on every endpoint except `/v1/config` and `/v1/health`; the app then shows the forced-update screen (chats stay on the phone). Requests without a build number (older builds, web) pass.
+- `POST /v1/client/errors` (no account, EN-05) `{platform: ios|android|web, build?, fatal?, message, stack?}` → 204; 422 if platform or message missing. Scrubbed, grouped by signature, kept 30 days after last seen. `POST /v1/client/sessions` `{platform}` → 204 (anonymous start ping, crash-free rate). Both limited to 120 per IP per hour.
+- Flags: unknown name = off; known name without a row = on (code defaults); a row with `enabled = false` is a kill switch. Rules: `platforms`, `min_build` per platform, `percent` (stable per install). No country targeting yet. Ops: `docs/runbooks/flags.md`.
 
 ### Auth (F-01)
 | Method | Path | Body → Response |
@@ -28,6 +34,10 @@ Errors: `{ "error": { "code": "rate_limited", "message": "...", "retry_after": 3
 | POST | /devices/link | → {code, expires_in: 120} |
 | GET | /devices/link/{code} | → {state: pending\|claimed\|confirmed, platform?} |
 | POST | /devices/link/{code}/confirm | → 204 (after app lock / Face ID on the old device) |
+| GET | /devices/attest | → {attested, has_key, attested_at} for the calling device (#25) |
+| POST | /devices/attest/challenge | → {challenge (base64url, 43 chars), expires_in: 300}; single use, bound to the device; 20/h |
+| POST | /devices/attest | {key_id, attestation (base64), challenge} → {attested: true}; iOS App Attest, once per install. 422 `attestation_invalid` / `challenge` |
+| POST | /devices/assert | {assertion (base64), challenge} → {attested: true}; at most daily. 409 `not_attested`, 422 `assertion_invalid` / `challenge` |
 | POST | /auth/device-link | no auth, 10/min/IP. {code, platform} → {claim}; {code, claim} → 202 {state} until confirmed, then Session |
 
 Sign-up calls (passkey register, OIDC, email verify) carry `age_confirmed: true` (R-01.12) and `platform`. Every request carries `x-thirstr-install` (random per install, hashed server-side) used only for the R-02.3 under-age flag. Session response: `{access_token, refresh_token, expires_in, account: Me}`.
@@ -184,7 +194,8 @@ Envelopes are opaque b64 ciphertext ≤ 64 KB (F-13 › Beta implementation). `r
 | POST | /checkin/{token}/ok | {oks?: [{relay, ciphertext}]} → 204 (check-in + held alerts deleted, R-13.10) |
 | POST | /checkin/{token}/panic | {alerts} → 204 (released now, check-in closed) |
 | POST | /checkin/panic | {alerts} → 204 (released now; no check-in needed) |
-| GET | /checkin | → {checkin: null \| {token, due_at, extensions}} |
+| GET | /checkin | → {checkin: null \| {due_at, extensions}} (the token is never returned; R-13.21 uses this to spot a check-in the phone lost) |
+| DELETE | /checkin | {oks?: [{relay, ciphertext}]} → 204 (#127, R-13.21: ends the account's check-in without its token, held alerts deleted, `oks` delivered now); none running → 404 |
 
 Contact side (no account; `rid` from the link fragment; 60 req/min per IP):
 | GET | /relay/{rid} | → {accepted, intro, vapid_key} (404 when removed) |

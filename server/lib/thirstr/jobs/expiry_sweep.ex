@@ -25,6 +25,8 @@ defmodule Thirstr.Jobs.ExpirySweep do
     # F-21 R-21.22: Moments and their files are gone at expiry
     Thirstr.Moments.sweep()
     Thirstr.Linked.recheck()
+    # EN-05: app error groups 30 d after last seen
+    Thirstr.ClientErrors.sweep()
     :ok
   end
 end

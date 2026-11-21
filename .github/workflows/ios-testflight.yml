@@ -30,7 +30,7 @@ env:
 
 jobs:
   testflight:
-    runs-on: macos-latest
+    runs-on: xcode-27  # GitHub image with release Xcode 27 / iOS 27 SDK, macOS 27, arm64 (#73)
     timeout-minutes: 60
     defaults:
       run:
@@ -68,13 +68,17 @@ jobs:
           cache: npm
           cache-dependency-path: apps/mobile/package-lock.json
 
-      - name: Newest Xcode
+      - name: Newest release Xcode
         if: steps.gate.outputs.ok == 'true'
         working-directory: .
         run: |
-          x=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
-          sudo xcode-select -s "$x"
+          # Newest non-beta Xcode on the image (betas/RCs can't upload to the App Store, #73).
+          x=$(ls -d /Applications/Xcode_*.app 2>/dev/null | grep -viE 'beta|_rc|release.?candidate' | sort -V | tail -1)
+          if [ -n "$x" ]; then sudo xcode-select -s "$x"; else echo "No Xcode_*.app, keeping image default"; fi
           xcodebuild -version
+          sdk=$(xcrun --sdk iphoneos --show-sdk-version)
+          echo "iOS SDK $sdk"
+          [ "${sdk%%.*}" -ge 27 ] || echo "::warning::iOS SDK $sdk < 27: App Store Connect rejects it from April 2027 (ITMS-90725, #73)"
 
       - if: steps.gate.outputs.ok == 'true'
         run: npm ci

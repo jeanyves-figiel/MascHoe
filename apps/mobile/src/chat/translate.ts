@@ -1,5 +1,5 @@
 // On-device chat translation (F-07 R-07.25–R-07.31, #106). Text is detected and translated on the
-// phone (iOS: Apple Translation + NaturalLanguage via modules/thirstr-translate). Nothing here
+// phone (modules/thirstr-translate: Apple Translation + NaturalLanguage on iOS, ML Kit on Android). Nothing here
 // talks to our server or any translation service; results are cached in the encrypted store.
 import { getLocales } from 'expo-localization';
 import { native } from '../../modules/thirstr-translate';
@@ -18,7 +18,7 @@ const MIN_CONFIDENCE = 0.6;
 const TIMEOUT_MS = 20_000;
 const DOWNLOAD_TIMEOUT_MS = 180_000;
 
-/** Translation works on this device (iOS 18+ with the native module). */
+/** Translation works on this device (iOS 18+, or Android with the ML Kit module). */
 export const translateAvailable = (): boolean => {
   try {
     return !!native?.supported();
