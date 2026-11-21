@@ -668,9 +668,14 @@ export const fr: Partialize<AppStrings> = {
   },
   exportData: {
     title: 'Télécharger mes données',
-    hint: 'Tout ce qu’on a sur toi, plus les conversations et notes de ce téléphone, dans un seul fichier JSON.',
+    hint: 'Tout ce qu’on a sur toi, plus tes photos, albums privés, conversations et notes de ce téléphone, dans un seul fichier .zip.',
     go: 'Télécharger',
     ready: 'Ton fichier de données est prêt.',
+    packing: 'On emballe tes données',
+    stages: { account: 'Compte et profil', photos: 'Photos de profil', albums: 'Albums privés', chats: 'Conversations' },
+    stays: 'Reste sur ce téléphone jusqu’à ce que tu choisisses où l’enregistrer.',
+    cancel: 'Annuler',
+    failed: 'Impossible d’emballer tes données. Vérifie ta connexion et réessaie.',
   },
   linked: {
     title: 'Comptes liés',

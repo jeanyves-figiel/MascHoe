@@ -722,9 +722,14 @@ const en = {
   },
   exportData: {
     title: 'Download my data',
-    hint: 'Everything we hold about you plus the chats and notes on this phone, as one JSON file.',
+    hint: 'Everything we hold about you plus your photos, private albums, chats and notes on this phone, as one .zip file.',
     go: 'Download',
     ready: 'Your data file is ready.',
+    packing: 'Packing your data',
+    stages: { account: 'Account and profile', photos: 'Profile photos', albums: 'Private albums', chats: 'Chats' },
+    stays: 'Stays on this phone until you choose where to save it.',
+    cancel: 'Cancel',
+    failed: 'Couldn’t pack your data. Check your connection and try again.',
   },
   linked: {
     title: 'Linked accounts',

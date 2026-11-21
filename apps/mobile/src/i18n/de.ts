@@ -671,9 +671,14 @@ export const de: Partialize<AppStrings> = {
   },
   exportData: {
     title: 'Meine Daten herunterladen',
-    hint: 'Alles, was wir über dich haben, plus die Chats und Notizen auf diesem Handy, als eine JSON-Datei.',
+    hint: 'Alles, was wir über dich haben, plus deine Fotos, privaten Alben, Chats und Notizen auf diesem Handy, als eine .zip-Datei.',
     go: 'Herunterladen',
     ready: 'Deine Datendatei ist fertig.',
+    packing: 'Deine Daten werden gepackt',
+    stages: { account: 'Konto und Profil', photos: 'Profilfotos', albums: 'Private Alben', chats: 'Chats' },
+    stays: 'Bleibt auf diesem Handy, bis du wählst, wo du sie speicherst.',
+    cancel: 'Abbrechen',
+    failed: 'Deine Daten konnten nicht gepackt werden. Prüf die Verbindung und versuch es nochmal.',
   },
   linked: {
     title: 'Verknüpfte Konten',
