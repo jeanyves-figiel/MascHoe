@@ -8,7 +8,7 @@ Top (#113, option B of the [merged map mockup](https://claude.ai/artifact/JiM6ad
 
 ## Rules
 - R-04.1 (Explore superseded by R-04.18 for the map and grid; still applies to Tonight, profile view and other mode screens.) Mode is the viewer's lens (F-06 R-06.1a/b): it shows profiles whose `show_in` includes the mode, rendered through that lens, and recolours UI (mode tokens, design-system). Mode persists across launches. Switching mode never changes the viewer's own profile. If the viewer isn't shown in the current mode: one-line banner "You're not shown in Friends · Show me" (turns it on; Sport runs the mini-setup first).
-- R-04.2 Map: MapLibre, dark style. Shows (a) cell heat for Area users at k-anon resolution, (b) avatars of Area users placed at random stable positions inside their cell (seed = profile_id + day), (c) exact pins for Exact users the viewer is allowed to see (F-05), (d) place markers: venues, official and hosted parties (R-04.20).
+- R-04.2 Map: MapLibre, dark style. Shows (a) cell heat for Area users at k-anon resolution, (b) avatars of Area users placed at random stable positions inside their cell (seed = profile_id + day), (c) exact pins for Exact users the viewer is allowed to see (F-05), (d) place markers: venues, official and hosted parties (R-04.20). Every cell that touches the viewport is included (the box is padded by about one cell edge before it is filled), so zooming in inside one cell still shows its heat and people.
 - R-04.3 Pins: avatar 36 px, intent ring (R-04.19); "door open"/"hosting" badge; countdown ring for TTL; pulse animation for Now status posted < 10 min ago (reduced-motion: static).
 - R-04.4 Sort (grid sheet and `GET /explore/tray`): exact by metres → Now → area by cell distance → online recency. The horizontal tray is replaced by the grid sheet (#100); `GET /explore/tray` stays for the sheet title count ("Active now · N").
 - R-04.5 Grid (inside the sheet, R-04.14): 3 columns, card = main photo, name, verified tick, online dot, distance bucket, Now/Exact badge. Infinite scroll, page 60. Same sort as tray. No paywall, no cap.
@@ -56,7 +56,8 @@ Top (#113, option B of the [merged map mockup](https://claude.ai/artifact/JiM6ad
 | Tap intent chip | Toggle that intent; reload map, grid, counts (R-04.18) |
 | Tap place chip | Show / hide that place layer (R-04.20) |
 | Tap place marker | Place card (R-04.20) |
-| Tap pin | Select it: bigger pin + name chip, tile highlighted in the sheet, **peek card** above the sheet edge (photo, name, tick, distance · Online, ⋯ → S-21 safety sheet; tap card → profile) (R-04.14, #111). Second tap on the selected pin opens the profile |
+| Tap pin | Opens the profile in one tap, in his first intent among the chips (R-04.14, R-04.18; feedback 2026-11-21 replaced the two-tap peek card of #111) |
+| Long-press pin | S-21 safety sheet (Open profile · Hide · Block · Report), haptic; web: right-click (#111, F-15 R-15.17) |
 | Tap name chip / tile | Profile S-20 |
 | Drag / tap sheet handle | Sheet snaps peek · half · full (R-04.14) |
 | Long-press card | Medium haptic, safety sheet S-21 (F-15 R-15.17): Open profile, Tap, Message, then Hide / Block / Report tiles (#111) |

@@ -10,7 +10,7 @@ import { PlaceMarker } from './Places';
 
 // S-10 map (native, MapLibre). Avatars sit at server-chosen stable random points inside their
 // cell (R-05.3); exact pins are drawn only when the server returned them for this viewer.
-export function ExploreMap({ center, me, data, accent, recenter, onRegion, onSelect, onClear, selected, places, onPlace, selectedPlace }: MapProps) {
+export function ExploreMap({ center, me, data, accent, recenter, onRegion, onSelect, onHold, onClear, selected, places, onPlace, selectedPlace }: MapProps) {
   const people = [...(data?.avatars ?? []), ...(data?.pins ?? [])];
   const camera = useRef<CameraRef>(null);
   // R-04.13: initialViewState only applies at mount, so centre once when the first position
@@ -78,6 +78,8 @@ export function ExploreMap({ center, me, data, accent, recenter, onRegion, onSel
               accessibilityState={{ selected: on }}
               accessibilityLabel={pinLabel(c, tx.modes, pl.and, distanceLabel(c.distance), pl.lookingFor)}
               onPress={() => onSelect(c)}
+              onLongPress={onHold ? () => onHold(c) : undefined}
+              delayLongPress={350}
               style={{ alignItems: 'center' }}
             >
               <RingPin card={c} selected={on} />
