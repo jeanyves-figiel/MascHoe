@@ -83,15 +83,15 @@ Principles:
 
 Top: completeness ring · **Show me in** (Hookup / Friends / Sport switches) · "Preview as…" (lens × stranger / verified / my chats) → see exactly what each audience sees.
 Sections: photos · about · hookup · health · activities · social · private albums · my vouches.
-Quick toggles row: Location level · Incognito · Online status · Do not disturb.
+Quick toggles row: Location level (Hidden has Stay hidden / Come back as, #114) · Online status · Do not disturb.
 
 ## 3. Settings
 
 ### Visibility & location
 - Location level: Hidden (verified only) · City · Area (~200 m, default) · Exact (opt-in, expiry, audience). See concept §6.2.
-- **Hide me from hidden users**: on/off (default off). Hidden/incognito viewers can't see you anywhere.
+- **Hide me from hidden users**: on/off (default off). Hidden viewers can't see you anywhere.
 - Exact defaults: expiry (30 m/1 h/3 h/until leave) · audience (verified / my chats / everyone).
-- Incognito (browse without appearing; verified users only).
+- Incognito merged into Hidden (#114): Hidden can end by itself (1 h, 6 AM, 24 h) and comes back as City or Area.
 - Show in: grid · map · Tonight · Activities · venues (each toggle).
 - Show distance: yes / range only / no.
 - Online status & last seen: show / hide (symmetrical: hide = you don't see others').

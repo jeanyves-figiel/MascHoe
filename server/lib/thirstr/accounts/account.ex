@@ -22,8 +22,12 @@ defmodule Thirstr.Accounts.Account do
     field :verification_epoch, :integer, default: 0
     field :paused_at, :utc_datetime_usec
     field :settings, :map, default: %{}
+    # Deprecated (#114): merged into Hidden; always false after the migration.
     field :incognito, :boolean, default: false
     field :hidden, :boolean, default: false
+    # #114 R-05.7: optional end of Hidden and the level to come back as (city | area).
+    field :hidden_until, :utc_datetime
+    field :hidden_return, :string
     field :safe_mode_active, :boolean, default: false
     # testing.md › Chat test bot: staging-only automated account (never in prod)
     field :test_bot, :boolean, default: false

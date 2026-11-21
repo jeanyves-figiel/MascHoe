@@ -11,7 +11,7 @@ Prove "real human, 18+, matches photos" without storing identity. Primary anti-b
 - R-03.5 Face templates and images never leave the device; deleted after check.
 - R-03.6 Duplicate-human control: device computes a salted, locality-sensitive face hash; server stores only HMAC(LSH) buckets of banned accounts to block re-registration of banned users. Normal users' hashes are not stored.
 - R-03.7 Re-verification required when main photo changes face materially, every 12 months, or on moderation request.
-- R-03.8 Unlocks: appear in grid/map/Tonight/venues, start chats, post Now/Tonight/parties/activities, Hidden mode, incognito, exact pin, vouch.
+- R-03.8 Unlocks: appear in grid/map/Tonight/venues, start chats, post Now/Tonight/parties/activities, Hidden mode, exact pin, vouch.
 - R-03.9 Unverified: browse grid/map (cards only, no distance < 1 km), read profiles, reply to messages received.
 - R-03.10 3 failed attempts → 24 h cooldown + manual review option (video call with trust & safety, opt-in, nothing recorded).
 

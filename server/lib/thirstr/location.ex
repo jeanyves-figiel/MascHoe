@@ -32,7 +32,8 @@ defmodule Thirstr.Location do
         {:error, {:safe_mode_blocked, "Exact is off in Safe Mode"}}
 
       level == "hidden" ->
-        with {:ok, r8} <- cell(params["cell_r8"] || parent(params["cell_r9"], 8), 8) do
+        with {:ok, r8} <- cell(params["cell_r8"] || parent(params["cell_r9"], 8), 8),
+             {:ok, until, back} <- hidden_opts(params) do
           Repo.query!(
             "DELETE FROM location_cells WHERE profile_id IN (SELECT id FROM profiles WHERE account_id = $1)",
             [dump(a.id)]
@@ -40,7 +41,7 @@ defmodule Thirstr.Location do
 
           clear_pins(a)
           set_viewer_cell(a, r8)
-          set_account(a, hidden: true)
+          set_account(a, hidden: true, hidden_until: until, hidden_return: back)
           {:ok, :hidden}
         end
 
@@ -49,7 +50,7 @@ defmodule Thirstr.Location do
           velocity_check(a, r9)
           set_viewer_cell(a, r9)
           if level == "area", do: clear_pins(a)
-          set_account(a, hidden: false)
+          set_account(a, hidden: false, hidden_until: nil, hidden_return: nil)
           upsert_all(a, level, r9, :r9, params)
         end
 
@@ -57,7 +58,7 @@ defmodule Thirstr.Location do
         with {:ok, r5} <- city_cell(params) do
           clear_pins(a)
           set_viewer_cell(a, r5)
-          set_account(a, hidden: false)
+          set_account(a, hidden: false, hidden_until: nil, hidden_return: nil)
           upsert_all(a, "city", r5, :r5, params)
         end
     end
@@ -65,6 +66,47 @@ defmodule Thirstr.Location do
 
   def put(_, _),
     do: {:error, {:validation, %{level: ["must be one of #{Enum.join(@levels, ", ")}"]}}}
+
+  # #114 R-05.7: "Stay hidden" end (ISO 8601, future, ≤ 48 h; nil = until I switch) and
+  # "Then come back as" (city | area, default area). The app applies the return level.
+  @max_hidden_s 48 * 3600
+  defp hidden_opts(params) do
+    back = params["return_level"] || "area"
+    now = DateTime.utc_now()
+
+    until =
+      case params["until"] do
+        nil ->
+          {:ok, nil}
+
+        s when is_binary(s) ->
+          case DateTime.from_iso8601(s) do
+            {:ok, t, _} ->
+              d = DateTime.diff(t, now)
+
+              if d > 0 and d <= @max_hidden_s,
+                do: {:ok, DateTime.truncate(t, :second)},
+                else: :error
+
+            _ ->
+              :error
+          end
+
+        _ ->
+          :error
+      end
+
+    cond do
+      back not in ~w(city area) ->
+        {:error, {:validation, %{return_level: ["must be city or area"]}}}
+
+      until == :error ->
+        {:error, {:validation, %{until: ["must be a time in the next 48 hours"]}}}
+
+      true ->
+        {:ok, elem(until, 1), back}
+    end
+  end
 
   defp set_account(a, changes),
     do: Repo.update_all(from(x in Account, where: x.id == ^a.id), set: changes)
@@ -307,15 +349,14 @@ defmodule Thirstr.Location do
 
   # ------------------------------------------------------------- visibility toggles
 
-  @doc "PATCH /me/visibility: incognito (verified only, R-05.7), hide_from_hidden (R-05.6)."
+  @doc "PATCH /me/visibility: hide_from_hidden (R-05.6). Incognito is gone (#114): use Hidden."
   def set_visibility(%Account{} = a, params) do
     cond do
-      params["incognito"] == true and not Account.verified?(a) ->
-        {:error, {:not_verified, "Incognito is available after you verify"}}
+      params["incognito"] == true ->
+        {:error,
+         {:validation, %{incognito: ["Incognito is now Hidden: set location level to hidden"]}}}
 
       true ->
-        if is_boolean(params["incognito"]), do: set_account(a, incognito: params["incognito"])
-
         if is_boolean(params["hide_from_hidden"]) do
           Repo.query!(
             "UPDATE location_cells SET hide_from_hidden = $2 WHERE profile_id IN (SELECT id FROM profiles WHERE account_id = $1)",
@@ -371,7 +412,7 @@ defmodule Thirstr.Location do
       WITH vis AS (
         SELECT lc.profile_id, lc.cell_r9, lc.cell_r8, p.kind FROM location_cells lc
         JOIN profiles p ON p.id = lc.profile_id JOIN accounts a ON a.id = p.account_id
-        WHERE lc.level <> 'city' AND a.status = 'active' AND NOT a.incognito
+        WHERE lc.level <> 'city' AND a.status = 'active' AND NOT a.hidden
       ), c9 AS (SELECT kind, cell_r9, count(*) n FROM vis GROUP BY 1, 2),
          c8 AS (SELECT kind, cell_r8, count(*) n FROM vis GROUP BY 1, 2)
       UPDATE location_cells lc SET display_res = CASE

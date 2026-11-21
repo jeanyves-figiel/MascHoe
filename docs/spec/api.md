@@ -71,10 +71,10 @@ Blind signature (R-03.4, Chaum RSA-FDH): client picks random `token` and `r`, se
 | POST | /profiles/{id}/report | {reason, franked_payload?} (B4) |
 
 ### Location (F-05)
-| PUT | /me/location | {level, cell_r9? \| cell_r5? \| city_id?, safe_mode_override?} (client computes cells; never lat/lng). Account-wide |
+| PUT | /me/location | {level, cell_r9? \| cell_r5? \| city_id?, safe_mode_override?, until?, return_level?} (client computes cells; never lat/lng). Account-wide. Hidden: `until` ≤ 48 h, `return_level` city\|area (R-05.7) |
 | PUT | /me/pin | {lat, lng, ttl_s: 1800\|3600\|7200\|14400, audience: verified\|chats\|everyone, confirm: true, safe_mode_override?} → Me. RAM only, jittered 10–20 m. Verified only; Safe Mode needs override |
 | DELETE | /me/pin | → Me |
-| PATCH | /me/visibility | {incognito?, hide_from_hidden?} → Me (incognito verified-only) |
+| PATCH | /me/visibility | {hide_from_hidden?} → Me (`incognito` removed, #114: 422) |
 
 ### Explore (F-04)
 Common query: `mode=hookup|friends|sport`, `age_min`, `age_max`, `distance_max` (m), `verified_only` (default true), `online_now`, `has_now`, `hide_creators` (default true), `new_members`, and comma lists for `position, hosting, tribes, build, looking_for, sports, sport_level, schedule, sport_intent, orientation` (position/hosting apply only for verified viewers and only to values visible to them). `languages` is not a filter (#106); an old client sending it is ignored.

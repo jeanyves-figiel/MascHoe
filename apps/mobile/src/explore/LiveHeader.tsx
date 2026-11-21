@@ -42,7 +42,7 @@ export function LiveHeader({
 }: Props) {
   const accent = modeColor[intents[0] ?? "hookup"];
   const sportOnly = intents.length === 1 && intents[0] === "sport";
-  const level = me.incognito ? "incognito" : (me.location?.level ?? "city");
+  const level = me.location?.level ?? "city";
   const place = summary ? (summary.place ?? h.somewhere) : " ";
   const around = summary
     ? countLabel(summary.total ?? summary.counts[intents[0]])

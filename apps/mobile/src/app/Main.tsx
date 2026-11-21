@@ -4,7 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as Haptics from 'expo-haptics';
 import React from 'react';
 import { AppState, Linking, Platform, Pressable, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '../api/client';
 import { AlbumEditScreen, AlbumsScreen, AlbumViewScreen } from '../chat/AlbumScreens';
 import { ChatScreen } from '../chat/ChatScreen';
@@ -17,6 +17,8 @@ import { tx } from '../i18n/app';
 import { DevicesScreen } from '../me/DevicesScreen';
 import { EditProfileScreen } from '../me/EditProfileScreen';
 import { MeScreen } from '../me/MeScreen';
+import { backOf, hiddenExpired } from '../me/hidden';
+import { quickLevel } from '../explore/LocationSheet';
 import { LensPreviewScreen } from '../me/LensPreviewScreen';
 import { SettingsScreen } from '../me/SettingsScreen';
 import { AccountSettings, ChatSettings, DeleteAccount, NotificationSettings, PrivacySettings, SafetySettings } from '../me/settings/screens';
@@ -33,7 +35,9 @@ import { CheckinDueScreen, CheckinStartScreen } from '../safety/CheckinScreens';
 import { LockGate } from '../safety/LockGate';
 import { SafeModeAuto } from '../safety/SafeModeAuto';
 import { loadPrefs, prefs } from '../me/prefs';
-import { active as activeCheckin, refreshCheckin } from '../safety/safety';
+import { dx } from '../i18n/date';
+import { LiveBar, SafetyQuickScreen, useCheckin } from '../safety/live';
+import { active as activeCheckin, CATEGORY, extendCheckin, refreshCheckin } from '../safety/safety';
 import { SafetyScreen } from '../safety/SafetyScreen';
 import { NoticesScreen } from '../trust/NoticesScreen';
 import { ReportScreen } from '../trust/ReportScreen';
@@ -122,6 +126,28 @@ function VerifyRoute({ navigation }: { navigation: { goBack: () => void } }) {
 
 const nav = createNavigationContainerRef<Record<string, object | undefined>>();
 
+/** #114 R-05.7: when a timed Hidden ends, come back at the chosen level (needs a fresh cell from the phone). */
+function useHiddenReturn() {
+  const { me, setMe } = useSession();
+  React.useEffect(() => {
+    if (!me.hidden || !me.hidden_until) return;
+    let done = false;
+    const back = () => {
+      if (done || !hiddenExpired(me)) return;
+      done = true;
+      quickLevel(backOf(me)).then((m) => m && setMe(m), () => (done = false));
+    };
+    const ms = Math.max(0, new Date(me.hidden_until).getTime() - Date.now());
+    const t = setTimeout(back, Math.min(ms + 1000, 2_147_000_000));
+    const s = AppState.addEventListener('change', (st) => st === 'active' && back());
+    back();
+    return () => {
+      clearTimeout(t);
+      s.remove();
+    };
+  }, [me, setMe]);
+}
+
 /** F-13: open "All good?" once a check-in is due; keep the held alert's location fresh (5 min). */
 function useCheckinWatch() {
   React.useEffect(() => {
@@ -136,8 +162,15 @@ function useCheckinWatch() {
     let rm: (() => void) | undefined;
     if (Platform.OS !== 'web')
       import('expo-notifications').then((N) => {
+        // R-13.19: "All good?" carries I'm OK / +30 min actions.
+        N.setNotificationCategoryAsync(CATEGORY, [
+          { identifier: 'ok', buttonTitle: dx.actOk, options: { opensAppToForeground: true } },
+          { identifier: 'more', buttonTitle: dx.actMore, options: { opensAppToForeground: true } },
+        ]).catch(() => {});
         const sub = N.addNotificationResponseReceivedListener((r) => {
-          if ((r.notification.request.content.data as { checkin?: boolean })?.checkin && nav.isReady()) nav.navigate('CheckinDue');
+          if (!(r.notification.request.content.data as { checkin?: boolean })?.checkin || !nav.isReady()) return;
+          if (r.actionIdentifier === 'more') extendCheckin().then(() => nav.isReady() && nav.navigate('SafetyQuick'), () => nav.navigate('CheckinDue'));
+          else nav.navigate('CheckinDue');
         });
         rm = () => sub.remove();
       });
@@ -182,6 +215,25 @@ const sub = ({ navigation }: { navigation: { goBack: () => void } }) => ({
   ),
 });
 
+// S-51 v2 / S-57: sheets drawn by SheetFrame over the current screen.
+const sheet = { presentation: 'transparentModal' as const, animation: 'none' as const, contentStyle: { backgroundColor: 'transparent' } };
+
+/** S-56 (R-13.16): live check-in bar above every screen; screens below get a top inset of 0 so nothing is covered. */
+function LiveFrame({ children }: { children: React.ReactNode }) {
+  const a = useCheckin();
+  const insets = useSafeAreaInsets();
+  const frame = useSafeAreaFrame();
+  // Same tree with or without the bar, so the navigator never remounts; the nested provider re-measures natively.
+  return (
+    <View style={{ flex: 1, backgroundColor: color.bgBase }}>
+      {a ? <LiveBar a={a} onOpen={(late) => nav.isReady() && nav.navigate(late ? 'CheckinDue' : 'SafetyQuick')} /> : null}
+      <SafeAreaProvider key="live-frame" style={{ flex: 1 }} initialMetrics={{ frame, insets: { ...insets, top: a ? 0 : insets.top } }}>
+        {children}
+      </SafeAreaProvider>
+    </View>
+  );
+}
+
 export function Main() {
   const { mode } = useSession();
   // Hosts keep party / activity / club group chats in step with their member lists.
@@ -193,10 +245,12 @@ export function Main() {
     });
   }, []);
   useCheckinWatch();
+  useHiddenReturn();
   useShareLinks();
   return (
     <ModeContext.Provider value={mode}>
       <LockGate>
+      <LiveFrame>
       <NavigationContainer ref={nav} theme={navTheme}>
         <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: color.bgBase } }}>
           <Stack.Screen name="Tabs" component={Tabs} />
@@ -227,7 +281,8 @@ export function Main() {
           <Stack.Screen name="Report" component={ReportScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="Notices" component={NoticesScreen} options={sub} />
           <Stack.Screen name="Safety" component={SafetyScreen as React.ComponentType} options={sub} />
-          <Stack.Screen name="CheckinStart" component={CheckinStartScreen as React.ComponentType} options={sub} />
+          <Stack.Screen name="CheckinStart" component={CheckinStartScreen as React.ComponentType} options={sheet} />
+          <Stack.Screen name="SafetyQuick" component={SafetyQuickScreen as React.ComponentType} options={sheet} />
           <Stack.Screen name="CheckinDue" component={CheckinDueScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="AppLock" component={AppLockScreen} options={sub} />
           <Stack.Screen name="Devices" component={DevicesScreen} options={sub} />
@@ -236,6 +291,7 @@ export function Main() {
         <ToastHost />
         <SafeModeAuto navigate={(r) => nav.isReady() && nav.navigate(r)} />
       </NavigationContainer>
+      </LiveFrame>
       </LockGate>
     </ModeContext.Provider>
   );

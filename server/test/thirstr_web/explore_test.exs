@@ -39,7 +39,7 @@ defmodule ThirstrWeb.ExploreTest do
   end
 
   @tag ac: "AC-04.3"
-  test "Hidden and incognito users never appear", %{viewer: v, other: o} do
+  test "Hidden users never appear", %{viewer: v, other: o} do
     o.c
     |> recycle_authed()
     |> put("/v1/me/location", %{level: "hidden", cell_r9: zurich_r9()})
@@ -54,12 +54,54 @@ defmodule ThirstrWeb.ExploreTest do
 
     assert o.pid in ids(grid(v.c)["items"])
 
-    o.c
-    |> recycle_authed()
-    |> patch("/v1/me/visibility", %{incognito: true})
-    |> json_response(200)
+    # #114: Hidden with an end time and a level to come back as (was Incognito).
+    until = DateTime.utc_now() |> DateTime.add(3600) |> DateTime.to_iso8601()
 
+    me =
+      o.c
+      |> recycle_authed()
+      |> put("/v1/me/location", %{
+        level: "hidden",
+        cell_r9: zurich_r9(),
+        until: until,
+        return_level: "city"
+      })
+      |> json_response(200)
+
+    assert me["hidden"] == true
+    assert me["hidden_return"] == "city"
+    assert me["hidden_until"]
     refute o.pid in ids(grid(v.c)["items"])
+
+    me =
+      o.c
+      |> recycle_authed()
+      |> put("/v1/me/location", %{level: "area", cell_r9: zurich_r9()})
+      |> json_response(200)
+
+    refute me["hidden_until"]
+    assert o.pid in ids(grid(v.c)["items"])
+  end
+
+  test "Hidden end time and return level are validated; Incognito is gone (#114)", %{other: o} do
+    for body <- [
+          %{level: "hidden", cell_r9: zurich_r9(), return_level: "exact"},
+          %{level: "hidden", cell_r9: zurich_r9(), until: "2001-01-01T00:00:00Z"},
+          %{
+            level: "hidden",
+            cell_r9: zurich_r9(),
+            until: DateTime.utc_now() |> DateTime.add(72 * 3600) |> DateTime.to_iso8601()
+          }
+        ] do
+      assert %{"error" => %{"code" => "validation"}} =
+               o.c |> recycle_authed() |> put("/v1/me/location", body) |> json_response(422)
+    end
+
+    assert %{"error" => %{"code" => "validation"}} =
+             o.c
+             |> recycle_authed()
+             |> patch("/v1/me/visibility", %{incognito: true})
+             |> json_response(422)
   end
 
   test "hide me from hidden users (R-05.6)", %{viewer: v, other: o} do
@@ -72,14 +114,14 @@ defmodule ThirstrWeb.ExploreTest do
 
     v.c
     |> recycle_authed()
-    |> patch("/v1/me/visibility", %{incognito: true})
+    |> put("/v1/me/location", %{level: "hidden", cell_r9: zurich_r9()})
     |> json_response(200)
 
     refute o.pid in ids(grid(v.c)["items"])
   end
 
   @tag ac: "AC-05.4"
-  test "unverified cannot set Hidden, incognito or Exact", %{conn: conn} do
+  test "unverified cannot set Hidden or Exact", %{conn: conn} do
     u = onboarded(conn, verified: false)
 
     for body <- [
@@ -89,12 +131,6 @@ defmodule ThirstrWeb.ExploreTest do
       assert %{"error" => %{"code" => "not_verified"}} =
                u.c |> recycle_authed() |> put("/v1/me/location", body) |> json_response(403)
     end
-
-    assert %{"error" => %{"code" => "not_verified"}} =
-             u.c
-             |> recycle_authed()
-             |> patch("/v1/me/visibility", %{incognito: true})
-             |> json_response(403)
   end
 
   test "unverified viewer: no pins, distance ≥ 1–2 km (R-04.10)", %{conn: conn, other: o} do
