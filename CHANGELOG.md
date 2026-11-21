@@ -6,6 +6,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Gestures across the app** (app, F-19 #187): every gesture also has a visible button and a screen reader action.
+  - Chat: swipe a message right to reply (quote above the composer and in the bubble), double-tap their message for ❤️, hold a message to lift it with a reaction bar (slide to an emoji and let go) and actions (Reply, Copy, Report, Delete for me), swipe the chat left to see send times. One reaction per person per message; the same emoji again takes it back.
+  - Chats list: swipe right to Favorite (Pin for groups), swipe left for Mute and Archive (long swipe archives, toast with Undo).
+  - Pull to refresh on Chats, Taps, Hidden & blocked, Party, Activity, Club and Venue.
+  - Explore: grid sheet drag rebuilt on the UI thread (fling, rubber band, haptic tick per stop); pinch the grid for 2, 3 or 4 per row (also in Filters › Grid size).
+  - Profile: tap the photo's sides to change photo, swipe to the next / previous person from the grid (‹ › buttons too), double-tap the photo to send a Tap, pull the photo down to close, pinch out or ⤢ for full screen.
+  - Full-screen photo viewer for profiles, albums and chat photos: pinch and double-tap zoom, swipe between photos, swipe down to close.
+  - Everywhere: swipe back from anywhere on iOS (edge only on Profile and Chat), drag every sheet down to close, hold a tab for a shortcut (Explore: lens, Me: Hidden on/off, Chats: first unread), one haptics system (tick, tap, success, warning).
+  - Tech: `react-native-gesture-handler` 3 + `react-native-reanimated` 4 (gestures run on the UI thread, no JS per frame), `expo-clipboard`.
 - **Gestures spec** (docs, #187): F-19 Gestures & haptics: 18 gestures (swipe to reply, double-tap ❤️, reaction bar, inbox row swipes, pull to refresh everywhere, grid sheet on the UI thread, pinch grid size, photo tap zones, swipe between profiles, double-tap to Tap, pull down to close, full-screen photo viewer, swipe back anywhere, swipe-down sheets, tab long-press, haptics tokens, screen reader actions). Each has a visible button too.
 
 ### Fixed

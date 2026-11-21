@@ -1,6 +1,7 @@
 // F-19 (#187): native gesture + animation modules in tests (no UI thread in Jest).
 // Reanimated 4's own mock boots its native initializer under jest-expo and throws, so a small stand-in is used.
 /* global jest */
+/* eslint-disable react/display-name */
 require('react-native-gesture-handler/jestSetup');
 jest.mock('react-native-worklets', () => ({
   scheduleOnRN: (fn, ...args) => fn(...args),

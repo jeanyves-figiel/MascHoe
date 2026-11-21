@@ -40,3 +40,11 @@ export function nextIndex(i: number, len: number, dir: -1 | 1): number {
   const n = i + dir;
   return n < 0 || n >= len ? i : n;
 }
+
+/** G10: up to 100 ids on each side of `id`, in list order (the grid order a profile swipes through). */
+export function nearIds(items: { id: string }[] | null, id: string): string[] {
+  if (!items) return [id];
+  const i = items.findIndex((c) => c.id === id);
+  if (i < 0) return [id];
+  return items.slice(Math.max(0, i - 100), i + 101).map((c) => c.id);
+}

@@ -12,7 +12,7 @@ import { feel } from '../ui/haptics';
 import { GestureDetector, usePinchGesture } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
-import { colsAfterPinch } from '../ui/gestureMath';
+import { colsAfterPinch, nearIds } from '../ui/gestureMath';
 import { settle } from '../ui/motion';
 import { setCols, useCols, type Cols } from './gridCols';
 import { SafetySheet, SheetRow } from '../trust/SafetySheet';
@@ -687,10 +687,3 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
   );
 }
 
-/** F-19 G10: up to 100 grid ids on each side of the opened profile, in grid order. */
-export function nearIds(items: Card[] | null, id: string): string[] {
-  if (!items) return [id];
-  const i = items.findIndex((c) => c.id === id);
-  if (i < 0) return [id];
-  return items.slice(Math.max(0, i - 100), i + 101).map((c) => c.id);
-}
