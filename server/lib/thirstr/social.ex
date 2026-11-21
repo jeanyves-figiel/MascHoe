@@ -102,7 +102,7 @@ defmodule Thirstr.Social do
 
       mine = own_profile_ids(viewer)
       vp = if point, do: Map.take(point, [:lat, :lng, :res]), else: Location.viewer_point(viewer)
-      # F-19 R-19.7: the trip shows only to viewers in (or looking around) the trip city.
+      # F-20 R-20.7: the trip shows only to viewers in (or looking around) the trip city.
       trip = if t.account_id != viewer.id, do: Thirstr.Trips.for_profile(vp, t.id)
 
       {:ok,
@@ -163,7 +163,7 @@ defmodule Thirstr.Social do
              """,
              [dump(t.id)]
            ) do
-      # F-19 R-19.16: no Exact pins from afar
+      # F-20 R-20.16: no Exact pins from afar
       pin = unless remote?, do: Location.pins([t.id])[t.id]
       dist = haversine(vp, pin || %{lat: lat, lng: lng})
 

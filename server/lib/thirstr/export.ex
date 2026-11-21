@@ -55,7 +55,7 @@ defmodule Thirstr.Export do
       "SELECT id, accepted_at, created_at FROM safety_relays WHERE account_id = $1",
     devices:
       "SELECT id, platform, last_seen_day, inserted_at AS created_at FROM devices WHERE account_id = $1",
-    # F-19 travel plans
+    # F-20 travel plans
     trips:
       "SELECT t.id, c.name AS city, c.country, t.first_day, t.last_day, t.show_days, t.say_from, t.created_at FROM trips t JOIN cities c ON c.id = t.city_id WHERE t.account_id = $1"
   ]

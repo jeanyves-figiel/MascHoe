@@ -12,7 +12,7 @@ import { TripSheet } from './TripSheet';
 
 type Nav = { navigate: (s: string, p?: object) => void };
 
-// S-72 Trips (F-19 R-19.1).
+// S-72 Trips (F-20 R-20.1).
 export function TripsScreen({ navigation }: { navigation: Nav }) {
   const { me } = useSession();
   const [data, setData] = useState<{ trips: Trip[]; limits: TripLimits } | null>(null);

@@ -1,18 +1,18 @@
 defmodule Thirstr.Trips do
   @moduledoc """
-  F-19 travel plans (#188, docs/spec/features/F19-travel.md).
+  F-20 travel plans (#188, docs/spec/features/F20-travel.md).
 
   Privacy rules:
   - a trip is the city (public `cities` row) + dates; never a position;
   - others learn about a trip only when their own view point (or Look-around city) is within
-    the trip city's area, and only when the owner chose "Show me there" (R-19.7, R-19.12);
-  - Look-around queries use the trip city's fixed centre as the view point (R-19.15);
-  - visitors are never map-pinned and carry no distance (R-19.11, R-19.13).
+    the trip city's area, and only when the owner chose "Show me there" (R-20.7, R-20.12);
+  - Look-around queries use the trip city's fixed centre as the view point (R-20.15);
+  - visitors are never map-pinned and carry no distance (R-20.11, R-20.13).
   """
   alias Thirstr.Repo
   alias Thirstr.Accounts.Account
 
-  # R-19.3 limits
+  # R-20.3 limits
   @max_trips 3
   @ahead_days 180
   @max_days 30
@@ -65,7 +65,7 @@ defmodule Thirstr.Trips do
     end
   end
 
-  @doc "POST /trips (R-19.2, R-19.3, R-19.19)."
+  @doc "POST /trips (R-20.2, R-20.3, R-20.19)."
   def create(%Account{} = a, params) do
     with {:ok, attrs} <- validate(a, params, nil),
          :ok <- count_ok(a),
@@ -145,7 +145,7 @@ defmodule Thirstr.Trips do
     end
   end
 
-  @doc "R-19.4: hourly. Trips end at 12:00 UTC the day after their last day."
+  @doc "R-20.4: hourly. Trips end at 12:00 UTC the day after their last day."
   def sweep do
     Repo.query!("""
     DELETE FROM trips WHERE (last_day + 1)::timestamp + interval '12 hours' <= (now() AT TIME ZONE 'UTC')
@@ -248,7 +248,7 @@ defmodule Thirstr.Trips do
         else: {:error, {:not_verified, "Verify to show yourself in a trip city"}}
       )
 
-  # R-19.19: showing early in a Safe Mode country needs a second confirm.
+  # R-20.19: showing early in a Safe Mode country needs a second confirm.
   defp safe_mode_ack(_city, nil, _), do: :ok
 
   defp safe_mode_ack(city, _show, ack) do
@@ -259,7 +259,7 @@ defmodule Thirstr.Trips do
       else: :ok
   end
 
-  # R-19.3: one shown trip at a time (shown windows may not overlap).
+  # R-20.3: one shown trip at a time (shown windows may not overlap).
   defp no_overlap(_a, _own, nil, _f, _l), do: :ok
 
   defp no_overlap(a, own_id, show, first, last) do
@@ -312,7 +312,7 @@ defmodule Thirstr.Trips do
     }
   end
 
-  # ------------------------------------------------------------------ Look around (R-19.15)
+  # ------------------------------------------------------------------ Look around (R-20.15)
 
   @doc "View point for an own, unexpired trip: the trip city's centre (r5)."
   def point(%Account{} = a, trip_id) do
@@ -328,7 +328,7 @@ defmodule Thirstr.Trips do
     end
   end
 
-  @doc "Public centre of a catalogue city (map bubble, R-19.11)."
+  @doc "Public centre of a catalogue city (map bubble, R-20.11)."
   def city_center(name, cc) do
     case Repo.query!("SELECT lat, lng FROM cities WHERE name = $1 AND country = $2 LIMIT 1", [
            name,
@@ -339,12 +339,12 @@ defmodule Thirstr.Trips do
     end
   end
 
-  # ------------------------------------------------------------------ visitors (R-19.10–R-19.13)
+  # ------------------------------------------------------------------ visitors (R-20.10–R-20.13)
 
   @doc """
   Profile ids of visitors listed for a view point, with their trip, in order (soonest arrival,
   then most recent trip). Excludes travellers already here (their own cell is in the area,
-  R-19.9: they rank like locals) and the viewer himself. Visibility rules are applied by
+  R-20.9: they rank like locals) and the viewer himself. Visibility rules are applied by
   `Explore.candidates/4` afterwards.
   """
   def visitor_trips(%{point: %{lat: lat, lng: lng}} = v) do
@@ -375,7 +375,7 @@ defmodule Thirstr.Trips do
   end
 
   @doc """
-  R-19.9: travellers already here among `rows` (account ids) for a view point → %{profile_id => trip}.
+  R-20.9: travellers already here among `rows` (account ids) for a view point → %{profile_id => trip}.
   """
   def here(_point, []), do: %{}
 
@@ -401,7 +401,7 @@ defmodule Thirstr.Trips do
     end)
   end
 
-  @doc "R-19.7: the shown trip of `profile_id` near a view point (or nil)."
+  @doc "R-20.7: the shown trip of `profile_id` near a view point (or nil)."
   def for_profile(nil, _profile_id), do: nil
 
   def for_profile(point, profile_id) do

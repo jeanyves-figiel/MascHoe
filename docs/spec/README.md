@@ -47,10 +47,11 @@ Status: draft v0.1 · 2026-11-17 · Source of truth before any code. Product rat
 | F-16 | [Notifications](features/F16-notifications.md) |
 | F-17 | [Settings](features/F17-settings.md) |
 | F-18 | [Vouches & trust badges](features/F18-trust.md) |
-| F-19 | [Travel plans](features/F19-travel.md) (#188) |
+| F-19 | [Gestures & haptics](features/F19-gestures.md) |
+| F-20 | [Travel plans](features/F20-travel.md) (#188) |
 | I-01 | [Social post sharing (X, Bluesky, OnlyFans, JustFor.Fans)](integrations/I01-social-share.md) |
 | I-02 | [GDPR export import & profile share link](integrations/I02-import-share-link.md) |
 | I-03 | [Platform services: push, maps, passkeys, attestation, stores](integrations/I03-platform.md) |
 
 ## Beta scope (v1)
-All F-01…F-19 and I-01…I-03 are beta scope unless a section says **Later**. Later (v2+): video calls, health module beyond fields, Plus billing, open federation protocol, web client.
+All F-01…F-20 and I-01…I-03 are beta scope unless a section says **Later**. Later (v2+): video calls, health module beyond fields, Plus billing, open federation protocol, web client.

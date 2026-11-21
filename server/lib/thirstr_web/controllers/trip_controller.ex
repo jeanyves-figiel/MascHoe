@@ -1,5 +1,5 @@
 defmodule ThirstrWeb.TripController do
-  @moduledoc "F-19 travel plans (#188): own trips (S-72, S-73)."
+  @moduledoc "F-20 travel plans (#188): own trips (S-72, S-73)."
   use ThirstrWeb, :controller
 
   alias Thirstr.{Social, Trips}

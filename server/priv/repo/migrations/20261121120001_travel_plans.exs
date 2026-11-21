@@ -1,7 +1,7 @@
 defmodule Thirstr.Repo.Migrations.TravelPlans do
   use Ecto.Migration
 
-  # F-19 travel plans (#188): trips, creation log for the 6 / 30 d limit, and a worldwide city
+  # F-20 travel plans (#188): trips, creation log for the 6 / 30 d limit, and a worldwide city
   # catalogue (GeoNames ≥ 15 000 inhabitants, CC BY 4.0) so any trip city can be picked.
   def up do
     alter table(:cities) do

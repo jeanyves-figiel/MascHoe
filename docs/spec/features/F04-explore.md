@@ -50,7 +50,7 @@ Top (#113, option B of the [merged map mockup](https://claude.ai/artifact/JiM6ad
   - Tap a marker → place card over the sheet: kind label, name, distance bucket, here line ("12 here", "A few here", none at 0; R-12.5 labels), buttons: venue → **Check in** (F-12 flow; the server still enforces ≤ 1.5 km) + **Directions** (the phone's maps app with the venue's public coordinates); official party → **Directions** + link if any; hosted party → **Request to join** (S-14). Footer "© OpenStreetMap contributors" for OSM venues. Tap the map or ✕ closes it.
   - Safe Mode viewer: no place layers, no chips (F-14). Unverified viewer: venues and official parties yes, hosted parties no (audience rules, F-10).
 
-- R-04.21 Travel (#188, F-19): visitors to the viewer's area are interleaved into the grid with a sky outline and travel label (R-19.10), never pinned on the map (one "N visiting" bubble, R-19.11); Look around a trip city (R-19.14) sets the viewer point to that city's centre. Filters gain **Show visitors** (default on).
+- R-04.21 Travel (#188, F-20): visitors to the viewer's area are interleaved into the grid with a sky outline and travel label (R-20.10), never pinned on the map (one "N visiting" bubble, R-20.11); Look around a trip city (R-20.14) sets the viewer point to that city's centre. Filters gain **Show visitors** (default on).
 
 ## Interactions
 | Gesture | Result |

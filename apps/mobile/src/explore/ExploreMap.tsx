@@ -70,7 +70,7 @@ export function ExploreMap({ center, me, data, accent, recenter, onRegion, onSel
           </Pressable>
         </Marker>
       ))}
-      {/* F-19 R-19.11: visitors are never pinned; one bubble at the city centre */}
+      {/* F-20 R-20.11: visitors are never pinned; one bubble at the city centre */}
       {visiting ? (
         <Marker id="visiting" lngLat={[visiting.lng, visiting.lat]} anchor="center">
           <Pressable testID="visiting-bubble" accessibilityRole="button" accessibilityLabel={tr.visitingBubble(visiting.count)} onPress={onVisiting}>

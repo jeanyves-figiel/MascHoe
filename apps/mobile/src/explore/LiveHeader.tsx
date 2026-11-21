@@ -26,7 +26,7 @@ type Props = {
   onLocation: () => void;
   onNow: () => void;
   banner?: React.ReactNode;
-  /** F-19 R-19.14: looking around this trip city (sky bar + Back). */
+  /** F-20 R-20.14: looking around this trip city (sky bar + Back). */
   trip?: Trip | null;
   home?: string | null;
   onBack?: () => void;

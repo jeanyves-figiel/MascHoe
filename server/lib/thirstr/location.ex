@@ -434,7 +434,7 @@ defmodule Thirstr.Location do
   # ------------------------------------------------------------- cities & welcome
 
   def search_cities(q) when is_binary(q) and byte_size(q) >= 2 do
-    # F-19: accent-insensitive prefix match, biggest cities first.
+    # F-20: accent-insensitive prefix match, biggest cities first.
     pattern = Thirstr.Cities.key(q) |> String.replace(~r/[%_\\]/, "") |> Kernel.<>("%")
 
     Repo.query!(

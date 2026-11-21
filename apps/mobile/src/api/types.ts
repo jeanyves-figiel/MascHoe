@@ -47,15 +47,15 @@ export type Card = {
   lng?: number;
   /** R-04.19 (#113): his `show_in`, ordered hookup → friends → sport. */
   intents?: Mode[];
-  /** F-19 R-19.13: listed because of a trip (no distance). */
+  /** F-20 R-20.13: listed because of a trip (no distance). */
   visitor?: boolean;
   trip?: VisitorTrip | null;
 };
 
-/** F-19: what others see of a shown trip (never his position or other trips). */
+/** F-20: what others see of a shown trip (never his position or other trips). */
 export type VisitorTrip = { city: string; country: string; first_day: string; last_day: string; here: boolean; from: string | null };
 
-/** F-19 own trip (GET /trips). */
+/** F-20 own trip (GET /trips). */
 export type Trip = {
   id: string;
   city: { id: number; name: string; country: string; lat: number; lng: number };
@@ -117,7 +117,7 @@ export type ProfileView = {
   badges: { kind: string; since?: string; years?: number; up_pct?: number; total?: number }[];
   linked_accounts: { platform: string; handle: string; verified?: boolean; url?: string }[];
   self: boolean;
-  /** F-19 R-19.7: his shown trip to the viewer's area. */
+  /** F-20 R-20.7: his shown trip to the viewer's area. */
   trip?: VisitorTrip | null;
 };
 
@@ -131,7 +131,7 @@ export type Settings = {
   show_in_tonight: boolean;
   show_in_activities: boolean;
   show_in_venues: boolean;
-  /** F-19 R-17.14 */
+  /** F-20 R-17.14 */
   show_to_remote?: boolean;
   show_distance: 'exact' | 'range' | 'none';
   online_visible: boolean;

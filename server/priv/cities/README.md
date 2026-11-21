@@ -1,4 +1,4 @@
-# City catalogue (F-19)
+# City catalogue (F-20)
 
 `cities.tsv` (first line is a comment): GeoNames cities with at least 15 000 inhabitants plus a short list of smaller travel spots;
 districts (PPLX, PPLH, PPLQ, PPLW) excluded. Columns: name, search key, country (ISO 3166-1 alpha-2),

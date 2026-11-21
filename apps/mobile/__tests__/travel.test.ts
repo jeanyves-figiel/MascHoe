@@ -1,4 +1,4 @@
-// F-19 travel plans (#188): date maths and Visiting labels (R-19.6).
+// F-20 travel plans (#188): date maths and Visiting labels (R-20.6).
 import { describe, expect, jest, test } from '@jest/globals';
 jest.mock('../src/api/client', () => ({ api: jest.fn() }));
 jest.mock('expo-localization', () => ({ getLocales: () => [{ languageCode: 'en', languageTag: 'en-GB' }] }));
@@ -21,7 +21,7 @@ describe('travel dates', () => {
   });
 });
 
-describe('Visiting labels (R-19.6)', () => {
+describe('Visiting labels (R-20.6)', () => {
   test('before arrival counts down, during says Visiting, in town says Here now', () => {
     expect(shortLabel(vt(12, 14))).toBe('Arriving in 12 days');
     expect(shortLabel(vt(1, 3))).toBe('Arriving tomorrow');

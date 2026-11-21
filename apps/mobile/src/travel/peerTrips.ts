@@ -2,7 +2,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import { api } from '../api/client';
 import type { ProfileView, VisitorTrip } from '../api/types';
 
-// F-19 R-19.8: the Visiting label in chat headers and inbox rows. Kept in memory only (never stored):
+// F-20 R-20.8: the Visiting label in chat headers and inbox rows. Kept in memory only (never stored):
 // filled when his profile or the chat opens; the inbox shows what is already known on this phone.
 const cache = new Map<string, { trip: VisitorTrip | null; at: number }>();
 const TTL = 10 * 60_000;

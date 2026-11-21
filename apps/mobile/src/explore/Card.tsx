@@ -12,7 +12,7 @@ import { tr } from '../i18n/travel';
 export function ProfileTile({ card, onPress, onLongPress, tray, selected }: { card: Card; onPress: () => void; onLongPress?: () => void; tray?: boolean; selected?: boolean }) {
   const accent = useAccent();
   const hot = !!card.now || card.exact;
-  // F-19 R-19.10: visitors (and travellers already here) carry a sky outline + reason.
+  // F-20 R-20.10: visitors (and travellers already here) carry a sky outline + reason.
   const trip = card.trip ?? null;
   const where = trip ? (trip.here ? tr.visitingUntil(dayLabel(trip.last_day)) : `${tr.visiting} ${rangeLabel(trip.first_day, trip.last_day)}`) : distanceLabel(card.distance);
   const label = `${card.display_name}, ${card.age}${card.verified ? ', verified' : ''}, ${trip ? a11yLabel(trip) : distanceLabel(card.distance)}${card.now ? ', ' + tx.now[card.now.status] : ''}`;

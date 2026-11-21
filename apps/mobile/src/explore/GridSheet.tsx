@@ -1,5 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Animated, PanResponder, Pressable, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useRef } from 'react';
+import { Pressable, Text, View } from 'react-native';
+import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
+import Animated, { cancelAnimation, useAnimatedStyle, useReducedMotion, useSharedValue } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
+import { clamp, rubber } from '../ui/gestureMath';
+import { feel } from '../ui/haptics';
+import { settle } from '../ui/motion';
 import { tx } from '../i18n/app';
 import { color, radius, space, type } from '../theme/tokens';
 
@@ -30,8 +36,6 @@ export function snapAfterDrag(visible: number, vy: number, h: number, bottom: nu
   return best;
 }
 
-const spring = (v: Animated.Value, to: number) => Animated.spring(v, { toValue: to, useNativeDriver: true, damping: 20, stiffness: 180, mass: 1 }).start();
-
 const NEXT: Record<Snap, Snap> = { peek: 'half', half: 'full', full: 'peek' };
 
 type Props = {
@@ -47,75 +51,84 @@ type Props = {
 };
 
 // S-10 grid sheet over the map (F-04 R-04.14, design-system.md › Explore grid sheet).
+// F-19 G7 (#187): the drag runs on the UI thread (gesture-handler + reanimated): follows the finger,
+// rubber band past the top, a fling goes one stop, one haptic tick per stop reached.
 export function GridSheet({ h, bottom, snap, onSnap, title, right, above, children }: Props) {
-  const [y] = useState(() => new Animated.Value(h - snapHeight(snap, h, bottom)));
-  const live = useRef({ h, bottom, snap, onSnap, start: 0, reduce: false });
+  const reduce = useReducedMotion();
+  const y = useSharedValue(h - snapHeight(snap, h, bottom));
+  const start = useSharedValue(0);
+  const live = useRef({ snap, onSnap });
   useEffect(() => {
-    Object.assign(live.current, { h, bottom, snap, onSnap });
-  }, [h, bottom, snap, onSnap]);
+    live.current = { snap, onSnap };
+  }, [snap, onSnap]);
 
   useEffect(() => {
-    AccessibilityInfo.isReduceMotionEnabled?.()
-      .then((r) => (live.current.reduce = r))
-      .catch(() => {});
-  }, []);
+    y.set(settle(h - snapHeight(snap, h, bottom), reduce));
+  }, [snap, h, bottom, y, reduce]);
 
-  useEffect(() => {
-    const to = h - snapHeight(snap, h, bottom);
-    if (live.current.reduce) y.setValue(to);
-    else spring(y, to);
-  }, [snap, h, bottom, y]);
-
-  // Handlers read `live` only during gestures, never while rendering.
-  // eslint-disable-next-line react-hooks/refs
-  const [pan] = useState(() =>
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_e, g) => Math.abs(g.dy) > 4 && Math.abs(g.dy) > Math.abs(g.dx),
-      onPanResponderGrant: () => {
-        y.stopAnimation((v) => (live.current.start = v));
-      },
-      onPanResponderMove: (_e, g) => {
-        const L = live.current;
-        const min = L.h - snapHeight('full', L.h, L.bottom);
-        const max = L.h - snapHeight('peek', L.h, L.bottom);
-        y.setValue(Math.min(max, Math.max(min, L.start + g.dy)));
-      },
-      onPanResponderRelease: (_e, g) => {
-        const L = live.current;
-        const visible = L.h - Math.min(L.h, Math.max(0, L.start + g.dy));
-        const next = snapAfterDrag(visible, g.vy, L.h, L.bottom, L.snap);
-        if (next === L.snap) spring(y, L.h - snapHeight(next, L.h, L.bottom));
-        L.onSnap(next);
-      },
-    }),
+  const release = useCallback(
+    (visible: number, vy: number) => {
+      const L = live.current;
+      const next = snapAfterDrag(visible, vy, h, bottom, L.snap);
+      if (next === L.snap) y.set(settle(h - snapHeight(next, h, bottom), reduce));
+      else feel('tick');
+      L.onSnap(next);
+    },
+    [h, bottom, y, reduce],
   );
+
+  const top = h - snapHeight('full', h, bottom);
+  const low = h - snapHeight('peek', h, bottom);
+  const pan = usePanGesture({
+    activeOffsetY: [-6, 6],
+    failOffsetX: [-24, 24],
+    onBegin: () => {
+      'worklet';
+      cancelAnimation(y);
+      start.set(y.get());
+    },
+    onUpdate: (e) => {
+      'worklet';
+      const t = start.get() + e.translationY;
+      y.set(t < top ? top + rubber(t - top) : Math.min(low, t));
+    },
+    onDeactivate: (e) => {
+      'worklet';
+      const visible = h - clamp(y.get(), 0, h);
+      scheduleOnRN(release, visible, e.velocityY / 1000);
+    },
+  });
+  const style = useAnimatedStyle(() => ({ transform: [{ translateY: y.get() }] }));
 
   return (
     <Animated.View
       testID="grid-sheet"
-      style={{
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        top: 0,
-        height: h,
-        transform: [{ translateY: y }],
-        backgroundColor: color.bgBase,
-        borderTopLeftRadius: radius.lg,
-        borderTopRightRadius: radius.lg,
-        shadowColor: 'black',
-        shadowOpacity: 0.45,
-        shadowRadius: 20,
-        shadowOffset: { width: 0, height: -8 },
-        elevation: 12,
-      }}
+      style={[
+        {
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: 0,
+          height: h,
+          backgroundColor: color.bgBase,
+          borderTopLeftRadius: radius.lg,
+          borderTopRightRadius: radius.lg,
+          shadowColor: 'black',
+          shadowOpacity: 0.45,
+          shadowRadius: 20,
+          shadowOffset: { width: 0, height: -8 },
+          elevation: 12,
+        },
+        style,
+      ]}
     >
       {above ? (
         <View pointerEvents="box-none" style={{ position: 'absolute', left: 0, right: 0, bottom: '100%', marginBottom: 12, minHeight: 44, paddingHorizontal: space.l, flexDirection: 'row', alignItems: 'center' }}>
           {above}
         </View>
       ) : null}
-      <View {...pan.panHandlers}>
+      <GestureDetector gesture={pan}>
+        <View>
         <Pressable
           testID="sheet-handle"
           accessibilityRole="adjustable"
@@ -137,7 +150,8 @@ export function GridSheet({ h, bottom, snap, onSnap, title, right, above, childr
           </Text>
           {right ? <Text style={{ ...type.meta, color: color.fgSecondary }}>{right}</Text> : null}
         </View>
-      </View>
+        </View>
+      </GestureDetector>
       <View style={{ flex: 1 }}>{children}</View>
     </Animated.View>
   );

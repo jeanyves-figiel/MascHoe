@@ -85,7 +85,7 @@ defmodule ThirstrWeb.ProfileController do
   # --- others
 
   def show(conn, %{"id" => id} = params) do
-    # F-19 R-19.15: `trip_id` = viewed while looking around that trip's city.
+    # F-20 R-20.15: `trip_id` = viewed while looking around that trip's city.
     point =
       case params["trip_id"] do
         t when is_binary(t) and t != "" -> Thirstr.Trips.point(a(conn), t)

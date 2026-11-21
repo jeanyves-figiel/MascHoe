@@ -10,7 +10,7 @@ export type Filters = {
   has_now: boolean;
   hide_creators: boolean;
   new_members: boolean;
-  /** F-19 R-19.12: Show visitors (default on). */
+  /** F-20 R-20.12: Show visitors (default on). */
   visitors?: boolean;
   [k: string]: unknown;
 };
@@ -39,7 +39,7 @@ export function query(intents: Mode[], f: Filters, extra: Record<string, string>
   return p.join('&');
 }
 
-/** F-19 R-19.15: `trip` = Look around that trip city (its id goes as `trip_id`). */
+/** F-20 R-20.15: `trip` = Look around that trip city (its id goes as `trip_id`). */
 type X = { trip?: string | null };
 const tp = (x?: X): Record<string, string> => (x?.trip ? { trip_id: x.trip } : {});
 export const loadGrid = (i: Mode[], f: Filters, cursor?: string | null, x?: X) => api<Grid>('GET', '/explore/grid?' + query(i, f, { ...(cursor ? { cursor } : {}), ...tp(x) }));
@@ -47,7 +47,7 @@ export const loadTray = (i: Mode[], f: Filters, x?: X) => api<{ items: Card[] }>
 const bboxParam = (b: [number, number, number, number]) => b.map((n) => n.toFixed(5)).join(',');
 export const loadMap = (i: Mode[], f: Filters, bbox: [number, number, number, number], x?: X) => api<MapData>('GET', '/explore/map?' + query(i, f, { bbox: bboxParam(bbox), ...tp(x) }));
 export const loadSummary = (i: Mode[], f: Filters, x?: X) => api<ExploreSummary>('GET', '/explore/summary?' + query(i, f, tp(x)));
-/** F-19 R-19.11: visitors for the map bubble (count, centre, first faces). */
+/** F-20 R-20.11: visitors for the map bubble (count, centre, first faces). */
 export const loadVisitors = (i: Mode[], f: Filters, x?: X) =>
   api<{ count: number; center: { lat: number; lng: number } | null; items: Card[] }>('GET', '/explore/visitors?' + query(i, f, tp(x)));
 /** R-04.20: only the viewport goes out, to our own API (never a third-party place service). */

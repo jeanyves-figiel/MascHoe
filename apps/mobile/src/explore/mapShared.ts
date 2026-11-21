@@ -27,7 +27,7 @@ export type MapProps = {
   places?: Place[];
   onPlace?: (p: Place) => void;
   selectedPlace?: string | null;
-  /** F-19 R-19.11: one sky "N visiting" bubble at the trip city centre (faces only for verified viewers). */
+  /** F-20 R-20.11: one sky "N visiting" bubble at the trip city centre (faces only for verified viewers). */
   visiting?: { lat: number; lng: number; count: number; faces: (string | null)[] } | null;
   onVisiting?: () => void;
 };

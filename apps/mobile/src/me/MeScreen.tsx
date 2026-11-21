@@ -204,7 +204,7 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
               <Text style={rowValue}>{me.now ? tx.now[me.now.status] : v3.me.off}</Text>
               <Icon.Next />
             </Row>
-            {/* F-19 R-19.1: Trips under How you show up right now */}
+            {/* F-20 R-20.1: Trips under How you show up right now */}
             <Row testID="me-trips" onPress={() => navigation.navigate('Trips')} label={tr.trips}>
               <IconTile tone={color.travel}>
                 <Plane size={18} c={color.travel} />

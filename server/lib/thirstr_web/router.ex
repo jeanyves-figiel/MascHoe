@@ -194,7 +194,7 @@ defmodule ThirstrWeb.Router do
       get "/explore/summary", ExploreController, :summary
       get "/explore/visitors", ExploreController, :visitors
 
-      # F-19 travel plans (#188)
+      # F-20 travel plans (#188)
       get "/trips", TripController, :index
       post "/trips", TripController, :create
       patch "/trips/:id", TripController, :update

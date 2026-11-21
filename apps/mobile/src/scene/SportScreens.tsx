@@ -11,6 +11,7 @@ import { Banner, Button, Chip, Chips, ErrorText, Field, Hero, Icon, ListRow, Loa
 import { resyncHostGroups } from './groupSync';
 import { Who } from './TonightScreen';
 import type { Club, ClubDetail, Post } from './types';
+import { usePull } from '../ui/pull';
 import { day } from './types';
 
 type Nav = {
@@ -54,12 +55,14 @@ export function ActivityScreen({ navigation, route }: { navigation: Nav; route: 
   const host = p.my_state === 'host';
   const inside = host || p.my_state === 'joined';
 
-  const loadMembers = useCallback(() => {
-    if (inside) api<NonNullable<typeof members>>('GET', `/activities/${p.id}/members`).then(setMembers, () => {});
-  }, [inside, p.id]);
+  const loadMembers = useCallback(
+    () => (inside ? api<NonNullable<typeof members>>('GET', `/activities/${p.id}/members`).then(setMembers, () => {}) : undefined),
+    [inside, p.id],
+  );
   useEffect(() => {
     loadMembers();
   }, [loadMembers]);
+  const refresh = usePull(loadMembers); // F-19 G6
 
   const rsvp = async (join: boolean) => {
     setErr(null);
@@ -84,6 +87,7 @@ export function ActivityScreen({ navigation, route }: { navigation: Nav; route: 
 
   return (
     <ScrollView keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets
+      refreshControl={refresh}
       style={{ flex: 1, backgroundColor: color.bgBase }}
       contentContainerStyle={{
         padding: space.l,
@@ -249,6 +253,7 @@ export function ClubScreen({ navigation, route }: { navigation: Nav; route: { pa
   useEffect(() => {
     load();
   }, [load]);
+  const refresh = usePull(load); // F-19 G6
   if (!c) return err ? <Banner tone="danger" text={err} /> : <Loading />;
   const admin = c.my_role === 'admin';
   const act = (fn: () => Promise<unknown>) =>
@@ -267,6 +272,7 @@ export function ClubScreen({ navigation, route }: { navigation: Nav; route: { pa
 
   return (
     <ScrollView keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets
+      refreshControl={refresh}
       style={{ flex: 1, backgroundColor: color.bgBase }}
       contentContainerStyle={{
         padding: space.l,

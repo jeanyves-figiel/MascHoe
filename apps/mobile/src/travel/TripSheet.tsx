@@ -22,7 +22,7 @@ const wdFmt = new Intl.DateTimeFormat(locale, { weekday: 'narrow' });
 // Monday-first week header (2024-01-01 was a Monday).
 const WEEK = Array.from({ length: 7 }, (_, i) => wdFmt.format(new Date(2024, 0, 1 + i, 12)));
 
-// S-73 Trip sheet (F-19 R-19.2–R-19.5, R-19.19).
+// S-73 Trip sheet (F-20 R-20.2–R-20.5, R-20.19).
 export function TripSheet({
   trip,
   visible,
@@ -209,7 +209,7 @@ export function TripSheet({
         ) : null}
       </View>
 
-      {/* Preview (R-19.6) */}
+      {/* Preview (R-20.6) */}
       {showing && preview ? (
         <View style={{ gap: space.s, padding: space.m, borderRadius: radius.md, backgroundColor: color.travelSoft }}>
           <Text style={{ ...type.caption, color: color.travel, letterSpacing: 0.6, textTransform: 'uppercase' }}>{tr.guysSee(city!.name)}</Text>

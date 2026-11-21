@@ -33,7 +33,7 @@ Generated to TS (RN theme) by Style Dictionary in CI. Hard-coded colours/sizes i
 | `mode.sport` | #B8F04A | Sport (lime) |
 | `trust` | #3DD6C3 | verified, location, privacy, E2EE, Save in privacy flows (teal) |
 | `personal` | #FFC93C | private note, defaults, disappearing timer (sunflower) |
-| `travel` | #7CC8FF | travel plans (F-19): Visiting labels, visitor tile outline, trip cards, "Looking around from afar" bar (sky; ink text 10.9:1). Never used for anything else |
+| `travel` | #7CC8FF | travel plans (F-20): Visiting labels, visitor tile outline, trip cards, "Looking around from afar" bar (sky; ink text 10.9:1). Never used for anything else |
 | `danger` | #FF4D6D | block, report, panic: always icon + label, never a plain fill beside `mode.hookup` |
 | `tile.*` | #7A2F3B, #4B3A8C, #2F6B5E, #7A5A1E, #5B2F6E, #2E4F8C | photo placeholder / skeleton tones before an image loads (rotate by user id hash) |
 - Accent = current mode token. `trust`, `personal`, `danger` never change with mode.
@@ -73,6 +73,7 @@ Generated to TS (RN theme) by Style Dictionary in CI. Hard-coded colours/sizes i
 - `elevation`: 0 flat, 1 card, 2 sheet, 3 modal (shadow + `bg` step).
 - `motion.fast` 120 ms, `motion.base` 220 ms, `motion.slow` 360 ms; easing `standard` cubic-bezier(0.2,0,0,1). Sheets use spring (damping 20). Mode switch cross-fades accent colours over `motion.base`. Reduce Motion ⇒ cross-fade only.
 - Touch targets ≥ 44×44 pt.
+- Gestures ([F-19](features/F19-gestures.md), #187): one spring for everything a finger lets go of (damping 22, stiffness 220, carries the fling velocity); Reduce Motion ⇒ 150 ms timing. Rubber band past any limit. Swipe action buttons 76 pt wide, colour fill + ink icon and label (Favorite sunflower, Archive violet, Mute muted). Reaction bar: white pill 260×52 over a dimmed chat, emoji under the finger grows 1.45×. Haptics only `tick` / `tap` / `success` / `warning`.
 
 ### Key component rules (Pop)
 - Bottom nav: floating `bg.inverse` pill (16 pt side inset, 8 pt above the home-indicator inset, 64 pt high); active tab is a filled pill in the current mode colour with `fg.onColor`; inactive tabs #4A4570. Unread badge `mode.hookup` with count.

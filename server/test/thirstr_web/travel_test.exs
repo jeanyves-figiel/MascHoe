@@ -1,7 +1,7 @@
 defmodule ThirstrWeb.TravelTest do
   use ThirstrWeb.ConnCase, async: false
 
-  # F-19 travel plans (#188).
+  # F-20 travel plans (#188).
   defp city_id(name, cc) do
     %{rows: [[id]]} =
       Thirstr.Repo.query!("SELECT id FROM cities WHERE name = $1 AND country = $2 LIMIT 1", [
@@ -59,7 +59,7 @@ defmodule ThirstrWeb.TravelTest do
     assert hd(res["cities"])["name"] == "São Paulo"
   end
 
-  @tag ac: "AC-19.1"
+  @tag ac: "AC-20.1"
   test "trip limits", %{traveller: t, conn: conn} do
     berlin = city_id("Berlin", "DE")
     base = %{city_id: berlin, first_day: day(5), last_day: day(9)}
@@ -105,7 +105,7 @@ defmodule ThirstrWeb.TravelTest do
            |> json_response(429)
   end
 
-  @tag ac: "AC-19.2"
+  @tag ac: "AC-20.2"
   test "a shown trip lists the traveller as a tagged visitor in the trip city", %{
     traveller: t,
     local: l,
@@ -123,14 +123,14 @@ defmodule ThirstrWeb.TravelTest do
     assert card["trip"]["here"] == false
     assert card["trip"]["from"] == nil
 
-    # AC-19.3: interleaved into the grid at position 2, never as a map pin
+    # AC-20.3: interleaved into the grid at position 2, never as a map pin
     _ = for k <- 1..3, do: onboarded(conn, cell: r9(52.5210 + k / 1000, 13.4050))
     items = grid(l.c)["items"]
     assert Enum.at(items, 1)["id"] == t.pid
     assert Enum.at(items, 1)["visitor"] == true
     refute grid(l.c, "&visitors=false")["items"] |> Enum.any?(&(&1["id"] == t.pid))
 
-    # profile shows the trip to Berlin viewers, not to people elsewhere (AC-19.6)
+    # profile shows the trip to Berlin viewers, not to people elsewhere (AC-20.6)
     p = l.c |> recycle_authed() |> get("/v1/profiles/#{t.pid}") |> json_response(200)
     assert p["trip"]["city"] == "Berlin"
     assert p["distance"] == nil
@@ -175,7 +175,7 @@ defmodule ThirstrWeb.TravelTest do
     assert card["distance"]["kind"] == "area"
   end
 
-  @tag ac: "AC-19.4"
+  @tag ac: "AC-20.4"
   test "look around uses the trip city's centre, own trips only, no pins", %{
     traveller: t,
     local: l
@@ -198,7 +198,7 @@ defmodule ThirstrWeb.TravelTest do
     l.c |> recycle_authed() |> get("/v1/explore/grid?trip_id=#{trip_id}") |> json_response(404)
   end
 
-  @tag ac: "AC-19.5"
+  @tag ac: "AC-20.5"
   test "locals who opt out or are in Safe Mode are hidden from afar", %{traveller: t, local: l} do
     %{"id" => trip_id} = trip!(t.c, %{show_days: nil})
 
@@ -231,7 +231,7 @@ defmodule ThirstrWeb.TravelTest do
     assert trip["safe_mode_country"] == true
   end
 
-  @tag ac: "AC-19.7"
+  @tag ac: "AC-20.7"
   test "trips end the day after their last day", %{traveller: t, local: l} do
     trip!(t.c, %{first_day: day(0), last_day: day(1), show_days: 0})
 
@@ -246,7 +246,7 @@ defmodule ThirstrWeb.TravelTest do
              0
   end
 
-  @tag ac: "AC-19.8"
+  @tag ac: "AC-20.8"
   test "at most 20 new chats a day with people far away", %{traveller: t} do
     a = account_of(t.pid)
     n = 20 * Application.get_env(:thirstr, :rate_limit_multiplier, 1)

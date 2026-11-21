@@ -128,7 +128,7 @@ export function ExploreMap({ center, me, data, accent, recenter, onRegion, onSel
       };
       add(p.lng, p.lat, el);
     }
-    // F-19 R-19.11: one sky "N visiting" bubble at the city centre, never pins.
+    // F-20 R-20.11: one sky "N visiting" bubble at the city centre, never pins.
     if (visiting) {
       const el = document.createElement('button');
       el.setAttribute('aria-label', tr.visitingBubble(visiting.count));

@@ -1,10 +1,9 @@
-import * as Haptics from 'expo-haptics';
 import React, { useEffect, useState } from 'react';
-import { Platform, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { api, ApiError } from '../api/client';
 import { mod } from '../i18n/mod';
 import { tx } from '../i18n/app';
-import { prefs } from '../me/prefs';
+import { feel } from '../ui/haptics';
 import { color, radius, space, type } from '../theme/tokens';
 import { Banner, Button, Icon, Sheet } from '../ui';
 import { toast } from '../ui/Toast';
@@ -38,7 +37,7 @@ type Props = {
 };
 
 const buzz = () => {
-  if (Platform.OS !== 'web' && prefs().haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+  feel('tap');
 };
 
 export function SafetySheet({ visible, target, onClose, onReport, onGone, onRestored, noHide, lead, children, after }: Props) {

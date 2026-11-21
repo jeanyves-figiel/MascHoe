@@ -1,6 +1,6 @@
 defmodule Thirstr.Cities do
   @moduledoc """
-  Public city catalogue (`cities`): S-04b picker, Welcome, live header place names and F-19 trip
+  Public city catalogue (`cities`): S-04b picker, Welcome, live header place names and F-20 trip
   cities. Loaded from `priv/cities/cities.tsv` (GeoNames, CC BY 4.0). Public data only.
   """
 

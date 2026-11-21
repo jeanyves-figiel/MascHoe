@@ -38,9 +38,12 @@ export type MediaRef = {
 };
 export type AlbumItem = { blob: string; key: string; iv: string; mime: string };
 
+export type Re = { id: string; n: string; s: string };
+
 /** Plaintext inside MLS application messages (R-07.4). */
 export type Payload =
-  | { t: 'text'; text: string }
+  /** F-19 G1 (#187): `re` = the message this one replies to (id, sender name as the writer saw it, ≤ 80-char snippet). */
+  | { t: 'text'; text: string; re?: Re }
   /** `k` = index of a built-in quick reply (R-07.31): the reader shows it in their own language. */
   | { t: 'quick_reply'; text: string; k?: number }
   | { t: 'media'; media: MediaRef }

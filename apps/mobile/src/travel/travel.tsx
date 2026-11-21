@@ -7,7 +7,7 @@ import type { Trip, TripLimits, VisitorTrip } from '../api/types';
 import { tr } from '../i18n/travel';
 import { color, radius, space, type } from '../theme/tokens';
 
-// F-19 travel plans (#188): API, date maths, the sky Visiting label and the Look-around state.
+// F-20 travel plans (#188): API, date maths, the sky Visiting label and the Look-around state.
 
 const locale = getLocales()[0]?.languageTag ?? 'en';
 
@@ -53,14 +53,14 @@ export const longRange = (first: string, last: string) => `${wdm.format(parseDay
 export const dayLabel = (s: string) => dm.format(parseDay(s));
 export const weekdayLabel = (s: string) => wdm.format(parseDay(s));
 
-/** R-19.6 short label: before arrival "Arriving in 12 days"; during "Visiting". */
+/** R-20.6 short label: before arrival "Arriving in 12 days"; during "Visiting". */
 export function shortLabel(t: VisitorTrip): string {
   if (t.here || daysUntil(t.first_day) <= 0) return t.here ? tr.hereNow : tr.visiting;
   return tr.arrivingIn(daysUntil(t.first_day));
 }
-/** R-19.6 tile tag: "In 12 d" / "Tomorrow" / "Today" / "Here now". */
+/** R-20.6 tile tag: "In 12 d" / "Tomorrow" / "Today" / "Here now". */
 export const tileTag = (t: VisitorTrip) => (t.here ? tr.hereNow : tr.inDays(daysUntil(t.first_day)));
-/** R-19.6 long label: "Visiting Berlin · 3–7 Dec" before, "Visiting · until Sun 7 Dec" during. */
+/** R-20.6 long label: "Visiting Berlin · 3–7 Dec" before, "Visiting · until Sun 7 Dec" during. */
 export function longLabel(t: VisitorTrip): string {
   if (daysUntil(t.first_day) <= 0) return tr.visitingUntil(weekdayLabel(t.last_day));
   return tr.visitingCity(t.city, rangeLabel(t.first_day, t.last_day), t.from);
@@ -77,7 +77,7 @@ export function Plane({ size = 12, c = color.onAccent }: { size?: number; c?: st
   );
 }
 
-/** R-19.6 sky pill: plane + text, never colour alone. */
+/** R-20.6 sky pill: plane + text, never colour alone. */
 export function TravelLabel({ text, small, outline, a11y }: { text: string; small?: boolean; outline?: boolean; a11y?: string }) {
   return (
     <View
@@ -105,7 +105,7 @@ export function TravelLabel({ text, small, outline, a11y }: { text: string; smal
   );
 }
 
-/** R-19.7 reason card on a visitor's profile. */
+/** R-20.7 reason card on a visitor's profile. */
 export function TravelReason({ trip }: { trip: VisitorTrip }) {
   const before = !trip.here && daysUntil(trip.first_day) > 0;
   const title = before ? tr.visitingCity(trip.city, rangeLabel(trip.first_day, trip.last_day), trip.from) : tr.visitingUntil(weekdayLabel(trip.last_day));
@@ -128,7 +128,7 @@ export function TravelReason({ trip }: { trip: VisitorTrip }) {
   );
 }
 
-// ------------------------------------------------------------------ Look around (R-19.14), per session
+// ------------------------------------------------------------------ Look around (R-20.14), per session
 
 type Look = Trip | null;
 let look: Look = null;

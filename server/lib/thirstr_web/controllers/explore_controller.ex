@@ -34,7 +34,7 @@ defmodule ThirstrWeb.ExploreController do
     end
   end
 
-  @doc "F-19 GET /explore/visitors: listed visitors (map bubble, See all)."
+  @doc "F-20 GET /explore/visitors: listed visitors (map bubble, See all)."
   def visitors(conn, params) do
     with {:ok, v} <- viewer(conn, params) do
       filters = Explore.parse_filters(params)
@@ -67,7 +67,7 @@ defmodule ThirstrWeb.ExploreController do
     end
   end
 
-  # F-19 R-19.15: `trip_id` = look around that (own) trip's city.
+  # F-20 R-20.15: `trip_id` = look around that (own) trip's city.
   defp trip_point(_conn, %{"trip_id" => id}) when id in [nil, ""], do: {:ok, nil}
   defp trip_point(conn, %{"trip_id" => id}), do: Trips.point(conn.assigns.account, id)
   defp trip_point(_conn, _), do: {:ok, nil}

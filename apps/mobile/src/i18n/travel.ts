@@ -1,6 +1,6 @@
 import { getLocales } from 'expo-localization';
 
-// F-19 travel plans (#188): Trips (S-72), trip sheet (S-73), Visiting labels, Look around.
+// F-20 travel plans (#188): Trips (S-72), trip sheet (S-73), Visiting labels, Look around.
 const en = {
   trips: 'Trips',
   tripsRow: (n: number) => (n === 0 ? 'Plan a trip' : n === 1 ? '1 upcoming' : `${n} upcoming`),
@@ -48,7 +48,7 @@ const en = {
   safeTitle: (country: string) => `Being visible in ${country} before you arrive can be risky.`,
   safeBody: 'People there could see you before you are there. Show me anyway?',
   safeYes: 'Show me anyway',
-  // labels (R-19.6)
+  // labels (R-20.6)
   visiting: 'Visiting',
   visitingCity: (city: string, range: string, from?: string | null) => (from ? `Visiting ${city} from ${from} · ${range}` : `Visiting ${city} · ${range}`),
   visitingUntil: (d: string) => `Visiting · until ${d}`,
@@ -58,7 +58,7 @@ const en = {
   until: (d: string) => `Until ${d}`,
   chatNote: (name: string, city: string, range: string) => `${name} is visiting ${city} ${range}. He's not here yet.`,
   a11y: (city: string, range: string, arriving: string) => `Visiting ${city}, ${range}, ${arriving}`,
-  // look around (R-19.14)
+  // look around (R-20.14)
   fromAfar: 'Looking around from afar',
   backTo: (home: string) => `Back to ${home}`,
   backHome: 'Back',

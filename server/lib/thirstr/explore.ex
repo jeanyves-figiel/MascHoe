@@ -76,7 +76,7 @@ defmodule Thirstr.Explore do
       safe_mode: Account.safe_mode_on?(a),
       settings: Settings.get(a),
       point: Location.viewer_point(a),
-      # F-19 R-19.15: true while looking around a trip city (point = its centre)
+      # F-20 R-20.15: true while looking around a trip city (point = its centre)
       remote: false,
       # R-06.1: one profile per account, whatever the mode.
       profile_id: Enum.find_value(own, fn [id, _, _] -> id end),
@@ -85,8 +85,8 @@ defmodule Thirstr.Explore do
   end
 
   @doc """
-  F-19 R-19.15: Look around. The view point becomes the trip city's fixed centre; no Exact pins,
-  locals with `show_to_remote` off or in Safe Mode are left out (R-19.17).
+  F-20 R-20.15: Look around. The view point becomes the trip city's fixed centre; no Exact pins,
+  locals with `show_to_remote` off or in Safe Mode are left out (R-20.17).
   """
   def with_trip(v, nil), do: v
 
@@ -245,11 +245,11 @@ defmodule Thirstr.Explore do
     if v.verified, do: step, else: max(step, 2_000)
   end
 
-  # ------------------------------------------------------------------ visitors (F-19)
+  # ------------------------------------------------------------------ visitors (F-20)
 
   @doc """
-  F-19 R-19.12: visitors listed for the viewer's area, with every Explore visibility rule applied
-  (via `candidates/4` on their ids), in trip order. Never pinned, never a distance (R-19.13).
+  F-20 R-20.12: visitors listed for the viewer's area, with every Explore visibility rule applied
+  (via `candidates/4` on their ids), in trip order. Never pinned, never a distance (R-20.13).
   `filters.visitors == false` (Filters › Show visitors off) → none.
   """
   def visitors(v, filters, only_ids \\ nil)
@@ -281,7 +281,7 @@ defmodule Thirstr.Explore do
     end
   end
 
-  @doc "F-19 R-19.10: first visitor at position 2, then every 6th tile, before Further away."
+  @doc "F-20 R-20.10: first visitor at position 2, then every 6th tile, before Further away."
   def interleave(locals, []), do: locals
 
   def interleave(locals, visitors) do
@@ -293,7 +293,7 @@ defmodule Thirstr.Explore do
   defp weave([n | ns], vs, i, acc), do: weave(ns, vs, i + 1, [n | acc])
   defp weave([], vs, _i, acc), do: Enum.reverse(acc, vs)
 
-  # R-19.9: travellers already here keep their rank and get the "Here now" trip.
+  # R-20.9: travellers already here keep their rank and get the "Here now" trip.
   defp with_here(rows, v) do
     ids = for r <- rows, not Map.get(r, :visitor, false), do: r.id
 
@@ -365,10 +365,10 @@ defmodule Thirstr.Explore do
         visiting = length(visitors(v, filters))
 
         %{
-          # F-19: looking around → the trip city itself
+          # F-20: looking around → the trip city itself
           place: if(trip, do: trip.trip.city.name, else: place(point)),
           counts: counts,
-          # F-19 R-19.10: "N around" includes listed visitors
+          # F-20 R-20.10: "N around" includes listed visitors
           total: length(active) + visiting,
           visitors: visiting,
           now: if(v.intents == ["sport"], do: 0, else: Enum.count(active, & &1.now))
@@ -601,7 +601,7 @@ defmodule Thirstr.Explore do
     rows |> enrich(v) |> post_filter(filters)
   end
 
-  # F-19 R-19.17: looking around from afar never returns locals who opted out or are in Safe Mode.
+  # F-20 R-20.17: looking around from afar never returns locals who opted out or are in Safe Mode.
   defp remote_sql(%{remote: true}),
     do:
       "AND COALESCE((a.settings->>'show_to_remote')::boolean, true) AND NOT (a.safe_mode = 'on' OR a.safe_mode_active)"
@@ -814,7 +814,7 @@ defmodule Thirstr.Explore do
       has_now: bool.("has_now", false),
       hide_creators: bool.("hide_creators", true),
       new_members: bool.("new_members", false),
-      # F-19 R-19.12: Filters › Show visitors
+      # F-20 R-20.12: Filters › Show visitors
       visitors: bool.("visitors", true)
     }
 
@@ -924,7 +924,7 @@ defmodule Thirstr.Explore do
       position: fields["position"],
       new: DateTime.diff(DateTime.utc_now(), r.inserted_at, :day) < 14,
       intents: intents_of(Map.get(r, :show_in)),
-      # F-19 R-19.13
+      # F-20 R-20.13
       visitor: Map.get(r, :visitor, false),
       trip: Map.get(r, :trip)
     }

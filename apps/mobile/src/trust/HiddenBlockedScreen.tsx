@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import { mod } from '../i18n/mod';
 import { color, radius, space, type } from '../theme/tokens';
 import { EmptyState, Loading, Photo, Segmented } from '../ui';
+import { usePull } from '../ui/pull';
 import { toast } from '../ui/Toast';
 
 // S-71 Hidden & blocked (#111, F-15 R-15.21): two tabs, newest first, Unhide / Unblock per row.
@@ -22,17 +23,24 @@ export function HiddenBlockedScreen({ route }: { route?: { params?: { tab?: Tab 
   const [tab, setTab] = useState<Tab>(route?.params?.tab ?? 'hidden');
   const [hidden, setHidden] = useState<Item[] | null>(null);
   const [blocked, setBlocked] = useState<Item[] | null>(null);
-  const load = useCallback(() => {
-    api<{ hidden: Item[] }>('GET', '/me/hidden').then(
-      (r) => setHidden(r.hidden),
-      () => setHidden([]),
-    );
-    api<{ blocks: Item[] }>('GET', '/me/blocks').then(
-      (r) => setBlocked(r.blocks),
-      () => setBlocked([]),
-    );
-  }, []);
-  useEffect(load, [load]);
+  const load = useCallback(
+    () =>
+      Promise.all([
+        api<{ hidden: Item[] }>('GET', '/me/hidden').then(
+          (r) => setHidden(r.hidden),
+          () => setHidden([]),
+        ),
+        api<{ blocks: Item[] }>('GET', '/me/blocks').then(
+          (r) => setBlocked(r.blocks),
+          () => setBlocked([]),
+        ),
+      ]),
+    [],
+  );
+  useEffect(() => {
+    load();
+  }, [load]);
+  const refresh = usePull(load); // F-19 G6
 
   const list = tab === 'hidden' ? hidden : blocked;
   const undo = (it: Item) => {
@@ -79,6 +87,7 @@ export function HiddenBlockedScreen({ route }: { route?: { params?: { tab?: Tab 
         <EmptyState title={tab === 'hidden' ? mod.list.emptyHidden : mod.list.emptyBlocked} body={mod.list.emptySub} />
       ) : (
         <FlatList
+          refreshControl={refresh}
           data={list}
           keyExtractor={(b) => b.profile_id}
           contentContainerStyle={{ padding: space.l, gap: space.m }}

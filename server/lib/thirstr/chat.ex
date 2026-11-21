@@ -149,7 +149,7 @@ defmodule Thirstr.Chat do
     end
   end
 
-  # F-19 R-19.18 (#188): at most 20 new chats a day with people far away (> 2 r5 rings, ~20 km).
+  # F-20 R-20.18 (#188): at most 20 new chats a day with people far away (> 2 r5 rings, ~20 km).
   @far_contacts_per_day 20
   defp far_contact_ok(a, from_pid, to_pid) do
     new? =

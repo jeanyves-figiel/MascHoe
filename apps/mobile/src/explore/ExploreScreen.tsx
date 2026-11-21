@@ -1,15 +1,20 @@
 import { privateStore as AsyncStorage } from '../app/privateStore';
 import { cellToLatLng } from 'h3-js';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import * as Haptics from 'expo-haptics';
-import { FlatList, Platform, Pressable, RefreshControl, Text, View, AppState } from 'react-native';
+import { FlatList, Pressable, RefreshControl, Text, View, AppState } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, ApiError } from '../api/client';
 import type { Card, ExploreSummary, MapData, Mode, Place } from '../api/types';
 import { useSession } from '../app/session';
 import { distanceLabel, tx } from '../i18n/app';
 import { mod } from '../i18n/mod';
-import { prefs } from '../me/prefs';
+import { feel } from '../ui/haptics';
+import { GestureDetector, usePinchGesture } from 'react-native-gesture-handler';
+import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
+import { colsAfterPinch, nearIds } from '../ui/gestureMath';
+import { settle } from '../ui/motion';
+import { setCols, useCols, type Cols } from './gridCols';
 import { SafetySheet, SheetRow } from '../trust/SafetySheet';
 import { toast } from '../ui/Toast';
 import { color, radius, space, type } from '../theme/tokens';
@@ -78,7 +83,7 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
     );
   }, []);
   const hold = useCallback((c: Card) => {
-    if (Platform.OS !== 'web' && prefs().haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    feel('tap');
     setQuick(c);
     setHoldSeen(true);
     AsyncStorage.setItem(HOLD_KEY, '1');
@@ -87,7 +92,7 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
   const [locTick, setLocTick] = useState(0);
   const [device, setDevice] = useState<LatLng | null>(devicePosition());
   const [recenter, setRecenter] = useState(0);
-  // F-19 R-19.14: Look around a trip city (view point = its centre on the server).
+  // F-20 R-20.14: Look around a trip city (view point = its centre on the server).
   const look = useLookAround();
   const x = useMemo(() => ({ trip: look?.id ?? null }), [look?.id]);
   const [visiting, setVisiting] = useState<{ count: number; center: { lat: number; lng: number } | null; items: Card[] } | null>(null);
@@ -233,11 +238,34 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
       navigation.navigate('Profile', {
         id: c.id,
         mode: intents.find((m) => (c.intents ?? ['hookup']).includes(m)) ?? intents[0],
-        // F-19: profile seen from the trip city (its trip card shows there)
+        // F-20: profile seen from the trip city (its trip card shows there)
         trip: look?.id,
+        // F-19 G10: grid order, so the profile can swipe to the next / previous person.
+        ids: nearIds(items, c.id),
       }),
-    [navigation, intents, look?.id],
+    [navigation, intents, items, look?.id],
   );
+  // F-19 G8: pinch the grid for 2, 3 or 4 per row (also in Filters › Grid size).
+  const cols = useCols();
+  const pinch = useSharedValue(1);
+  const pinched = useCallback((n: Cols) => {
+    feel('tick');
+    setCols(n);
+  }, []);
+  const gridGesture = usePinchGesture({
+    onUpdate: (e) => {
+      'worklet';
+      pinch.set(Math.min(1.12, Math.max(0.9, e.scale)));
+    },
+    onDeactivate: (e) => {
+      'worklet';
+      const n = colsAfterPinch(cols, e.scale);
+      pinch.set(settle(1, false));
+      if (n !== cols) scheduleOnRN(pinched, n);
+    },
+  });
+  const pinchStyle = useAnimatedStyle(() => ({ transform: [{ scale: pinch.get() }] }));
+
   // R-04.14: one tap on a pin opens the profile; holding it opens Hide / Block / Report (S-21).
   const selectPin = useCallback(
     (c: Card) => {
@@ -301,7 +329,7 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
     return null;
   })();
 
-  // F-19 R-19.11: map bubble (faces for verified viewers only); tap → first visitor tile.
+  // F-20 R-20.11: map bubble (faces for verified viewers only); tap → first visitor tile.
   const visitingPin = useMemo(
     () =>
       visiting && visiting.count > 0 && visiting.center
@@ -327,7 +355,7 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
   }, [quiet, intents]);
 
   async function locateMe() {
-    // R-19.14: Locate me returns home and ends Look around.
+    // R-20.14: Locate me returns home and ends Look around.
     if (look) setLookAround(null);
     const p = await locateDevice().catch(() => null);
     if (!p && !center) return setShowLocation(true);
@@ -464,7 +492,7 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
     ) : items && !me.verified ? (
       <VerifyRow onPress={() => navigation.navigate('Verify')} />
     ) : null;
-  // R-19.17: Look around into a Safe Mode country: locals there are protected.
+  // R-20.17: Look around into a Safe Mode country: locals there are protected.
   const head = look?.safe_mode_country ? (
     <View>
       <Banner tone="trust" text={tr.protected} />
@@ -564,10 +592,13 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
             )
           }
         >
+          <GestureDetector gesture={gridGesture}>
+          <Animated.View style={[{ flex: 1 }, pinchStyle]}>
           <FlatList
+            key={`cols-${cols}`}
             ref={list}
             data={items}
-            numColumns={3}
+            numColumns={cols}
             keyExtractor={(c) => c.id}
             columnWrapperStyle={{ gap: space.s }}
             contentContainerStyle={{ gap: space.s, paddingHorizontal: space.l, paddingBottom: listPad }}
@@ -604,12 +635,14 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
               />
             }
             renderItem={({ item, index }) => (
-              <View style={{ flex: 1 / 3 }}>
+              <View style={{ flex: 1 / cols }}>
                 {index === furtherFrom && !quiet ? <Text style={{ ...type.caption, color: color.fgSecondary, marginBottom: 4 }}>{tx.explore.further}</Text> : null}
                 <ProfileTile card={item} selected={item.id === selected} onPress={() => open(item)} onLongPress={() => hold(item)} />
               </View>
             )}
           />
+          </Animated.View>
+          </GestureDetector>
         </GridSheet>
       </View>
     );
@@ -711,3 +744,4 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
     </View>
   );
 }
+

@@ -4,7 +4,7 @@ import { tr } from '../i18n/travel';
 import { color, radius, type } from '../theme/tokens';
 import { Plane } from './travel';
 
-// F-19 R-19.11: sky "N visiting" bubble (stack of up to 3 faces, 22 pt) at the trip city centre.
+// F-20 R-20.11: sky "N visiting" bubble (stack of up to 3 faces, 22 pt) at the trip city centre.
 export function VisitingBubble({ count, faces }: { count: number; faces: (string | null)[] }) {
   return (
     <View

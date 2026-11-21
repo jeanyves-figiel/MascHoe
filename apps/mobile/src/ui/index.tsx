@@ -16,7 +16,10 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
+import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useDragClose } from './dragClose';
 import { color, font, Mode, modeColor, radius, space, tileFor, touch, type } from '../theme/tokens';
 import { Icon } from './icons';
 export { Icon } from './icons';
@@ -418,25 +421,43 @@ export function afterSheet(fn: () => void) {
 }
 
 export function Sheet({ visible, onClose, title, children, closeLabel = 'Close' }: { visible: boolean; onClose: () => void; title: string; children: React.ReactNode; closeLabel?: string }) {
+  // F-19 G15 (#187): drag the handle or header down to close; ✕ and tapping outside still work.
+  const drag = useDragClose(onClose);
+  const { reset } = drag;
+  useEffect(() => {
+    if (visible) reset();
+  }, [visible, reset]);
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} onDismiss={flushAfterSheet}>
+      {/* Android: a Modal is its own window, so gestures need their own root. */}
+      <GestureHandlerRootView style={{ flex: 1 }}>
       {/* #134: the sheet rides up with the keyboard so its fields stay visible. */}
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <Pressable style={s.scrim} onPress={onClose} accessibilityLabel={closeLabel} />
-      <View style={s.sheet} accessibilityViewIsModal>
-        <View style={s.sheetHead}>
-          <Text style={s.title} accessibilityRole="header">
-            {title}
-          </Text>
-          <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel={closeLabel} style={s.close}>
-            <Icon.Close />
-          </Pressable>
-        </View>
+      <Animated.View style={[{ flex: 1 }, drag.scrimStyle]}>
+        <Pressable style={s.scrim} onPress={onClose} accessibilityLabel={closeLabel} />
+      </Animated.View>
+      <Animated.View style={[s.sheet, drag.sheetStyle]} onLayout={drag.onLayout} accessibilityViewIsModal onAccessibilityEscape={onClose}>
+        <GestureDetector gesture={drag.pan}>
+          <View>
+            <View style={s.handleRow}>
+              <View style={s.handle} />
+            </View>
+            <View style={s.sheetHead}>
+              <Text style={s.title} accessibilityRole="header">
+                {title}
+              </Text>
+              <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel={closeLabel} style={s.close}>
+                <Icon.Close />
+              </Pressable>
+            </View>
+          </View>
+        </GestureDetector>
         <ScrollView contentContainerStyle={{ gap: space.l, paddingBottom: space.huge }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
           {children}
         </ScrollView>
-      </View>
+      </Animated.View>
       </KeyboardAvoidingView>
+      </GestureHandlerRootView>
     </Modal>
   );
 }
@@ -614,7 +635,9 @@ export const s = StyleSheet.create({
   spacer: { flex: 1 },
   empty: { alignItems: 'center', justifyContent: 'center', gap: space.l, padding: space.xxl, flexGrow: 1 },
   scrim: { flex: 1, backgroundColor: color.scrim },
-  sheet: { maxHeight: '88%', backgroundColor: color.bgBase, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, paddingHorizontal: space.l, paddingTop: space.l },
+  sheet: { maxHeight: '88%', backgroundColor: color.bgBase, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, paddingHorizontal: space.l },
+  handleRow: { height: space.l + 6, alignItems: 'center', justifyContent: 'center' },
+  handle: { width: 40, height: 5, borderRadius: radius.pill, backgroundColor: color.line },
   sheetHead: { flexDirection: 'row', alignItems: 'center', marginBottom: space.m },
   close: { marginLeft: 'auto', width: touch, height: touch, borderRadius: touch / 2, backgroundColor: color.bgRaised, alignItems: 'center', justifyContent: 'center' },
 });
