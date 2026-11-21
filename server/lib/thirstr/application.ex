@@ -7,6 +7,7 @@ defmodule Thirstr.Application do
     # SR-11: per-node rate-limit window used while Valkey is unreachable.
     Thirstr.Valkey.init_local()
     Thirstr.Nearby.init_cache()
+    Thirstr.Flags.init_cache()
     Thirstr.Explore.init_cache()
 
     children = [

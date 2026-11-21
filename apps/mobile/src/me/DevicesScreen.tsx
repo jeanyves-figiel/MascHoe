@@ -3,7 +3,7 @@ import { ScrollView, Text, View } from 'react-native';
 import { api } from '../api/client';
 import { addOwnDevices } from '../chat/engine';
 import { tx } from '../i18n/app';
-import { biometrics, getLock } from '../safety/lock';
+import { deviceAuth } from '../safety/lock';
 import { color, space, type } from '../theme/tokens';
 import { Banner, Button, ErrorText, ListRow, Loading, Section } from '../ui';
 import { Qr } from './Qr';
@@ -54,8 +54,8 @@ export function DevicesScreen() {
 
   const allow = async () => {
     if (!link) return;
-    const cfg = await getLock();
-    if (cfg?.bio && !(await biometrics(tx.devices.confirm))) return;
+    // R-01.6: always ask the phone's owner (Face ID or passcode), App lock on or not.
+    if (!(await deviceAuth(tx.devices.confirm))) return;
     try {
       await api('POST', `/devices/link/${link.code}/confirm`);
       setLink(null);

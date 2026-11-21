@@ -3,6 +3,7 @@
 import React from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { color } from '../theme/tokens';
+import { reportError } from './crash';
 
 type State = { error: Error | null };
 
@@ -15,6 +16,7 @@ export class StartupGuard extends React.Component<{ children: React.ReactNode },
 
   componentDidCatch(error: Error) {
     console.error('Render error', error);
+    void reportError(error, true);
   }
 
   render() {
