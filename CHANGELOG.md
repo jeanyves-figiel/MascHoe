@@ -5,6 +5,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+- **Safety check-in stuck after reinstall or wipe** (server + app, #127, F-13 R-13.21): when the phone lost its copy of a running check-in, the app showed none, a new one was refused ("A check-in is already running") and the held alert still fired to your trusted contacts at due + 15 min: a false alarm. Me › Safety now shows "A check-in is still running … Tap to end it", and starting one (sheet or meetup card) opens the "Check-in still running" screen instead of an error. **I'm OK** there (same PIN / Face ID / duress PIN rules) ends it on the server by account (`DELETE /v1/checkin`), deletes the held alert and tells the contacts this phone still knows. If ending fails you see an error, never "All good".
+
 ### Added
 - **Actions on Tonight cards** (app + server, #210, F-09 R-09.8, F-10 R-10.2a, [mockup](https://claude.ai/artifact/1YSABPxLq3S7pMxGoEwwbW)): plan cards get **I'm in** (opens the chat with the plan quoted and “I'm in 👋” ready to send), **Tap** and **Chat**; **⋯ or press and hold** opens Hide this plan, Hide, Block and Report; **swipe left** hides the plan with Undo. Party cards get **Request a seat** right on the card (then Requested, or You’re in which opens the party and its guest chat), **Map** (Explore map centred on the party's approximate area with its marker selected), house rules, a seat bar, and **⋯** for Hide this party and Report. Hidden plans and parties stay on this phone only (encrypted) until they end; a hidden party also leaves the map. Reports from Tonight are tagged `tonight` for moderators.
 

@@ -207,6 +207,23 @@ export async function syncActive(): Promise<Active | null> {
   return a;
 }
 
+/** #127, R-13.21: the server runs a check-in this phone has no copy of (reinstall, wipe). */
+export type Orphan = { due: string; ext: number };
+
+export async function orphanCheckin(): Promise<Orphan | null> {
+  if (await active()) return null;
+  const r = await api<{ checkin: null | { due_at: string; extensions: number } }>('GET', '/checkin').catch(() => undefined);
+  return r?.checkin ? { due: r.checkin.due_at, ext: r.checkin.extensions } : null;
+}
+
+/** I'm OK for an orphan: ends it by account (no token); `ok` to the contacts this phone still knows. */
+export async function endOrphan(fallbackName: string) {
+  const oks = await envs(await accepted(), { k: 'ok', from: await myName(fallbackName) });
+  await api('DELETE', '/checkin', { oks }).catch((e) => {
+    if ((e as { status?: number }).status !== 404) throw e;
+  });
+}
+
 /** R-13.8: local emergency number from the device region (default 112). */
 export function emergencyNumber(region?: string | null) {
   const r = (region ?? '').toUpperCase();

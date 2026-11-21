@@ -272,6 +272,7 @@ defmodule ThirstrWeb.Router do
       delete "/trusted/:id", SafetyController, :remove
       get "/checkin", SafetyController, :current
       post "/checkin", SafetyController, :start
+      delete "/checkin", SafetyController, :cancel
       post "/checkin/panic", SafetyController, :panic
       put "/checkin/:token/alerts", SafetyController, :refresh
       post "/checkin/:token/extend", SafetyController, :extend
