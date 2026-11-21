@@ -180,6 +180,25 @@ defmodule ThirstrWeb.ExploreTest do
     v.c |> recycle_authed() |> post("/v1/profiles/#{o.pid}/hide") |> response(204)
     refute o.pid in ids(grid(v.c)["items"])
     assert v.pid in ids(grid(o.c)["items"])
+
+    # #111 Settings › Hidden & blocked: list, then unhide brings it back.
+    assert [%{"profile_id" => pid, "display_name" => _, "at" => _}] =
+             v.c
+             |> recycle_authed()
+             |> get("/v1/me/hidden")
+             |> json_response(200)
+             |> Map.get("hidden")
+
+    assert pid == o.pid
+    v.c |> recycle_authed() |> delete("/v1/profiles/#{o.pid}/hide") |> response(204)
+
+    assert v.c
+           |> recycle_authed()
+           |> get("/v1/me/hidden")
+           |> json_response(200)
+           |> Map.get("hidden") == []
+
+    assert o.pid in ids(grid(v.c)["items"])
   end
 
   test "taps: verified only, mutual detection, inbox", %{viewer: v, other: o, conn: conn} do

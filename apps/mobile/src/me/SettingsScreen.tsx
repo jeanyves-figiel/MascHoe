@@ -1,3 +1,4 @@
+import { mod } from '../i18n/mod';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Linking, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
@@ -22,7 +23,7 @@ const INDEX: [string, string][] = [
   ...[tx.me.location, S.hideUnverified, S.hideNew, S.hideHidden, S.ages, S.appearOn, ...Object.values(S.surfaces), S.distance, S.online].map((l) => [l, 'PrivacySettings'] as [string, string]),
   ...[S.whoMessage, S.explicit, S.disappear, S.receipts, tx.prefs.autoDelete, S.quick, trx.setting].map((l) => [l, 'ChatSettings'] as [string, string]),
   ...[S.notifications, ...Object.values(S.push), S.quiet].map((l) => [l, 'NotificationSettings'] as [string, string]),
-  ...[S.safeMode, S.appLock, tx.prefs.verification, S.blocked, S.notices].map((l) => [l, 'SafetySettings'] as [string, string]),
+  ...[S.safeMode, S.appLock, tx.prefs.verification, S.blocked, mod.list.row, S.notices].map((l) => [l, 'SafetySettings'] as [string, string]),
   ...[tx.signInEmail.row, tx.devices.title, tx.exportData.title, S.pause, S.logoutAll, S.delete].map((l) => [l, 'AccountSettings'] as [string, string]),
 ];
 

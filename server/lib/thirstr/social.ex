@@ -324,15 +324,39 @@ defmodule Thirstr.Social do
   def blocks(%Account{} = a) do
     Repo.query!(
       """
-      SELECT p.id::text, p.display_name, b.created_at FROM blocks b
+      SELECT p.id::text, p.display_name, p.age, ph.storage_key, b.created_at FROM blocks b
       JOIN profiles p ON p.account_id = b.account_to AND p.kind = 'now'
+      LEFT JOIN photos ph ON ph.id = p.photo_ids[1]
       WHERE b.account_from = $1 ORDER BY b.created_at DESC
       """,
       [dump(a.id)]
     ).rows
-    |> Enum.map(fn [id, name, at] ->
-      %{profile_id: id, display_name: name, at: Thirstr.Explore.utc(at)}
-    end)
+    |> Enum.map(&listed/1)
+  end
+
+  @doc "GET /me/hidden (#111): profiles hidden from my Explore, newest first."
+  def hidden(%Account{} = a) do
+    Repo.query!(
+      """
+      SELECT p.id::text, p.display_name, p.age, ph.storage_key, h.created_at FROM profile_hides h
+      JOIN profiles p ON p.id = h.profile_id
+      JOIN accounts a2 ON a2.id = p.account_id AND a2.status = 'active'
+      LEFT JOIN photos ph ON ph.id = p.photo_ids[1]
+      WHERE h.account_id = $1 ORDER BY h.created_at DESC LIMIT 500
+      """,
+      [dump(a.id)]
+    ).rows
+    |> Enum.map(&listed/1)
+  end
+
+  defp listed([id, name, age, key, at]) do
+    %{
+      profile_id: id,
+      display_name: name,
+      age: age,
+      photo: key && Storage.presigned_get(key),
+      at: Thirstr.Explore.utc(at)
+    }
   end
 
   def hide(%Account{} = a, profile_id) do
