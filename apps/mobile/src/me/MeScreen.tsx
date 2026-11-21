@@ -7,7 +7,8 @@ import { api, ApiError } from '../api/client';
 import type { Mode, MyProfile } from '../api/types';
 import { useSession } from '../app/session';
 import { listAlbums, onAlbums } from '../chat/albums';
-import { type Level, LocationSheet, quickLevel } from '../explore/LocationSheet';
+import { type Level } from '../explore/level';
+import { LocationControl } from '../explore/LocationControl';
 import { tx } from '../i18n/app';
 import { v3 } from '../i18n/v3';
 import { LENSES } from '../profile/lens';
@@ -15,7 +16,6 @@ import { contacts } from '../safety/safety';
 import { color, font, modeColor, radius, space, touch, type } from '../theme/tokens';
 import type { Notice } from '../trust/NoticesScreen';
 import { afterSheet, Banner, Button, ErrorText, Icon, Photo, Sheet, VerifiedTick } from '../ui';
-import { HiddenPanel } from './HiddenPanel';
 import { NowSheet } from './NowSheet';
 import { prefs, setPrefs } from './prefs';
 import { Qr } from './Qr';
@@ -24,19 +24,17 @@ import { SignInEmailSheet } from './SignInEmail';
 type Nav = { navigate: (s: string, p?: object) => void };
 // Accounts from before one-profile-three-lenses (D-15, #96) get a one-time notice.
 const LENSES_SHIPPED = Date.parse('2026-11-19T00:00:00Z');
-const LEVELS: Level[] = ['hidden', 'city', 'area', 'exact'];
 
 // S-60 Me v3 (#102): profile card, "How you show up right now" (location incl. Hidden panel #114, Now),
 // "Show me in" lens tiles, Yours (albums, date check-in). Settings behind the gear.
 export function MeScreen({ navigation }: { navigation: Nav }) {
-  const { me, setMe, refresh, setMode } = useSession();
+  const { me, refresh, setMode } = useSession();
   const insets = useSafeAreaInsets();
   const p: MyProfile | undefined = me.profile ?? me.profiles?.[0];
   const showIn: Mode[] = p?.show_in ?? ['hookup'];
   const [lensNote, setLensNote] = useState(false);
   const [mergedDone, setMergedDone] = useState(!!prefs().lensNoticeDone);
   const merged = !mergedDone && !!me.created_at && Date.parse(me.created_at) < LENSES_SHIPPED;
-  const [locSheet, setLocSheet] = useState<Level | null>(null);
   const [now, setNow] = useState(false);
   const [qr, setQr] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -90,19 +88,8 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
     });
   };
 
-  // One tap for Hidden / City / Area; Exact (TTL, audience, confirm) and no-position cases open the sheet.
+  // #190: LocationControl applies every tap; Exact options sit inline (no sheet, no Save).
   const level = (me.location?.level ?? 'city') as Level;
-  const pickLevel = (l: Level) => {
-    if ((l === 'hidden' || l === 'exact') && !me.verified) return navigation.navigate('Verify');
-    if (l === 'exact') return setLocSheet('exact');
-    if (l === level) return;
-    setBusy(true);
-    setErr(null);
-    quickLevel(l, l === 'hidden' ? { until: null, return_level: level === 'city' ? 'city' : 'area' } : undefined)
-      .then((r) => (r ? setMe(r) : setLocSheet(l)))
-      .catch((e) => setErr(e instanceof ApiError ? e.message : tx.common.error))
-      .finally(() => setBusy(false));
-  };
 
   // One banner slot, highest priority only (S-60).
   const suspended = me.status === 'suspended' ? notices.find((n) => n.action === 'suspend' && n.ends_at) : undefined;
@@ -200,30 +187,7 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
                   </Text>
                 </View>
               </View>
-              <View testID="me-location" accessibilityRole="radiogroup" accessibilityLabel={tx.me.location} style={{ flexDirection: 'row', padding: 4, gap: 2, borderRadius: radius.pill, backgroundColor: color.bgBase }}>
-                {LEVELS.map((l) => {
-                  const on = l === level;
-                  const locked = (l === 'hidden' || l === 'exact') && !me.verified;
-                  return (
-                    <Pressable
-                      key={l}
-                      testID={`me-level-${l}`}
-                      accessibilityRole="radio"
-                      accessibilityState={{ checked: on, disabled: busy }}
-                      accessibilityLabel={tx.location.levels[l][0]}
-                      onPress={() => pickLevel(l)}
-                      style={{ flexGrow: 1, flexShrink: 1, flexBasis: 'auto', paddingHorizontal: 6, height: 40, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 4, backgroundColor: on ? color.trust : 'transparent', opacity: locked ? 0.5 : 1 }}
-                    >
-                      {locked ? <Icon.Lock size={11} c={color.fgSecondary} /> : null}
-                      <Text numberOfLines={1} style={{ ...type.meta, fontFamily: font.bold, fontSize: 14, color: on ? color.onAccent : color.fgSecondary }}>
-                        {tx.location.levels[l][0]}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-              {!me.verified ? <Text style={{ ...type.meta, color: color.fgMuted }}>{v3.me.verifyLocked}</Text> : null}
-              {level === 'hidden' ? <HiddenPanel me={me} setMe={setMe} /> : null}
+              <LocationControl onLocked={() => navigation.navigate('Verify')} />
             </View>
             <Row testID="me-now" onPress={() => setNow(true)} label={tx.me.now}>
               <IconTile tone={color.hookup}>
@@ -304,7 +268,6 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
         </View>
         <ErrorText text={err} />
       </ScrollView>
-      <LocationSheet visible={!!locSheet} initial={locSheet ?? undefined} onClose={() => setLocSheet(null)} />
       <NowSheet visible={now} onClose={() => setNow(false)} />
       <SignInEmailSheet visible={emailSheet} onClose={() => setEmailSheet(false)} />
       {p ? <QrSheet visible={qr} profileId={p.id} onClose={() => setQr(false)} /> : null}

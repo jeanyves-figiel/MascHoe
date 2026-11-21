@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Text, View } from 'react-native';
 import { ApiError, type Me } from '../api/client';
-import { quickLevel } from '../explore/LocationSheet';
+import { quickLevel } from '../explore/level';
 import { tx } from '../i18n/app';
 import { v3 } from '../i18n/v3';
 import { color, radius, space, type } from '../theme/tokens';

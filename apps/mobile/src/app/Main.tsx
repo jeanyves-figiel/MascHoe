@@ -18,7 +18,7 @@ import { DevicesScreen } from '../me/DevicesScreen';
 import { EditProfileScreen } from '../me/EditProfileScreen';
 import { MeScreen } from '../me/MeScreen';
 import { backOf, hiddenExpired } from '../me/hidden';
-import { quickLevel } from '../explore/LocationSheet';
+import { quickLevel } from '../explore/level';
 import { LensPreviewScreen } from '../me/LensPreviewScreen';
 import { SettingsScreen } from '../me/SettingsScreen';
 import { AccountSettings, ChatSettings, DeleteAccount, NotificationSettings, PrivacySettings, SafetySettings } from '../me/settings/screens';
