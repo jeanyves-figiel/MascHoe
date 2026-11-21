@@ -1,7 +1,6 @@
 import { NAME_MAX } from '../onboarding/flow';
 import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, ApiError } from '../api/client';
 import { useOptions } from '../api/options';
 import type { MyProfile, Visibility } from '../api/types';
@@ -23,7 +22,6 @@ const VIS: Visibility[] = ['public', 'verified', 'chats', 'only_me'];
 export function EditProfileScreen({ route, navigation }: { route: { params: Params }; navigation: Nav }) {
   const { me, refresh, mode } = useSession();
   const options = useOptions();
-  const insets = useSafeAreaInsets();
   const initial = (me.profiles ?? []).find((p) => p.id === route.params.id) ?? me.profile!;
   const [p, setP] = useState<MyProfile>(initial);
   const [name, setName] = useState(initial.display_name);
@@ -140,7 +138,7 @@ export function EditProfileScreen({ route, navigation }: { route: { params: Para
 
   return (
     <View style={{ flex: 1, backgroundColor: color.bgBase }}>
-      <ScrollView ref={scroll} contentContainerStyle={{ padding: space.l, paddingTop: space.s, gap: space.xl, paddingBottom: 150, maxWidth: 560, width: '100%', alignSelf: 'center' }} keyboardShouldPersistTaps="handled">
+      <ScrollView keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets ref={scroll} contentContainerStyle={{ padding: space.l, paddingTop: space.s, gap: space.xl, paddingBottom: 220, maxWidth: 560, width: '100%', alignSelf: 'center' }} keyboardShouldPersistTaps="handled">
         <Text accessibilityRole="header" style={{ ...type.display, color: color.fgPrimary }}>
           {tx.edit.title}
         </Text>
@@ -198,9 +196,7 @@ export function EditProfileScreen({ route, navigation }: { route: { params: Para
         <ErrorText text={err} />
       </ScrollView>
       <StickyCta>
-        <View style={{ paddingBottom: insets.bottom ? insets.bottom - space.m : 0 }}>
-          <Button testID="edit-save" title={tx.common.save} fill={color.fgPrimary} busy={busy} onPress={save} />
-        </View>
+        <Button testID="edit-save" title={tx.common.save} fill={color.fgPrimary} busy={busy} onPress={save} />
       </StickyCta>
     </View>
   );

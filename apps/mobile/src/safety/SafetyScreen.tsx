@@ -92,7 +92,7 @@ export function SafetyScreen({ navigation }: { navigation: Nav }) {
 
   const ok = list.some((c) => c.accepted);
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: color.bgBase }} contentContainerStyle={{ padding: space.l, paddingTop: space.s, gap: space.l, paddingBottom: 120 }}>
+    <ScrollView keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets style={{ flex: 1, backgroundColor: color.bgBase }} contentContainerStyle={{ padding: space.l, paddingTop: space.s, gap: space.l, paddingBottom: 120 }}>
       <Text accessibilityRole="header" style={{ ...type.display, color: color.fgPrimary }}>
         {tx.safety.title}
       </Text>

@@ -154,7 +154,7 @@ export function InboxScreen({ navigation }: { navigation: Nav }) {
           ]}
         />
       </View>
-      <SectionList
+      <SectionList keyboardDismissMode="on-drag"
         sections={sections}
         keyExtractor={(r) => (r.kind === 'fav' ? 'f:' + r.peer : (r.kind === 'request' ? 'r:' : '') + r.c.id)}
         contentContainerStyle={{ paddingBottom: 120 }}
@@ -163,7 +163,7 @@ export function InboxScreen({ navigation }: { navigation: Nav }) {
         ListHeaderComponent={
           <>
             {favStrip.length ? (
-              <ScrollView testID="fav-strip" horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 14, paddingHorizontal: space.l, paddingVertical: space.s }}>
+              <ScrollView keyboardDismissMode="on-drag" testID="fav-strip" horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 14, paddingHorizontal: space.l, paddingVertical: space.s }}>
                 {favStrip.map((f) => {
                   const c = byPeer.get(f.peer);
                   return (
