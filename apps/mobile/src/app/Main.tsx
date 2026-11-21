@@ -401,7 +401,7 @@ export function Main() {
         </Stack.Navigator>
         {!kb && !panel && !(top && NO_BAR.has(top.name)) ? <PillBar active={active} onPick={pick} /> : null}
         <PushPrompt />
-        {/* F-17 R-17.15 (#238): once per release note, only over a quiet Explore. */}
+        {/* F-17 R-17.15 (#238): small card under the Explore header, once per release note, only over a quiet Explore. */}
         <WhatsNewCard
           ready={!kb && !panel && top?.name === 'Tabs' && active === 'Explore'}
           onOpen={(to) => nav.isReady() && (nav.navigate as (r: string, p?: object) => void)(to.route, to.params)}

@@ -1,15 +1,19 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { scheduleOnRN } from 'react-native-worklets';
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import Svg, { Circle, Path } from 'react-native-svg';
+import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 import app from '../../app.json';
 import { wn, wnLang } from '../i18n/whatsnew';
-import { color, font, radius, space, type } from '../theme/tokens';
+import { color, font, motion, radius, space, type } from '../theme/tokens';
 import { afterSheet, Button, Sheet } from '../ui';
 import { langOf, pickNote } from './logic';
 import { NOTES, type Glyph, type Note, type NoteLine, type Target, type Tone } from './notes';
 
-// F-17 R-17.15 (#238), S-78/S-79: What's new card (once per note, after an update) and history.
+// F-17 R-17.15 (#238), S-78/S-79: What's new card (once per note, after an update), full list sheet and history.
 // Local only: the notes ship in the app; the one value stored is the last seen note id.
 export const SEEN_KEY = 'thirstr.whatsNewSeen';
 const PREFS_KEY = 'thirstr.prefs'; // exists on every phone that ran an earlier version (upgrade, not fresh install)
@@ -82,10 +86,38 @@ function Dots() {
   );
 }
 
-/** Shown once per note when `ready` (Explore on top, nothing else open) stays true for 1.2 s. */
+const AUTO_CLOSE_MS = 12000;
+const HEADER = 56 + space.xs + space.s; // Explore header pill (LiveHeader) + its padding
+
+function Spark() {
+  return (
+    <Svg width={34} height={34} viewBox="0 0 34 34">
+      <Defs>
+        <LinearGradient id="wn-spark" x1="0" y1="0" x2="1" y2="1">
+          <Stop offset="0" stopColor={color.hookup} />
+          <Stop offset="0.55" stopColor={color.friends} />
+          <Stop offset="1" stopColor={color.sport} />
+        </LinearGradient>
+      </Defs>
+      <Rect width={34} height={34} rx={11} fill="url(#wn-spark)" />
+      <Path d="M17 8v4M17 22v4M8 17h4M22 17h4M11 11l2.5 2.5M20.5 20.5 23 23M11 23l2.5-2.5M20.5 13.5 23 11" stroke={color.onAccent} strokeWidth={2.4} strokeLinecap="round" fill="none" />
+    </Svg>
+  );
+}
+
+/**
+ * Option B (#238, picked 2026-11-21): small card under the Explore header, no scrim, map stays usable.
+ * Shown once per note when `ready` (Explore on top, nothing else open) holds for 1.2 s.
+ * Tap → full list (sheet); ✕, swipe up or 12 s untouched → closes. Any close marks the note seen.
+ */
 export function WhatsNewCard({ ready, onOpen, onHistory }: { ready: boolean; onOpen: (t: Target) => void; onHistory: () => void }) {
+  const insets = useSafeAreaInsets();
+  const reduce = useReducedMotion();
   const [pending, setPending] = useState<{ note: Note; earlier: number } | null>(null);
-  const [open, setOpen] = useState(false);
+  const [armed, setArmed] = useState(false);
+  const [sheet, setSheet] = useState(false);
+  const y = useSharedValue(-16);
+  const op = useSharedValue(0);
 
   useEffect(() => {
     let alive = true;
@@ -103,37 +135,124 @@ export function WhatsNewCard({ ready, onOpen, onHistory }: { ready: boolean; onO
     };
   }, []);
 
+  // Appear on a quiet Explore; hide (not dismissed) if Explore stops being quiet.
   useEffect(() => {
-    if (!pending || open || !ready) return;
-    const t = setTimeout(() => setOpen(true), DELAY_MS);
+    if (!pending || sheet || !ready) return;
+    const t = setTimeout(() => setArmed(true), DELAY_MS);
+    return () => {
+      clearTimeout(t);
+      setArmed(false);
+    };
+  }, [pending, sheet, ready]);
+  const card = armed && ready && !sheet && !!pending;
+
+  const finish = useCallback(
+    (then?: () => void) => {
+      setArmed(false);
+      setSheet(false);
+      setPending(null);
+      AsyncStorage.setItem(SEEN_KEY, String(NOTES[0]?.id ?? 0)).catch(() => {});
+      if (then) then();
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!card) return;
+    y.set(reduce ? 0 : withTiming(0, { duration: motion.base }));
+    op.set(withTiming(1, { duration: motion.base }));
+    const t = setTimeout(() => finish(), AUTO_CLOSE_MS);
     return () => clearTimeout(t);
-  }, [pending, open, ready]);
+  }, [card, reduce, y, op, finish]);
+
+  const pan = usePanGesture({
+    activeOffsetY: [-8, 8],
+    failOffsetX: [-24, 24],
+    onUpdate: (e) => {
+      'worklet';
+      y.set(Math.min(0, e.translationY));
+    },
+    onDeactivate: (e) => {
+      'worklet';
+      if (e.translationY < -24 || e.velocityY < -400) scheduleOnRN(finish);
+      else y.set(withTiming(0, { duration: motion.fast }));
+    },
+  });
+  const style = useAnimatedStyle(() => ({ opacity: op.get(), transform: [{ translateY: y.get() }] }));
 
   if (!pending) return null;
-  const done = (then?: () => void) => {
-    setOpen(false);
-    setPending(null);
-    AsyncStorage.setItem(SEEN_KEY, String(NOTES[0]?.id ?? pending.note.id)).catch(() => {});
-    if (then) afterSheet(then);
-  };
+  const { note, earlier } = pending;
+  const n = note.lines.length;
   return (
-    <Sheet visible={open} onClose={() => done()} title={wn.title} closeLabel={wn.gotIt}>
-      <View testID="whats-new" style={{ gap: space.m, marginTop: -space.s }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Dots />
-          <Text style={{ ...type.caption, fontSize: 11, letterSpacing: 1.3, textTransform: 'uppercase', color: color.fgMuted }}>{wn.version(app.expo.version)}</Text>
+    <>
+      {card ? (
+        <GestureDetector gesture={pan}>
+          <Animated.View testID="whats-new-card" style={[{ position: 'absolute', top: insets.top + HEADER, left: 12, right: 12, zIndex: 20 }, style]}>
+            <View style={{ borderRadius: 20, backgroundColor: color.bgBase, borderWidth: 1.5, borderColor: color.line, paddingVertical: 10, paddingLeft: space.m, paddingRight: 10, gap: space.s, shadowColor: color.shadow, shadowOpacity: 0.45, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 10 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Pressable
+                  testID="whats-new-more"
+                  onPress={() => {
+                    setArmed(false);
+                    setSheet(true);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${wn.newIn(app.expo.version)}. ${wn.things(n)}`}
+                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}
+                >
+                  <Spark />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ ...type.headline, fontSize: 14, lineHeight: 18, color: color.fgPrimary }}>{wn.newIn(app.expo.version)}</Text>
+                    <Text style={{ ...type.meta, fontSize: 12, lineHeight: 16, color: color.fgSecondary }}>{wn.things(n)}</Text>
+                  </View>
+                </Pressable>
+                <Pressable testID="whats-new-close" onPress={() => finish()} accessibilityRole="button" accessibilityLabel={wn.close} hitSlop={8} style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: color.bgRaised, alignItems: 'center', justifyContent: 'center' }}>
+                  <Svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke={color.fgSecondary} strokeWidth={3} strokeLinecap="round">
+                    <Path d="M6 6l12 12M18 6 6 18" />
+                  </Svg>
+                </Pressable>
+              </View>
+              <Pressable
+                onPress={() => {
+                  setArmed(false);
+                  setSheet(true);
+                }}
+                importantForAccessibility="no-hide-descendants"
+                accessibilityElementsHidden
+                style={{ gap: 6, paddingHorizontal: 2, paddingBottom: 2 }}
+              >
+                {note.lines.slice(0, 3).map((l, i) => (
+                  <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: space.s }}>
+                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: tone[l.tone] }} />
+                    <Text numberOfLines={1} style={{ flex: 1, ...type.meta, fontFamily: font.regular, fontSize: 12.5, lineHeight: 17, color: color.fgSecondary }}>
+                      <Text style={{ fontFamily: font.bold, color: color.fgPrimary }}>{l.text[lang][0]}</Text>
+                      {`: ${l.text[lang][1]}`}
+                    </Text>
+                  </View>
+                ))}
+              </Pressable>
+            </View>
+          </Animated.View>
+        </GestureDetector>
+      ) : null}
+      <Sheet visible={sheet} onClose={() => finish()} title={wn.title} closeLabel={wn.gotIt}>
+        <View testID="whats-new" style={{ gap: space.m, marginTop: -space.s }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Dots />
+            <Text style={{ ...type.caption, fontSize: 11, letterSpacing: 1.3, textTransform: 'uppercase', color: color.fgMuted }}>{wn.version(app.expo.version)}</Text>
+          </View>
+          <View style={{ gap: space.xs }}>
+            {note.lines.map((l, i) => (
+              <Line key={i} line={l} onOpen={(to) => finish(() => afterSheet(() => onOpen(to)))} />
+            ))}
+          </View>
+          <Button title={wn.gotIt} onPress={() => finish()} testID="whats-new-ok" />
+          <Pressable onPress={() => finish(() => afterSheet(onHistory))} accessibilityRole="link" hitSlop={8}>
+            <Text style={{ ...type.meta, color: color.fgMuted, textAlign: 'center' }}>{earlier ? `${wn.earlier(earlier)} · ` : ''}{wn.findAgain}</Text>
+          </Pressable>
         </View>
-        <View style={{ gap: space.xs }}>
-          {pending.note.lines.map((l, i) => (
-            <Line key={i} line={l} onOpen={(to) => done(() => onOpen(to))} />
-          ))}
-        </View>
-        <Button title={wn.gotIt} onPress={() => done()} testID="whats-new-ok" />
-        <Pressable onPress={() => done(onHistory)} accessibilityRole="link" hitSlop={8}>
-          <Text style={{ ...type.meta, color: color.fgMuted, textAlign: 'center' }}>{pending.earlier ? `${wn.earlier(pending.earlier)} · ` : ''}{wn.findAgain}</Text>
-        </Pressable>
-      </View>
-    </Sheet>
+      </Sheet>
+    </>
   );
 }
 
