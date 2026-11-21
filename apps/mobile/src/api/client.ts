@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
+import { clientHeaders, markUpgradeRequired } from '../app/config';
 import type { MyProfile, NowStatus, Settings } from './types';
 
 // Web build is served by the API host (DEV: https://localhost:7443), so same-origin by default.
@@ -147,6 +148,7 @@ export async function api<T = unknown>(method: string, path: string, body?: unkn
     'content-type': 'application/json',
     'x-thirstr-install': await installId(),
     'x-thirstr-platform': Platform.OS,
+    ...clientHeaders(),
   };
   const access = await secure.get(K.access);
   if (access) headers.authorization = 'Bearer ' + access;
@@ -165,6 +167,7 @@ export async function api<T = unknown>(method: string, path: string, body?: unkn
   }
   // #116: a parallel call may already have refreshed; only refresh if our token is still the stored one.
   if (res.status === 401 && retry && access && ((await secure.get(K.access)) !== access || (await refresh()))) return api<T>(method, path, body, false, timeoutMs);
+  if (res.status === 426) markUpgradeRequired(); // EN-14: build below the minimum
   if (res.status === 204) return undefined as T;
   if (res.status === 202) return (await res.json().catch(() => undefined)) as T;
   const json = await res.json().catch(() => ({}));

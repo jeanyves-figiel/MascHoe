@@ -3,6 +3,7 @@ defmodule ThirstrWeb.Router do
 
   pipeline :api do
     plug :accepts, ["json"]
+    plug ThirstrWeb.Plugs.ClientVersion
   end
 
   pipeline :maybe_auth do
@@ -118,6 +119,7 @@ defmodule ThirstrWeb.Router do
     pipe_through :api
 
     get "/health", PublicController, :health
+    get "/config", PublicController, :config
     get "/welcome", PublicController, :welcome
     get "/cities", PublicController, :cities
     get "/safe-mode/countries", PublicController, :safe_mode_countries

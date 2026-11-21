@@ -9,7 +9,7 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { initialWindowMetrics, SafeAreaProvider, type Metrics } from 'react-native-safe-area-context';
-import { ActivityIndicator, Dimensions, Platform, View } from 'react-native';
+import { ActivityIndicator, AppState, Dimensions, Platform, View } from 'react-native';
 import { api, ApiError, clearSession, hasSession, Me } from './src/api/client';
 import { verifyEmailToken } from './src/auth/oidc';
 import { screenFor, Screen as S } from './src/onboarding/flow';
@@ -25,6 +25,8 @@ import { WelcomeScreen } from './src/screens/Welcome';
 import { DoneScreen } from './src/screens/Done';
 import { color } from './src/theme/tokens';
 import { StartupGuard } from './src/app/StartupGuard';
+import { loadCached, refreshConfig, useAppConfig } from './src/app/config';
+import { UpdateRequiredScreen } from './src/screens/UpdateRequired';
 
 // SafeAreaProvider draws nothing until native reports the insets; if that report never
 // comes the whole app stays blank. Start from known metrics so it always draws (#88).
@@ -58,6 +60,14 @@ export default function App() {
   }, []);
   const fontsReady = fontsLoaded || !!fontsError || fontsTimedOut;
 
+  // EN-13/EN-14: flags + minimum build, at start and on every return to the foreground.
+  const appConfig = useAppConfig();
+  useEffect(() => {
+    loadCached().then(() => refreshConfig());
+    const sub = AppState.addEventListener('change', (s) => s === 'active' && refreshConfig());
+    return () => sub.remove();
+  }, []);
+
   const land = (m: Me) => {
     setMe(m);
     setScreen(screenFor(m));
@@ -89,7 +99,8 @@ export default function App() {
   };
 
   let body: React.ReactNode;
-  switch (screen) {
+  if (appConfig.upgradeRequired) body = <UpdateRequiredScreen storeUrl={appConfig.storeUrl} />;
+  else switch (screen) {
     case 'loading':
       body = <ActivityIndicator style={{ flex: 1 }} color={color.hookup} />;
       break;

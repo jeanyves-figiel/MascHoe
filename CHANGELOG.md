@@ -6,6 +6,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Kill switches and forced update** (server + app, EN-13 #172, EN-14 #173): `GET /v1/config` gives the app server-driven feature flags (on by default; one row turns a feature off within 30 s, or rolls it out by platform, build or percentage of installs) and the minimum supported build. Builds below it get HTTP 426 and the app shows a "Time for an update" screen with the store link (en/fr/de). The app now sends its build number. No third-party service. Runbook: `docs/runbooks/flags.md`.
 - **Actions on Tonight cards** (app + server, #210, F-09 R-09.8, F-10 R-10.2a, [mockup](https://claude.ai/artifact/1YSABPxLq3S7pMxGoEwwbW)): plan cards get **I'm in** (opens the chat with the plan quoted and “I'm in 👋” ready to send), **Tap** and **Chat**; **⋯ or press and hold** opens Hide this plan, Hide, Block and Report; **swipe left** hides the plan with Undo. Party cards get **Request a seat** right on the card (then Requested, or You’re in which opens the party and its guest chat), **Map** (Explore map centred on the party's approximate area with its marker selected), house rules, a seat bar, and **⋯** for Hide this party and Report. Hidden plans and parties stay on this phone only (encrypted) until they end; a hidden party also leaves the map. Reports from Tonight are tagged `tonight` for moderators.
 
 ### Changed

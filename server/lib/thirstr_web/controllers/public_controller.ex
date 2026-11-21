@@ -14,6 +14,13 @@ defmodule ThirstrWeb.PublicController do
     })
   end
 
+  @doc "EN-13/EN-14: flags, kill switches and minimum build for this client (no account needed)."
+  def config(conn, _) do
+    conn
+    |> put_resp_header("cache-control", "private, max-age=60")
+    |> json(Thirstr.Flags.client_config(conn.assigns[:client] || %{}))
+  end
+
   def welcome(conn, _) do
     city =
       case IpGeo.impl().city_for_ip(conn.remote_ip) do
