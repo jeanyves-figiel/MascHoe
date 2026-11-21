@@ -29,6 +29,10 @@ GitHub secrets: repo → Settings → Secrets and variables → Actions.
 - **Passkeys**: need `APPLE_TEAM_ID` on staging so `/.well-known/apple-app-site-association` lists `<TeamID>.app.thirstr`. Apple caches this file; a fresh install picks it up.
 - **Google / email link**: hidden on native until Google client IDs and SMTP exist (#26). Flip with `EXPO_PUBLIC_AUTH_GOOGLE=1` / `EXPO_PUBLIC_AUTH_EMAIL=1` in the workflow `env`.
 
+## App extensions (#119)
+- `apps/mobile/targets/safety-live` is a widget extension (date check-in Live Activity), added at `expo prebuild` by `@bacons/apple-targets`. Bundle ID `app.thirstr.safetylive`; automatic signing (`-allowProvisioningUpdates` + API key) registers it and makes its profile on the first build. It signs with `APPLE_TEAM_ID` (read into `ios.appleTeamId` by `app.config.js`).
+- Swift in `targets/safety-live/SafetyAttributes.swift` must stay identical to `modules/thirstr-safety/ios/SafetyAttributes.swift` (a Jest test checks).
+
 ## Troubleshooting
 - Build logs: the workflow run (Archive step prints the last 200 xcodebuild lines).
 - Upload warning "SDK version issue … built with the iOS NN SDK": the runner image's Xcode is too old; move `runs-on` to the newest `xcode-NN` label (see How it works).
