@@ -9,8 +9,10 @@ defmodule ThirstrWeb.FallbackController do
   def error(conn, {:forbidden, msg}), do: send_error(conn, 403, "forbidden", msg)
   def error(conn, :not_found), do: send_error(conn, 404, "not_found", "Not found")
   def error(conn, :conflict), do: send_error(conn, 409, "conflict", "Already exists")
+
   def error(conn, :refresh_race),
     do: send_error(conn, 409, "refresh_race", "Refresh already in progress")
+
   def error(conn, {:conflict, msg}), do: send_error(conn, 409, "conflict", msg)
 
   def error(conn, :too_many_devices),

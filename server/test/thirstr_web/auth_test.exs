@@ -145,6 +145,7 @@ defmodule ThirstrWeb.AuthTest do
       assert r["error"]["code"] == "refresh_race"
       # device and the winner's tokens still valid
       assert conn |> authed(s2["access_token"]) |> get("/v1/me") |> json_response(200)
+
       assert conn
              |> recycle()
              |> post("/v1/auth/refresh", %{refresh: s2["refresh_token"]})
