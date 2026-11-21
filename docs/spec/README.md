@@ -22,6 +22,7 @@ Status: draft v0.1 · 2026-11-17 · Source of truth before any code. Product rat
 | — | [Design system: tokens, copy, i18n, a11y](design-system.md) |
 | — | [Threat model & security plan](security.md) |
 | — | [CI/CD, environments & operations](ops.md) |
+| — | [Scalability, message reliability & phone cache (review 2026-11-21)](scalability-and-reliability.md) |
 | — | [Test strategy](testing.md) |
 | — | [Admin & moderation console](admin-console.md) |
 | W-01 | [Public website (marketing site)](website.md) |

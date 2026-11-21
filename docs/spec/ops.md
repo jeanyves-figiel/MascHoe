@@ -46,6 +46,7 @@
 - Access: Fly org `personal` for beta (move to org `thirstr` before public launch); CI uses org-scoped deploy token `FLY_TOKEN` in GitHub environment secrets; humans via SSO + 2FA.
 - Exit path: same Docker images run on Hetzner k3s; review before public launch (#23).
 - Observability: OpenTelemetry → Grafana stack; SLOs: API availability 99.9 %, grid p95 < 300 ms, message p95 < 500 ms.
-- Backups: Postgres PITR 7 d + daily encrypted snapshots 30 d; restore drill monthly.
+- Backups: Postgres PITR 7 d + daily encrypted snapshots 30 d; restore drill monthly. Not in place yet: single DB machine, no off-machine backup (SR-01 #141).
+- Scalability & reliability review (2026-11-21): findings and prioritized plan in [`scalability-and-reliability.md`](scalability-and-reliability.md) (SR-01 … SR-16, #141–#156).
 - DR: RPO 15 min, RTO 4 h; secondary EU region cold standby.
 - On-call: alerting to owner/devs; runbooks in `/docs/runbooks` (to write per service).

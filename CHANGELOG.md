@@ -6,6 +6,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Scalability & reliability review** (docs, 2026-11-21): `docs/spec/scalability-and-reliability.md` covers growth limits (DB, Explore queries, photos, machines, Oban, regions), whether messages can be lost (in transit: no; waiting on the server or kept over time: gaps) and what the phone caches and encrypts. 16 prioritized follow-ups SR-01 … SR-16 (#141–#156); top: Postgres backups + PITR, metrics/alerts, push retries, graceful deploys, keep queued messages on device revocation, keep chat photos after 30 days.
+
+### Added
 - **Places import from GitHub Actions** (#113, F-12 R-12.9): new manual workflow "Places import" (staging or production) queues the OpenStreetMap venue import on the server (same job as admin › Places › Import now), waits for it and shows added / updated / removed and the venue count in the run summary. Fixed: the first version never queued the job (the start flag didn't reach the server) and waited until cancelled. A deploy during an import no longer leaves it stuck: interrupted import jobs are rescued after 45 min (Oban Lifeline), and the workflow cancels jobs killed by a restart before queuing a new one.
 
 ### Fixed
