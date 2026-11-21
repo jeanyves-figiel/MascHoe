@@ -5,7 +5,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+- **App version 0.9.0** (#200): the beta is close to v1.
+
 ### Added
+- **Six more test bots on staging** (#200, testing.md › Chat test bots): Luca 🤖 (Italian, Exact pin, 5 photos, private album, sends photos and view-once photos), Tiago 🤖 (Portuguese, City level, Tonight plan), Jonas 🤖 (German, Sport, gym activity with group chat), Rémi 🤖 (French, hosts a party, accepts requests, guest group chat), Kenji 🤖 (Japanese, non-binary, read receipts off) and Ghost 🤖 (Hidden, writes first after you chatted with another bot). Testbot 🤖 now has photos. All bots tap back and understand new commands: `photo`, `once`, `album`, `revoke`, `location`, `link`. Photos are generated abstract avatars labelled TEST BOT. Server: bots keyed by `accounts.test_bot_handle`, persona sent with `POST /v1/testbot/session`.
 - **Gestures across the app** (app, F-19 #187): every gesture also has a visible button and a screen reader action.
   - Chat: swipe a message right to reply (quote above the composer and in the bubble), double-tap their message for ❤️, hold a message to lift it with a reaction bar (slide to an emoji and let go) and actions (Reply, Copy, Report, Delete for me), swipe the chat left to see send times. One reaction per person per message; the same emoji again takes it back.
   - Chats list: swipe right to Favorite (Pin for groups), swipe left for Mute and Archive (long swipe archives, toast with Undo).

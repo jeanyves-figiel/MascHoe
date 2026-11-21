@@ -4,7 +4,9 @@
   "private": true,
   "description": "Staging-only chat test bot: a real MLS client (testing.md › Chat test bot, #109)",
   "type": "module",
-  "engines": { "node": ">=22.18" },
+  "engines": {
+    "node": ">=22.18"
+  },
   "scripts": {
     "build": "node build.mjs",
     "start": "node dist/bot.mjs",
@@ -12,7 +14,9 @@
     "typecheck": "tsc --noEmit -p ."
   },
   "dependencies": {
+    "@noble/ciphers": "2.1.1",
     "@noble/hashes": "2.0.1",
+    "h3-js": "4.5.0",
     "phoenix": "1.7.21",
     "ts-mls": "1.6.4"
   },
