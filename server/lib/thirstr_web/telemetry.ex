@@ -13,6 +13,14 @@ defmodule ThirstrWeb.Telemetry do
     children =
       [
         {:telemetry_poller, measurements: periodic_measurements(), period: 30_000},
+        # EN-17: retention probes, every 5 min
+        Supervisor.child_spec(
+          {:telemetry_poller,
+           measurements: [{Thirstr.Retention, :measure, []}],
+           period: 300_000,
+           name: :thirstr_retention_poller},
+          id: :thirstr_retention_poller
+        ),
         {TelemetryMetricsPrometheus.Core, metrics: prometheus_metrics()}
       ] ++ metrics_server()
 
@@ -135,8 +143,11 @@ defmodule ThirstrWeb.Telemetry do
       last_value("thirstr.chat.backlog.count"),
       last_value("thirstr.chat.backlog.oldest_s"),
       counter("thirstr.push.send.count", tags: [:platform, :outcome]),
+      counter("thirstr.client.error.count", tags: [:platform, :fatal]),
+      counter("thirstr.client.session.count", tags: [:platform]),
       counter("thirstr.valkey.fallback.count"),
-      last_value("thirstr.db.size_bytes")
+      last_value("thirstr.db.size_bytes"),
+      last_value("thirstr.retention.overdue", tags: [:rule])
     ]
   end
 
