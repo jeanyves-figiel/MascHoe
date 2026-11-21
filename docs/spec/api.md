@@ -16,7 +16,7 @@ Errors: `{ "error": { "code": "rate_limited", "message": "...", "retry_after": 3
 | POST | /auth/oidc | {provider: apple\|google, id_token} → tokens |
 | POST | /auth/email/link | {email} → 202 (always) |
 | POST | /auth/email/verify | {token} → tokens |
-| POST | /auth/refresh | {refresh} → tokens (rotated; re-use of a spent token revokes the device) |
+| POST | /auth/refresh | {refresh} → tokens (rotated; re-use of a spent token revokes the device, except within 60 s of its use: 409 `refresh_race`, no revoke; clients single-flight refresh, #116) |
 | POST | /auth/logout · /auth/logout_all | → 204 (this device · every device, R-01.5) |
 | POST | /auth/device/link/start | → {qr_payload, expires} (old device) |
 | POST | /auth/device/link/complete | {qr_payload, new_device_pubkey} → tokens |
