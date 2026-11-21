@@ -42,6 +42,7 @@ import { feel } from '../ui/haptics';
 import { dx } from '../i18n/date';
 import { LiveBar, SafetyQuickScreen, useCheckin } from '../safety/live';
 import { active as activeCheckin, CATEGORY, extendCheckin, refreshCheckin } from '../safety/safety';
+import { useSafetyNative } from '../safety/native';
 import { SafetyScreen } from '../safety/SafetyScreen';
 import { NoticesScreen } from '../trust/NoticesScreen';
 import { ReportScreen } from '../trust/ReportScreen';
@@ -338,6 +339,8 @@ export function Main() {
   useCheckinWatch();
   useHiddenReturn();
   useShareLinks();
+  // #119 R-13.20: Live Activity + app-icon quick actions + thirstr://safety/* links.
+  useSafetyNative(nav);
   const kb = useKeyboardShown();
   const panel = useBottomPanel();
   const [navState, setNavState] = React.useState<NavigationState | undefined>(undefined);

@@ -17,6 +17,10 @@
       "bundleIdentifier": "app.thirstr",
       "supportsTablet": false,
       "usesAppleSignIn": true,
+      "infoPlist": {
+        "NSSupportsLiveActivities": true,
+        "NSSupportsLiveActivitiesFrequentUpdates": false
+      },
       "config": {
         "usesNonExemptEncryption": false
       }
@@ -66,6 +70,7 @@
         }
       ],
       "expo-apple-authentication",
+      "@bacons/apple-targets",
       "@maplibre/maplibre-react-native",
       "expo-secure-store",
       "expo-font",
