@@ -62,6 +62,14 @@ const en = {
   ended: 'Album access ended',
   clearRecent: 'Clear Sent recently',
   clearRecentSub: 'Photos you sent, kept only on this phone for quick re-sending',
+  // Videos (#138)
+  video: 'Video',
+  play: 'Play video',
+  countsPV: (p: number, v: number) => [p ? (p === 1 ? '1 photo' : `${p} photos`) : '', v ? (v === 1 ? '1 video' : `${v} videos`) : ''].filter(Boolean).join(' · ') || '0 photos',
+  tooLarge: 'Video too large (max 50 MB). Pick a shorter one.',
+  tooLong: 'Video too long (max 3 min).',
+  preparing: 'Preparing video…',
+  videoError: 'This video can’t be played.',
   cleared: 'Sent recently cleared',
 };
 type T = typeof en;
@@ -125,6 +133,13 @@ const fr: T = {
   ended: 'Accès à l’album terminé',
   clearRecent: 'Effacer les envois récents',
   clearRecentSub: 'Photos envoyées, gardées seulement sur ce téléphone pour les renvoyer vite',
+  video: 'Vidéo',
+  play: 'Lire la vidéo',
+  countsPV: (p: number, v: number) => [p ? (p === 1 ? '1 photo' : `${p} photos`) : '', v ? (v === 1 ? '1 vidéo' : `${v} vidéos`) : ''].filter(Boolean).join(' · ') || '0 photo',
+  tooLarge: 'Vidéo trop lourde (50 Mo max). Choisis-en une plus courte.',
+  tooLong: 'Vidéo trop longue (3 min max).',
+  preparing: 'Préparation de la vidéo…',
+  videoError: 'Impossible de lire cette vidéo.',
   cleared: 'Envois récents effacés',
 };
 
@@ -187,12 +202,22 @@ const de: T = {
   ended: 'Albumzugriff beendet',
   clearRecent: '„Zuletzt gesendet“ löschen',
   clearRecentSub: 'Gesendete Fotos, nur auf diesem Handy gespeichert zum schnellen Nochmal-Senden',
+  video: 'Video',
+  play: 'Video abspielen',
+  countsPV: (p: number, v: number) => [p ? (p === 1 ? '1 Foto' : `${p} Fotos`) : '', v ? (v === 1 ? '1 Video' : `${v} Videos`) : ''].filter(Boolean).join(' · ') || '0 Fotos',
+  tooLarge: 'Video zu groß (max. 50 MB). Wähl ein kürzeres.',
+  tooLong: 'Video zu lang (max. 3 Min).',
+  preparing: 'Video wird vorbereitet…',
+  videoError: 'Dieses Video kann nicht abgespielt werden.',
   cleared: '„Zuletzt gesendet“ gelöscht',
 };
 
 const lang = getLocales()[0]?.languageCode ?? 'en';
 export const mx: T = lang === 'fr' ? fr : lang === 'de' ? de : en;
 export { en as mxEn, fr as mxFr, de as mxDe };
+
+/** Video length as m:ss (#138). */
+export const mmss = (s?: number) => (s == null ? '' : `${Math.floor(s / 60)}:${String(Math.round(s) % 60).padStart(2, '0')}`);
 
 /** "23 h", "45 min", "3 d" until `at`. */
 export function timeLeft(at: number, now = Date.now()) {

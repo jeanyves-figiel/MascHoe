@@ -12,7 +12,7 @@ import { color, font, radius, space, type } from '../theme/tokens';
 import { Banner, Icon, ListRow, Loading, Photo, Segmented, setBottomPanel, Sheet, Toggle, useAccent, useNavSpace, VerifiedTick } from '../ui';
 import * as E from './engine';
 import { useTopics } from './hooks';
-import { MediaBubble, sendPhotos } from './media';
+import { MediaBubble, sendPhotos, videoProblem } from './media';
 import { MediaTray } from './MediaTray';
 import { keyboardClosesTray } from './pick';
 import { AlbumCard } from './AlbumCard';
@@ -791,12 +791,13 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
                 setTray(false);
                 setBusy(true);
                 sendPhotos(conv, items, opts)
-                  .then((failed) => {
-                    if (failed) setProblem(mx.failed(failed));
+                  .then(({ failed, video }) => {
+                    if (video) setProblem(videoProblem(video));
+                    else if (failed) setProblem(mx.failed(failed));
                   })
                   .finally(() => setBusy(false));
               }}
-              onAlbumError={() => setProblem(tx.common.error)}
+              onAlbumError={(msg) => setProblem(msg ?? tx.common.error)}
               onEditAlbum={(id) => {
                 setTray(false);
                 navigation.navigate('AlbumEdit', { id });

@@ -9,6 +9,7 @@ import type { ProfileView } from '../api/types';
 import { fromB64, fromUtf8, hex, rand, toB64, utf8 } from './bytes';
 import { kv } from './kv';
 import * as Recent from './recent';
+import { clearTemp as clearTempVideos } from './video';
 import * as MediaCache from './mediaCache';
 import * as mls from './mls';
 import * as store from './store';
@@ -35,8 +36,11 @@ export type MediaRef = {
   once?: boolean;
   exp?: number;
   save?: boolean;
+  /** Videos (#138): length in seconds. */
+  dur?: number;
 };
-export type AlbumItem = { blob: string; key: string; iv: string; mime: string };
+/** Album item; videos (#138) carry `dur` (s) and their size. */
+export type AlbumItem = { blob: string; key: string; iv: string; mime: string; w?: number; h?: number; dur?: number };
 
 export type Re = { id: string; n: string; s: string };
 
@@ -240,6 +244,7 @@ export async function wipe() {
   convs = {};
   // R-08.14: Sent recently files are outside the store; delete them before the index.
   await Recent.clear().catch(() => {});
+  await clearTempVideos();
   await MediaCache.clear().catch(() => {}); // SR-05: cached chat media files
   await kv.wipe();
   store.reset();
