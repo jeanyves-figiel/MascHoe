@@ -11,6 +11,7 @@ import { v2 } from '../i18n/v2';
 import { answerFriend, Conv, deleteConv, getConvs, refreshPeer, setConv } from './engine';
 import { useTopics } from './hooks';
 import * as P from './people';
+import { SafetySheet, SheetRow } from '../trust/SafetySheet';
 
 type Nav = { navigate: (s: string, p?: object) => void };
 type Tab = 'all' | 'unread' | 'fav' | 'friends';
@@ -297,8 +298,8 @@ export function InboxScreen({ navigation }: { navigation: Nav }) {
           </>
         }
       />
-      <Sheet visible={!!menu} onClose={() => setMenu(null)} title={menu?.name ?? ''} closeLabel={tx.common.close}>
-        {menu ? (
+      {menu && (menu.ctx || menu.gone) ? (
+        <Sheet visible onClose={() => setMenu(null)} title={menu.name} closeLabel={tx.common.close}>
           <View>
             {menu.ctx ? (
               <ListRow title={menu.starred ? ppl.unpin : ppl.pin} onPress={() => setConv(menu.id, { starred: !menu.starred }).then(() => setMenu(null))} />
@@ -313,8 +314,28 @@ export function InboxScreen({ navigation }: { navigation: Nav }) {
             <ListRow title={menu.archived ? tx.chat.unarchive : tx.chat.archive} onPress={() => setConv(menu.id, { archived: !menu.archived }).then(() => setMenu(null))} />
             <ListRow title={tx.chat.deleteChat} danger onPress={() => deleteConv(menu.id).then(() => setMenu(null))} />
           </View>
-        ) : null}
-      </Sheet>
+        </Sheet>
+      ) : (
+        // #111 S-51: hold a 1:1 chat = shared Hide / Block / Report sheet + chat actions.
+        <SafetySheet
+          visible={!!menu}
+          target={menu ? { id: menu.peer, name: menu.name, age: menu.age } : null}
+          onClose={() => setMenu(null)}
+          onReport={(t) => menu && navigation.navigate('Report', { profileId: t.id, cid: menu.id })}
+          onGone={(kind) => {
+            if (kind === 'block' && menu) setConv(menu.id, { archived: true });
+          }}
+        >
+          {menu ? (
+            <>
+              <SheetRow testID="menu-fav" title={P.isFav(menu.peer) ? ppl.removeFav : ppl.addFav} onPress={() => P.setFav(menu.peer, !P.isFav(menu.peer), { name: menu.name, photo: menu.photo }).then(() => setMenu(null))} />
+              <SheetRow title={menu.muted ? tx.chat.unmute : tx.chat.mute} onPress={() => setConv(menu.id, { muted: !menu.muted }).then(() => setMenu(null))} />
+              <SheetRow title={menu.archived ? tx.chat.unarchive : tx.chat.archive} onPress={() => setConv(menu.id, { archived: !menu.archived }).then(() => setMenu(null))} />
+              <SheetRow last danger title={tx.chat.deleteChat} onPress={() => deleteConv(menu.id).then(() => setMenu(null))} />
+            </>
+          ) : null}
+        </SafetySheet>
+      )}
     </View>
   );
 }

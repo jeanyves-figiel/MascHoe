@@ -12,7 +12,7 @@ Fast, private 1:1 and group messaging (party guest chats). E2EE, stored on devic
 - R-07.6 Disappearing messages: per chat 24 h / 7 d (default) / never; timer starts on read; both sides see setting; change creates a system message.
 - R-07.7 Read receipts + typing: symmetrical; off for user → they don't see others'. Details: R-07.23.
 - R-07.8 Inbox: sections "New" (unreplied inbound), "Chats", "Parties & groups"; sort by last activity; star, mute, archive, delete (local + leave group).
-- R-07.9 Chat header: avatar, name, verified, distance bucket, Now status; actions: video call (Later), profile, ⋯ (block, report, disappearing timer, share location, start check-in).
+- R-07.9 Chat header: avatar, name, verified, distance bucket, Now status; actions: video call (Later), profile, ⋯ (block, report, disappearing timer, share location, start check-in). 1:1 ⋯ opens the shared safety sheet S-21 (F-15 R-15.17, #111): View profile, Date check-in, Hide / Block / Report tiles, then chat settings. Inbox long-press on a 1:1 chat: same tiles + Star, Mute, Archive, Delete.
 - R-07.10 Unsolicited explicit media from someone you haven't replied to → blurred per Settings (blur/allow/block).
 - R-07.11 Franking: each message carries commitment; report sends plaintext + opening to moderation (F-15).
 - R-07.12 Delivery: online → realtime `message.new`; offline → content-free push; server deletes ciphertext on ack from all devices or after 30 d.

@@ -6,7 +6,7 @@ import type { Mode, MyProfile, ProfileView, Visibility } from '../api/types';
 import { useSession } from '../app/session';
 import { distanceLabel, tx } from '../i18n/app';
 import { color, radius, space, type } from '../theme/tokens';
-import { Badge, Banner, Button, ErrorState, Icon, Loading, Photo, Scrim, Section, Sheet, useAccent, VerifiedTick } from '../ui';
+import { Badge, Banner, Button, ErrorState, Icon, Loading, Photo, Scrim, useAccent, VerifiedTick } from '../ui';
 import { getLocal } from '../me/localFields';
 import { FieldList } from './FieldList';
 import { PrivateNote } from './PrivateNote';
@@ -14,6 +14,7 @@ import { convWith, dropFriend, answerFriend, getConvs, requestFriend } from '../
 import * as People from '../chat/people';
 import { ppl } from '../i18n/people';
 import { lensFields, lensPhoto } from './lens';
+import { SafetySheet, SheetRow } from '../trust/SafetySheet';
 
 type Nav = { navigate: (s: string, p?: object) => void; goBack: () => void };
 type Params = { id: string; preview?: 'stranger' | 'verified' | 'chats'; mode?: Mode };
@@ -64,7 +65,6 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
   const [err, setErr] = useState<string | null>(null);
   const [gone, setGone] = useState(false);
   const [menu, setMenu] = useState(false);
-  const [confirmBlock, setConfirmBlock] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const width = Math.min(Dimensions.get('window').width, 560);
@@ -273,40 +273,21 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
         </View>
       ) : null}
 
-      <Sheet visible={menu} onClose={() => { setMenu(false); setConfirmBlock(false); }} title={p.display_name} closeLabel={tx.common.close}>
-        {confirmBlock ? (
-          <View style={{ gap: space.m }}>
-            <Text style={{ ...type.body, color: color.fgPrimary }}>{tx.profile.blockConfirm}</Text>
-            <Button
-              testID="block-confirm"
-              kind="danger"
-              title={tx.profile.block}
-              busy={busy}
-              onPress={() => act(() => api('POST', `/profiles/${p.id}/block`), () => { People.forgetFriend(p.id); setMenu(false); navigation.goBack(); })}
-            />
-          </View>
-        ) : (
-          <Section>
-            {[
-              ...friendRows,
-              { label: tx.profile.share, icon: Icon.Share, tint: color.friends, on: () => Share.share({ message: `https://thirstr.fun/p/${p.id}` }).catch(() => {}) },
-              ...(p.vouched || p.can_vouch
-                ? [{ label: p.vouched ? tx.profile.unvouch : tx.profile.vouch, icon: Icon.Shield, tint: color.trust, on: () => act(() => api(p.vouched ? 'DELETE' : 'POST', `/profiles/${p.id}/vouch`), () => { setMenu(false); load(); }) }]
-                : []),
-              { label: tx.profile.hide, icon: Icon.EyeOff, tint: color.fgSecondary, on: () => act(() => api('POST', `/profiles/${p.id}/hide`), () => { setMenu(false); navigation.goBack(); }) },
-              { label: tx.profile.report, icon: Icon.Flag, tint: color.warn, on: () => { setMenu(false); navigation.navigate('Report', { profileId: p.id }); } },
-              { label: tx.profile.block, icon: Icon.Ban, tint: color.danger, on: () => setConfirmBlock(true), danger: true },
-            ].map((r) => (
-              <Pressable key={r.label} accessibilityRole="button" onPress={r.on} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: space.m, minHeight: 58, opacity: pressed ? 0.7 : 1 })}>
-                <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: `${r.tint}26`, alignItems: 'center', justifyContent: 'center' }}>
-                  <r.icon size={19} c={r.tint} />
-                </View>
-                <Text style={{ ...type.headline, color: r.danger ? color.danger : color.fgPrimary, flex: 1 }}>{r.label}</Text>
-              </Pressable>
-            ))}
-          </Section>
-        )}
-      </Sheet>
+      <SafetySheet
+        visible={menu}
+        target={{ id: p.id, name: p.display_name, age: p.age }}
+        onClose={() => setMenu(false)}
+        onReport={(t) => navigation.navigate('Report', { profileId: t.id })}
+        onGone={() => navigation.goBack()}
+      >
+        {friendRows.map((r) => (
+          <SheetRow key={r.label} testID="profile-friend" title={r.label} onPress={r.on} />
+        ))}
+        <SheetRow title={tx.profile.share} onPress={() => Share.share({ message: `https://thirstr.fun/p/${p.id}` }).catch(() => {})} last={!(p.vouched || p.can_vouch)} />
+        {p.vouched || p.can_vouch ? (
+          <SheetRow last title={p.vouched ? tx.profile.unvouch : tx.profile.vouch} onPress={() => act(() => api(p.vouched ? 'DELETE' : 'POST', `/profiles/${p.id}/vouch`), () => { setMenu(false); load(); })} />
+        ) : null}
+      </SafetySheet>
     </View>
   );
 }

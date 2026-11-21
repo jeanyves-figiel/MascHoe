@@ -65,7 +65,8 @@ Blind signature (R-03.4, Chaum RSA-FDH): client picks random `token` and `r`, se
 | POST | /profiles/{id}/tap | verified only; 100/day (50 for accounts < 7 days) → {mutual} |
 | POST | /profiles/{id}/block | account-level, silent |
 | POST · DELETE | /profiles/{id}/hide | hide from Explore |
-| GET | /me/blocks | {blocks:[{profile_id, display_name, at}]} · DELETE /me/blocks/{profile_id} |
+| GET | /me/blocks | {blocks:[{profile_id, display_name, age, photo, at}]} · DELETE /me/blocks/{profile_id} |
+| GET | /me/hidden | {hidden:[{profile_id, display_name, age, photo, at}]} newest first, max 500 (#111) · unhide = DELETE /profiles/{id}/hide |
 | GET | /taps | {taps:[{profile, at, seen, mutual, kind}]} (7 days) · POST /taps/seen |
 | POST | /profiles/{id}/report | {reason, franked_payload?} (B4) |
 
