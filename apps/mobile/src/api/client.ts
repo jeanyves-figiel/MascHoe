@@ -53,6 +53,8 @@ export class ApiError extends Error {
     public code: string,
     message: string,
     public fields?: Record<string, string[]>,
+    /** Extra error body keys, e.g. `existing` on 409 place_exists (R-12.11). */
+    public extra?: Record<string, unknown>,
   ) {
     super(message);
   }
@@ -166,7 +168,8 @@ export async function api<T = unknown>(method: string, path: string, body?: unkn
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
     const e = json.error ?? {};
-    throw new ApiError(res.status, e.code ?? 'internal', e.message ?? 'Something went wrong', e.fields);
+    const { code, message, fields, ...extra } = e;
+    throw new ApiError(res.status, code ?? 'internal', message ?? 'Something went wrong', fields, extra);
   }
   return json as T;
 }

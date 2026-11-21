@@ -3,6 +3,7 @@ import { Linking, Platform, Pressable, ScrollView, Text, View } from 'react-nati
 import Svg, { Circle, Path } from 'react-native-svg';
 import type { Place } from '../api/types';
 import { distanceLabel } from '../i18n/app';
+import { ap } from '../i18n/addplace';
 import { pl } from '../i18n/places';
 import { color, font, radius, space, type } from '../theme/tokens';
 import { PLACE_KINDS, PlaceKind } from './mapShared';
@@ -210,6 +211,7 @@ export function PlaceCard({ p, onClose, onCheckIn, onJoin }: { p: Place; onClose
         ) : null}
       </View>
       {p.source === 'osm' ? <Text style={{ ...type.meta, fontSize: 11, color: color.fgMuted }}>{pl.osm}</Text> : null}
+      {p.type === 'venue' && p.source === 'member' ? <Text style={{ ...type.meta, fontSize: 11, color: color.fgMuted }}>{ap.member}</Text> : null}
     </View>
   );
 }

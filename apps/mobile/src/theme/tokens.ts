@@ -34,6 +34,11 @@ export const color = {
   glass: 'rgba(23,20,46,0.82)',
   shadow: '#000000',
   halo: 'rgba(255,255,255,0.45)',
+  // #191 exact-location consent card (coral alert on ink).
+  alertBg: '#3A2330',
+  alertTitle: '#FFD6D0',
+  alertBody: '#F1D9D6',
+  alertIcon: '#FFB4A9',
 } as const;
 
 // Photo placeholder tones, rotated by id hash.

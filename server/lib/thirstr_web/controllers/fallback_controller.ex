@@ -30,6 +30,19 @@ defmodule ThirstrWeb.FallbackController do
         age_confirmed: ["must be accepted"]
       })
 
+  # R-12.11 duplicate guard: offer the place that is already listed.
+  def error(conn, {:place_exists, existing}) do
+    conn
+    |> put_status(409)
+    |> json(%{
+      error: %{
+        code: "place_exists",
+        message: "This place is already on Thirstr",
+        existing: existing
+      }
+    })
+  end
+
   def error(conn, {:conflict_code, code, msg}), do: send_error(conn, 409, code, msg)
   def error(conn, {:unprocessable, code, msg}), do: send_error(conn, 422, code, msg)
   def error(conn, {:unavailable, msg}), do: send_error(conn, 409, "unavailable", msg)
