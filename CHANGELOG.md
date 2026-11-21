@@ -5,6 +5,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+- **Pushes are retried** (server, SR-02 #142, R-16.10): a failed APNs send (rate limit, Apple outage, network) used to be dropped; it now retries after 5 s, 15 s, 45 s and 2 min. An Android device on an account no longer stops pushes to the account's iPhones. Android pushes via FCM are ready (off until the FCM key is set).
+- **Deploys no longer cut work short** (server, SR-03 #143): machines get 30 s to finish requests and jobs before they stop (was 5 s), so a push or job killed by a deploy no longer waits 45 min to be rescued.
+- **Messages kept when the app is signed out by force** (server + app, SR-04 #144, R-01.13): when the server revokes a device (refresh token re-used), messages waiting for it are kept 7 days. Signing in again on the same phone gets the same device back with its waiting messages. Before, they were deleted silently.
+- **Chat photos stay in old chats** (app, SR-05 #145): received photos are kept on the phone (still encrypted) after the first view, so they no longer break after the server copy expires (30 days) and are not downloaded again. View-once photos are never kept. Up to 300 MB, oldest-viewed removed first; wiped on sign-out.
+- **Private profile fields encrypted on the phone** (app, SR-14 #154): "Only me" / "My chats" fields, Safe Mode state and Explore filters moved from plain app storage into the encrypted store (moved automatically). The app refuses to store chats if the encrypted database is not available.
+- **Chats open faster** (app, SR-15 #155): reading a chat used a full scan of all stored messages; it now uses the index.
+- **Photos load from cache** (server, SR-10 #150): photo links stay the same for 6 h, so the phone's image cache works instead of downloading every photo on every Explore open (less data, faster grid).
+- **Less battery in the background** (app, EN-18 #177): periodic checks (check-in, chat timers, location refresh) do nothing while the app is in the background.
+- **Location visibility job** (server, SR-08 #148): the per-minute job now writes only rows that change instead of rewriting every location row.
+- **Valkey outage no longer blocks chat** (server, SR-11 #151): rate limits fall back to a per-machine counter and push wakes still go out.
+
+### Added
+- **Metrics** (server, SR-07 #147): Prometheus metrics on an internal port (Fly managed Prometheus/Grafana): API latency and errors per route, DB time, Oban queues, chat backlog age, push results, Valkey fallback, DB size. Content-free. Alert rules: `docs/runbooks/monitoring.md`.
+
 ### Added
 - **Database backups with point-in-time restore** (infra, SR-01 #141): the Postgres image now runs pgBackRest. Every change is copied off the DB machine within 5 min (WAL archive) and a backup is taken daily (full weekly, differential otherwise), encrypted before upload to a private Tigris bucket per environment (`thirstr-backups-<env>`), kept ~5 weeks. Restore to any second in that window: runbook `docs/runbooks/db-backups.md` (staging drill passed 2026-11-21). DB machines stop cleanly (SIGINT, 30 s). Infra images workflow can target one environment and tags images by commit.
 - **Enterprise readiness plan** (docs): `docs/spec/enterprise-readiness.md`: targets (availability, latency, data loss, battery and data use), workstreams (HA database, regions, SLOs/on-call, incidents, security, compliance incl. DSA, canary releases, feature flags, chaos tests, DR drills, performance/battery/data budgets, support, moderation, costs), phased roadmap and monthly cost at 10k / 100k / 1M users. Issues EN-01 … EN-22 (#160–#181).
