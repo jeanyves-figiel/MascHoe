@@ -8,6 +8,8 @@ defmodule Thirstr.Geo.GeoDbBuilder do
   import Bitwise
 
   @doc "Streams `rows` (lists of CSV fields) into `out`. Returns counts."
+  # Build-time only (image build / mix task); `out` comes from the operator, never a request.
+  # sobelow_skip ["Traversal.FileModule"]
   def build(rows, out) do
     init = %{cities: %{}, n: 1, v4: new_family(), v6: new_family()}
 
