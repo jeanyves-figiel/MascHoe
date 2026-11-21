@@ -14,6 +14,7 @@ import * as E from './engine';
 import { useTopics } from './hooks';
 import { MediaBubble, sendPhotos } from './media';
 import { MediaTray } from './MediaTray';
+import { keyboardClosesTray } from './pick';
 import { AlbumCard } from './AlbumCard';
 import { mx } from '../i18n/media';
 import { trx } from '../i18n/translate';
@@ -127,7 +128,7 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
     const sub = Keyboard.addListener('keyboardDidShow', (e) => {
       lastKb = e.endCoordinates.height;
       setKbH(lastKb);
-      setTray(false);
+      if (keyboardClosesTray()) setTray(false);
     });
     return () => sub.remove();
   }, []);

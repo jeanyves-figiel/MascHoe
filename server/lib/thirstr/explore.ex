@@ -123,7 +123,7 @@ defmodule Thirstr.Explore do
     put_order(v, filters, all, fit)
 
     %{
-      items: page |> with_here(v) |> Enum.map(&card(&1, v)),
+      items: page |> with_here(v) |> Enum.map(&card(&1, v)) |> Thirstr.Moments.annotate(v),
       next: next,
       further_from: further_from && further_from - offset,
       reason: nil,
@@ -155,7 +155,8 @@ defmodule Thirstr.Explore do
       items:
         for({id, _} <- slice, r = rows[id], do: r)
         |> with_here(v)
-        |> Enum.map(&card(&1, v)),
+        |> Enum.map(&card(&1, v))
+        |> Thirstr.Moments.annotate(v),
       next: if(length(order) > offset + @page, do: Integer.to_string(offset + @page)),
       further_from: further_from && further_from - offset,
       reason: nil,
@@ -321,6 +322,7 @@ defmodule Thirstr.Explore do
       |> sorted()
       |> Enum.take(20)
       |> Enum.map(&card(&1, v))
+      |> Thirstr.Moments.annotate(v)
     else
       []
     end
@@ -444,12 +446,17 @@ defmodule Thirstr.Explore do
       {:ok,
        %{
          cells: heat,
-         pins: Enum.map(pins, &Map.merge(card(&1, v), %{lat: &1.pin.lat, lng: &1.pin.lng})),
+         pins:
+           pins
+           |> Enum.map(&Map.merge(card(&1, v), %{lat: &1.pin.lat, lng: &1.pin.lng}))
+           |> Thirstr.Moments.annotate(v),
          avatars:
-           Enum.map(avatars, fn r ->
+           avatars
+           |> Enum.map(fn r ->
              {lat, lng} = stable_point(r.id, r.dcell_lat, r.dcell_lng, r.display_res)
              Map.merge(card(r, v), %{lat: lat, lng: lng})
            end)
+           |> Thirstr.Moments.annotate(v)
        }}
     end
   end
