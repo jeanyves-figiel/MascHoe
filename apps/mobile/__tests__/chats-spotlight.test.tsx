@@ -3,6 +3,7 @@ import { expect, jest, test } from '@jest/globals';
 import { render, screen } from '@testing-library/react-native';
 import React from 'react';
 import { Text } from 'react-native';
+import { color } from '../src/theme/tokens';
 
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'));
@@ -34,7 +35,7 @@ test('Taps button without new taps invites to look', async () => {
 test('Typing line falls back to the preview when nobody types', async () => {
   const { TypingLine } = require('../src/chat/TapsButton');
   await render(
-    <TypingLine cid="me:peer" tint="#fff">
+    <TypingLine cid="me:peer" tint={color.friends}>
       <Text>last message</Text>
     </TypingLine>,
   );
