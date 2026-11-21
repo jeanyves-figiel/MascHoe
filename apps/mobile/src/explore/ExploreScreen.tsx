@@ -1,7 +1,7 @@
 import { privateStore as AsyncStorage } from '../app/privateStore';
 import { cellToLatLng } from 'h3-js';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, Text, View, AppState } from 'react-native';
+import { FlatList, Image, Pressable, RefreshControl, Text, View, AppState } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, ApiError } from '../api/client';
 import type { Card, ExploreSummary, MapData, Mode, Place } from '../api/types';
@@ -37,6 +37,10 @@ import { LocationSheet } from './LocationSheet';
 import { useFocusEffect } from '@react-navigation/native';
 import { MomentsRow } from '../moments/MomentsRow';
 import * as Moments from '../moments/api';
+import * as People from '../chat/people';
+import { convWith } from '../chat/engine';
+import { ppl } from '../i18n/people';
+import { away, filterMap, keep, restoreShow, Show, SHOW_KEY, showIds, wantMore } from './show';
 
 const FILTER_KEY = (m: string) => 'thirstr.filters.' + m;
 // #113: one filter set for the merged map; chips and place layers saved on the device.
@@ -80,6 +84,9 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
   );
   const list = useRef<FlatList<Card>>(null);
   const [filters, setFilters] = useState<Filters>(defaultFilters);
+  // #247 R-04.22: favorites / friends only, filtered on the phone.
+  const [show, setShowState] = useState<Show>('all');
+  const peopleTick = People.usePeople();
   const [items, setItems] = useState<Card[] | null>(null);
   const [next, setNext] = useState<string | null>(null);
   const [furtherFrom, setFurtherFrom] = useState<number | null>(null);
@@ -139,6 +146,7 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
   useEffect(() => {
     AsyncStorage.getItem(INTENTS_KEY).then((v) => setIntents(restoreIntents(v)));
     AsyncStorage.getItem(LAYERS_KEY).then((v) => setLayers(restoreLayers(v)));
+    AsyncStorage.getItem(SHOW_KEY).then((v) => setShowState(restoreShow(v)));
     AsyncStorage.getItem(MERGED_FILTERS)
       .then((f) => f ?? AsyncStorage.getItem(FILTER_KEY('hookup')))
       .then((f) => setFilters(restoreFilters(f)));
@@ -412,6 +420,63 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
     justifyContent: 'center' as const,
   };
 
+  // #247 R-04.22: keep only favorites / friends. The list never leaves the phone.
+  const setShow = (v: Show) => {
+    setShowState(v);
+    AsyncStorage.setItem(SHOW_KEY, v);
+    feel('tick');
+  };
+  const favIds = useMemo(() => People.favList().map((f) => f.peer), [peopleTick]); // eslint-disable-line react-hooks/exhaustive-deps
+  const friendIds = useMemo(() => People.friendList('yes'), [peopleTick]); // eslint-disable-line react-hooks/exhaustive-deps
+  const ids = useMemo(() => showIds(show, favIds, friendIds), [show, favIds, friendIds]);
+  const shown = useMemo(() => (items ? keep(items, ids) : items), [items, ids]);
+  const shownMap = useMemo(() => filterMap(mapData, ids), [mapData, ids]);
+  const awayIds = useMemo(
+    () => away(ids, show === 'fav' ? favIds : friendIds, [...(items ?? []).map((c) => c.id), ...(mapData?.avatars ?? []).map((c) => c.id), ...(mapData?.pins ?? []).map((c) => c.id)]),
+    [ids, show, favIds, friendIds, items, mapData],
+  );
+  const paging = useRef(false);
+  useEffect(() => {
+    if (paging.current || !wantMore(show, shown?.length ?? 0, next)) return;
+    paging.current = true;
+    more().finally(() => (paging.current = false));
+  }, [show, shown?.length, next]); // eslint-disable-line react-hooks/exhaustive-deps
+  const awayPerson = (id: string) => {
+    const c = convWith(id);
+    const f = People.favList().find((x) => x.peer === id);
+    return { id, name: c?.name || f?.name || '?', photo: c?.photo ?? f?.photo ?? null, cid: c?.id ?? null };
+  };
+  const awayList =
+    show !== 'all' && awayIds.length > 0 ? (
+      <View testID="show-away" style={{ marginTop: space.l, gap: space.s }}>
+        <Text style={{ ...type.caption, fontSize: 12, letterSpacing: 0.8, color: color.fgMuted }}>{ppl.awayTitle(awayIds.length).toUpperCase()}</Text>
+        {awayIds.map(awayPerson).map((a) => (
+          <Pressable
+            key={a.id}
+            testID={`away-${a.id}`}
+            accessibilityRole="button"
+            onPress={() => (a.cid ? navigation.navigate('Chat', { cid: a.cid }) : navigation.navigate('Profile', { id: a.id, mode: intents[0] }))}
+            style={({ pressed }) => [{ minHeight: 60, flexDirection: 'row', alignItems: 'center', gap: space.m }, pressed && { opacity: 0.8 }]}
+          >
+            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: color.bgOverlay, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}>
+              {a.photo ? <Image source={{ uri: a.photo }} style={{ width: 44, height: 44 }} /> : <Text style={{ ...type.headline, color: color.fgPrimary }}>{a.name.slice(0, 1).toUpperCase()}</Text>}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text numberOfLines={1} style={{ ...type.headline, fontSize: 15, color: color.fgPrimary }}>{a.name}</Text>
+              <Text numberOfLines={1} style={{ ...type.meta, fontSize: 12, color: color.fgMuted }}>{ppl.awayRow}</Text>
+            </View>
+            <View style={{ height: 36, paddingHorizontal: space.l, borderRadius: radius.pill, backgroundColor: color.bgRaised, justifyContent: 'center' }}>
+              <Text style={{ ...type.headline, fontSize: 13, color: color.fgPrimary }}>{ppl.chat}</Text>
+            </View>
+          </Pressable>
+        ))}
+        <View style={{ flexDirection: 'row', gap: 6, alignItems: 'flex-start', marginTop: space.xs }}>
+          <Icon.Lock size={11} c={color.trust} />
+          <Text style={{ ...type.meta, fontSize: 12, color: color.fgMuted, flex: 1 }}>{ppl.awayHint}</Text>
+        </View>
+      </View>
+    ) : null;
+
   // App v2 header (design-system.md › App v2 rules): wordmark + location chip + filters; mode switch (no Map/Grid toggle, #100).
   // R-04.17 live header (#104): place + counts + mode tiles. Verify nudge moved into the sheet.
   const banner = !hasMain ? (
@@ -435,6 +500,9 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
       banner={banner}
       trip={look}
       home={homePlace}
+      show={show}
+      onShow={setShow}
+      showCounts={{ fav: favIds.length, friends: friendIds.length }}
       onBack={() => {
         setLookAround(null);
         setRecenter((n) => n + 1);
@@ -499,7 +567,9 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
 
   // R-04.16: quiet area / unverified / nobody. Never invented counts.
   const listHead =
-    items && items.length === 0 ? (
+    show !== 'all' ? (
+      shown && shown.length === 0 && !next ? <EmptyState title={ppl.showNone[show]} body={ppl.showLocal} /> : null
+    ) : items && items.length === 0 ? (
       <View>
         {!me.verified ? card(<Icon.Shield c={color.trust} />, tx.explore.verifyToSee, tx.explore.verifyToSeeBody, null, () => navigation.navigate('Verify'), 'verify-to-see', color.trust) : beFirst}
         <EmptyState title={tx.explore.empty} body={tx.explore.emptyBody} action={tx.explore.filters} onAction={() => setShowFilters(true)} />
@@ -543,7 +613,7 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
     listHead
   );
 
-  const sheetTitle = tray.length > 0 ? tx.explore.activeNow(tray.length) : quiet ? tx.explore.quietTitle : tx.explore.nearby;
+  const sheetTitle = show !== 'all' ? `${ppl.show[show]} · ${shown?.length ?? 0}` : tray.length > 0 ? tx.explore.activeNow(tray.length) : quiet ? tx.explore.quietTitle : tx.explore.nearby;
   const listPad = box ? TAB_SPACE + space.xxl + (box.h - sheetPx) : 120;
 
   let body: React.ReactNode;
@@ -565,7 +635,7 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
           <ExploreMap
             center={camera}
             me={dot}
-            data={mapData}
+            data={shownMap}
             accent={accent}
             recenter={recenter}
             onRegion={onRegion}
@@ -638,7 +708,7 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
           <FlatList
             key={`cols-${cols}`}
             ref={list}
-            data={items}
+            data={shown ?? []}
             numColumns={cols}
             keyExtractor={(c) => c.id}
             columnWrapperStyle={{ gap: space.s }}
@@ -673,6 +743,7 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
                 </View>
               ) : undefined
             }
+            ListFooterComponent={awayList ?? undefined}
             onEndReached={more}
             onEndReachedThreshold={0.5}
             onScrollToIndexFailed={(e) =>

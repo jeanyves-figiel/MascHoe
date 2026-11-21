@@ -11,6 +11,8 @@ import { countLabel } from "./explore";
 import { INTENTS } from "./mapShared";
 import { tr } from "../i18n/travel";
 import { Plane, rangeLabel } from "../travel/travel";
+import { ppl } from "../i18n/people";
+import { SHOWS, type Show } from "./show";
 
 const h = v3.header;
 const glass = color.glass;
@@ -30,6 +32,10 @@ type Props = {
   trip?: Trip | null;
   home?: string | null;
   onBack?: () => void;
+  /** #247 R-04.22: show only favorites / friends (filtered on the phone). */
+  show?: Show;
+  onShow?: (s: Show) => void;
+  showCounts?: { fav: number; friends: number };
 };
 
 // S-10 floating header over the full-bleed map (F-04 R-04.18, #113 option B):
@@ -48,7 +54,11 @@ export function LiveHeader({
   trip,
   home,
   onBack,
+  show = "all",
+  onShow,
+  showCounts,
 }: Props) {
+  const [showMenu, setShowMenu] = React.useState(false);
   const accent = modeColor[intents[0] ?? "hookup"];
   const sportOnly = intents.length === 1 && intents[0] === "sport";
   const level = me.location?.level ?? "city";
@@ -312,7 +322,7 @@ export function LiveHeader({
       {/* R-04.18 intent chips: multi-select, the last one stays on */}
       <View
         accessibilityLabel={pl.intentsLabel}
-        style={{ flexDirection: "row", gap: 6 }}
+        style={{ flexDirection: "row", gap: 6, zIndex: 5 }}
       >
         {INTENTS.map((m) => {
           const on = intents.includes(m);
@@ -379,6 +389,19 @@ export function LiveHeader({
             </Pressable>
           );
         })}
+        {onShow ? (
+          <PeopleChip show={show} open={showMenu} onPress={() => setShowMenu((o) => !o)} />
+        ) : null}
+        {onShow && showMenu ? (
+          <PeopleMenu
+            show={show}
+            counts={showCounts ?? { fav: 0, friends: 0 }}
+            onPick={(s) => {
+              setShowMenu(false);
+              onShow(s);
+            }}
+          />
+        ) : null}
       </View>
 
       {banner}
@@ -426,5 +449,107 @@ export function VerifyRow({ onPress }: { onPress: () => void }) {
         {h.verify}
       </Text>
     </Pressable>
+  );
+}
+
+const lift = { shadowColor: color.shadow, shadowOpacity: 0.4, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 6 };
+const showTint = (s: Show) => (s === "fav" ? color.personal : color.friends);
+
+/** #247 R-04.22: people chip after the intent chips. Compact when everyone is shown. */
+function PeopleChip({ show, open, onPress }: { show: Show; open: boolean; onPress: () => void }) {
+  const on = show !== "all";
+  const fg = on ? color.onAccent : color.fgPrimary;
+  return (
+    <Pressable
+      testID="show-people"
+      accessibilityRole="button"
+      accessibilityLabel={`${ppl.showLabel}: ${ppl.show[show]}`}
+      accessibilityState={{ expanded: open }}
+      onPress={onPress}
+      hitSlop={4}
+      style={({ pressed }) => [
+        {
+          height: 36,
+          paddingHorizontal: 10,
+          borderRadius: 18,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 5,
+          backgroundColor: on ? showTint(show) : glass,
+          borderWidth: 1,
+          borderColor: on ? showTint(show) : color.line,
+          ...lift,
+          shadowOpacity: 0.3,
+        },
+        pressed && { transform: [{ scale: 0.97 }] },
+      ]}
+    >
+      {show === "friends" ? <Icon.User size={15} c={fg} w={2.6} /> : <Icon.Star size={15} c={fg} fill={on ? fg : "none"} />}
+      <Icon.Chevron size={12} c={fg} w={3} d={open ? "M6 15l6-6 6 6" : undefined} />
+    </Pressable>
+  );
+}
+
+function PeopleMenu({ show, counts, onPick }: { show: Show; counts: { fav: number; friends: number }; onPick: (s: Show) => void }) {
+  return (
+    <View
+      testID="show-menu"
+      accessibilityRole="menu"
+      style={{
+        position: "absolute",
+        top: 42,
+        right: 0,
+        width: 250,
+        borderRadius: radius.tray,
+        backgroundColor: color.bgRaised,
+        padding: 6,
+        ...lift,
+      }}
+    >
+      {SHOWS.map((s) => {
+        const on = s === show;
+        const sub = s === "all" ? ppl.showSub.all : s === "fav" ? ppl.showSub.fav(counts.fav) : ppl.showSub.friends(counts.friends);
+        return (
+          <Pressable
+            key={s}
+            testID={`show-${s}`}
+            accessibilityRole="menuitem"
+            accessibilityState={{ selected: on }}
+            onPress={() => onPick(s)}
+            style={({ pressed }) => [
+              {
+                minHeight: 52,
+                borderRadius: 14,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 10,
+                paddingHorizontal: 10,
+                backgroundColor: on ? color.bgOverlay : "transparent",
+              },
+              pressed && { opacity: 0.8 },
+            ]}
+          >
+            <View style={{ width: 22, alignItems: "center" }}>
+              {s === "all" ? (
+                <Icon.Map size={18} c={color.fgPrimary} />
+              ) : s === "fav" ? (
+                <Icon.Star size={18} c={color.personal} fill={color.personal} />
+              ) : (
+                <Icon.User size={18} c={color.friends} />
+              )}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontFamily: font.heavy, fontSize: 15, color: color.fgPrimary }}>{ppl.show[s]}</Text>
+              <Text style={{ ...type.meta, fontSize: 12, color: color.fgSecondary }}>{sub}</Text>
+            </View>
+            {on ? <Icon.Check size={16} c={color.personal} /> : null}
+          </Pressable>
+        );
+      })}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingTop: 6, paddingBottom: 4 }}>
+        <Icon.Lock size={11} c={color.trust} />
+        <Text style={{ ...type.meta, fontSize: 11, color: color.fgSecondary, flex: 1 }}>{ppl.showLocal}</Text>
+      </View>
+    </View>
   );
 }

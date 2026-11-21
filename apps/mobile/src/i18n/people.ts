@@ -56,7 +56,16 @@ const en = {
   findHint: 'Type at least 2 letters',
   findLocal: 'Searched on this phone only',
   findOlder: 'Older match',
-  findNewer: 'Newer match',
+  findNewer: 'Newer match',  // Explore: show only favorites / friends (#247, R-04.22)
+  show: { all: 'Everyone', fav: 'Favorites', friends: 'Friends' },
+  showSub: { all: 'Everyone around', fav: (n: number) => `${n} starred · only you see them`, friends: (n: number) => `${n} mutual friends` },
+  showLabel: 'Show people',
+  showLocal: 'Filtered on this phone. The server never sees your list.',
+  awayTitle: (n: number) => `Not on the map right now · ${n}`,
+  awayRow: 'Not around right now',
+  awayHint: 'Offline, far away or not visible to you. We never show where someone is when they hide.',
+  chat: 'Chat',
+  showNone: { fav: 'No favorites around', friends: 'No friends around' },
 };
 type T = typeof en;
 
@@ -114,7 +123,15 @@ const fr: T = {
   findHint: 'Tape au moins 2 lettres',
   findLocal: 'Recherche sur ce téléphone uniquement',
   findOlder: 'Résultat plus ancien',
-  findNewer: 'Résultat plus récent',
+  findNewer: 'Résultat plus récent',  show: { all: 'Tout le monde', fav: 'Favoris', friends: 'Amis' },
+  showSub: { all: 'Tout le monde autour', fav: (n) => `${n} étoilés · toi seul les vois`, friends: (n) => `${n} amis mutuels` },
+  showLabel: 'Afficher',
+  showLocal: 'Filtré sur ce téléphone. Le serveur ne voit jamais ta liste.',
+  awayTitle: (n) => `Pas sur la carte en ce moment · ${n}`,
+  awayRow: 'Pas dans le coin',
+  awayHint: 'Hors ligne, loin ou pas visible pour toi. On ne montre jamais où est quelqu’un qui se cache.',
+  chat: 'Chat',
+  showNone: { fav: 'Aucun favori autour', friends: 'Aucun ami autour' },
 };
 
 const de: T = {
@@ -171,7 +188,15 @@ const de: T = {
   findHint: 'Mindestens 2 Buchstaben',
   findLocal: 'Nur auf diesem Handy gesucht',
   findOlder: 'Älterer Treffer',
-  findNewer: 'Neuerer Treffer',
+  findNewer: 'Neuerer Treffer',  show: { all: 'Alle', fav: 'Favoriten', friends: 'Freunde' },
+  showSub: { all: 'Alle in der Nähe', fav: (n) => `${n} mit Stern · nur du siehst das`, friends: (n) => `${n} gegenseitige Freunde` },
+  showLabel: 'Anzeigen',
+  showLocal: 'Auf diesem Handy gefiltert. Der Server sieht deine Liste nie.',
+  awayTitle: (n) => `Gerade nicht auf der Karte · ${n}`,
+  awayRow: 'Gerade nicht in der Nähe',
+  awayHint: 'Offline, weit weg oder für dich nicht sichtbar. Wo sich jemand versteckt, zeigen wir nie.',
+  chat: 'Chat',
+  showNone: { fav: 'Keine Favoriten in der Nähe', friends: 'Keine Freunde in der Nähe' },
 };
 
 const lang = getLocales()[0]?.languageCode ?? 'en';

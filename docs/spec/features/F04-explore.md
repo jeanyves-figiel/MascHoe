@@ -59,6 +59,10 @@ Top (#113, option B of the [merged map mockup](https://claude.ai/artifact/JiM6ad
   - Safe Mode viewer: no place layers, no chips (F-14). Unverified viewer: venues and official parties yes, hosted parties no (audience rules, F-10).
 
 - R-04.21 Travel (#188, F-20): visitors to the viewer's area are interleaved into the grid with a sky outline and travel label (R-20.10), never pinned on the map (one "N visiting" bubble, R-20.11); Look around a trip city (R-20.14) sets the viewer point to that city's centre. Filters gain **Show visitors** (default on).
+- R-04.22 Favorites / Friends only (#247, [mockup board A](https://claude.ai/artifact/333MUDiSEuQkEYKCM3RmDA)). A **people chip** after the intent chips: icon + chevron (36 pt): outline star while everyone is shown; filled sunflower with a filled star (Favorites) or violet with a person icon (Friends) while on, so the intent chips keep their labels. Tap → menu Everyone / Favorites (count) / Friends (count) + "Filtered on this phone. The server never sees your list." Choice saved on the device (`thirstr.exploreShow`).
+  - Filtering happens on the phone only: the map keeps avatars and exact pins whose profile id is a favorite (R-07.32) or an accepted friend (R-07.34); anonymous count bubbles are hidden; the grid keeps the same people and loads further pages until 12 matches or the end of results. No new request parameter: the server sees the usual Explore request.
+  - Sheet title "Favorites · N" / "Friends · N". Under the grid, **Not on the map right now · M**: favorites / friends missing from the results, with name + photo saved on the phone, "Not around right now" (never "hidden", never a location) and **Chat** (opens the 1:1 chat, else the profile).
+  - Nobody matching and no more pages → empty state "No favorites around" / "No friends around".
 
 ## Interactions
 | Gesture | Result |
@@ -94,3 +98,4 @@ Top (#113, option B of the [merged map mockup](https://claude.ai/artifact/JiM6ad
 - AC-04.10 Header counts match `GET /explore/summary` for each mode; a profile hidden from the viewer (blocked, hidden, hide-from-unverified…) is never counted; place name is city-level only.
 - AC-04.11 (#113) With all chips on, a profile with `show_in` [friends, sport] appears once on the map with a two-segment violet/lime ring; with only Hookup on he is gone. Cards carry `intents` in order hookup → friends → sport.
 - AC-04.12 (#113) `GET /places` returns only catalogue venues, official events and hosted parties allowed for the viewer; hosted parties only at their r8 centroid; Safe Mode → empty. No client request goes to a non-Thirstr host for places.
+- AC-04.13 (#247) With Favorites on, the map and grid show only favorites returned by the normal Explore request, count bubbles are gone, and no Explore request carries any favorite or friend id. Favorites not returned are listed under the grid without a reason or location.
