@@ -298,8 +298,11 @@ function connect() {
   s.onClose(() => setOnline(false));
   refresh().then(() => {
     s.connect();
-    const ch = s.channel('user:me', {});
+    // SR-13: env → this device's envelopes arrive on the socket (message.env), or message.pull.
+    const ch = s.channel('user:me', { env: true });
     ch.on('message.new', () => pull());
+    ch.on('message.pull', () => pull());
+    ch.on('message.env', (p: { messages: Incoming[] }) => void receivePushed(p.messages ?? []));
     ch.on('typing', (p: { from_profile_id: string; to_profile_id: string }) => {
       const id = convId(p.to_profile_id, p.from_profile_id);
       if (convs[id]?.receipts === 'off') return; // R-07.23 per-chat override (server checks global)
@@ -384,22 +387,8 @@ export function pull(): Promise<void> {
         const r = await api<{ messages: Incoming[]; expired?: { group_id: string; count: number }[] }>('GET', '/mls/messages', undefined, true, CHAT_TIMEOUT);
         for (const x of r.expired ?? []) await noticeExpired(x.group_id, x.count);
         if (!r.messages.length) break;
-        // Server ids already handled (a kill between handling and ack re-delivers them).
-        const seen = new Set((await kv.get<number[]>('seen')) ?? []);
-        const done: number[] = [];
-        const inbound = new Set<string>();
-        for (const m of r.messages) {
-          if (!seen.has(m.id)) {
-            const res = await handle(m);
-            if (res === 'pending') await addPending(m);
-            else if (res) inbound.add(res);
-            seen.add(m.id);
-            // Durable before the ack (R-07.20): handled ids, rows and pending are on disk now.
-            await kv.set('seen', [...seen].slice(-SEEN_MAX));
-          }
-          done.push(m.id);
-        }
-        await api('POST', '/mls/messages/ack', { ids: done }, true, CHAT_TIMEOUT);
+        const { done, inbound } = await ingest(r.messages);
+        await ackIds(done);
         await retryPending();
         for (const cid of inbound) sendDelivered(cid);
         if (r.messages.length === 200) again = true;
@@ -409,6 +398,71 @@ export function pull(): Promise<void> {
       // offline: next socket event / foreground retries
     } finally {
       pulling = null;
+    }
+  })();
+  return pulling;
+}
+
+/** Handles fetched or pushed envelopes; ids returned are safe to ack (stored on disk first, R-07.20). */
+async function ingest(msgs: Incoming[]): Promise<{ done: number[]; inbound: Set<string> }> {
+  // Server ids already handled (a kill between handling and ack re-delivers them).
+  const seen = new Set((await kv.get<number[]>('seen')) ?? []);
+  const done: number[] = [];
+  const inbound = new Set<string>();
+  for (const m of msgs) {
+    if (!seen.has(m.id)) {
+      const res = await handle(m);
+      if (res === 'pending') await addPending(m);
+      else if (res) inbound.add(res);
+      seen.add(m.id);
+      // Durable before the ack (R-07.20): handled ids, rows and pending are on disk now.
+      await kv.set('seen', [...seen].slice(-SEEN_MAX));
+    }
+    done.push(m.id);
+  }
+  return { done, inbound };
+}
+
+/** SR-13: ack over the socket when it is up (no extra request), REST otherwise or on failure. */
+function ackIds(ids: number[]): Promise<void> {
+  if (!ids.length) return Promise.resolve();
+  const rest = () => api('POST', '/mls/messages/ack', { ids }, true, CHAT_TIMEOUT).then(() => undefined);
+  const ch = chan;
+  if (!ch || !online) return rest();
+  return new Promise<void>((resolve, reject) => {
+    const fallback = () => rest().then(resolve, reject);
+    ch.push('ack', { ids }, CHAT_TIMEOUT)
+      .receive('ok', () => resolve())
+      .receive('error', fallback)
+      .receive('timeout', fallback);
+  });
+}
+
+/**
+ * SR-13 (#153): envelopes pushed on the socket (`message.env`), so a message costs no GET.
+ * Runs in the same lane as pull(); anything that fails falls back to a REST pull (the server
+ * keeps every envelope until it is acked).
+ */
+export function receivePushed(msgs: Incoming[]): Promise<void> {
+  if (pulling) {
+    again = true; // not acked yet: the running pull's next round fetches them
+    return pulling;
+  }
+  let failed = false;
+  pulling = (async () => {
+    try {
+      const { done, inbound } = await ingest(msgs);
+      await ackIds(done);
+      await retryPending();
+      for (const cid of inbound) sendDelivered(cid);
+    } catch {
+      failed = true;
+    } finally {
+      pulling = null;
+    }
+    if (failed || again) {
+      again = false;
+      await pull();
     }
   })();
   return pulling;

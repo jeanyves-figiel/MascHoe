@@ -37,6 +37,7 @@ import { LocationSheet } from './LocationSheet';
 import { useFocusEffect } from '@react-navigation/native';
 import { MomentsRow } from '../moments/MomentsRow';
 import * as Moments from '../moments/api';
+import { readSnapshot, saveSnapshot, snapshotSig } from './snapshot';
 
 const FILTER_KEY = (m: string) => 'thirstr.filters.' + m;
 // #113: one filter set for the merged map; chips and place layers saved on the device.
@@ -201,6 +202,20 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
       .catch(() => setSummary(null));
   }, [intents, filters, x]);
 
+  // SR-16: last first page for these settings, shown until the fresh answer lands (or offline).
+  const sig = useMemo(() => snapshotSig({ intents, filters, x }), [intents, filters, x]);
+  useEffect(() => {
+    let live = true;
+    readSnapshot(sig).then((s) => {
+      if (!live || !s) return;
+      setItems((cur) => cur ?? s.items);
+      setTray((cur) => (cur.length ? cur : s.tray));
+    });
+    return () => {
+      live = false;
+    };
+  }, [sig]);
+
   const reload = useCallback(
     () =>
       Promise.all([
@@ -218,10 +233,11 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
           setFitM(g.fit_m ?? null);
           setTray(t.items);
           if (m) setMapData(m);
+          void saveSnapshot(sig, g.items, t.items);
         },
         (e) => setErr(e instanceof ApiError ? e.message : tx.common.error),
       ),
-    [intents, filters, x],
+    [intents, filters, x, sig],
   );
 
   useEffect(() => {

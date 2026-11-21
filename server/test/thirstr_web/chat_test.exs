@@ -228,6 +228,39 @@ defmodule ThirstrWeb.ChatTest do
     assert_push "typing", %{from_profile_id: _}
   end
 
+  test "socket env (SR-13): envelope pushed to the device, acked over the channel", %{
+    alice: a,
+    bob: b
+  } do
+    {:ok, b_access} = access_of(b)
+    {:ok, socket} = Phoenix.ChannelTest.connect(ThirstrWeb.UserSocket, %{"token" => b_access})
+    {:ok, _, ch} = subscribe_and_join(socket, ThirstrWeb.UserChannel, "user:me", %{"env" => true})
+
+    send_msg(a, b, "app", "hello-ct") |> json_response(200)
+    assert_push "message.env", %{messages: [m]}
+    refute_push "message.new", _
+    assert m.ciphertext == b64("hello-ct") and m.from_profile_id == a.pid and is_integer(m.id)
+    # same shape as REST pull
+    assert [pulled] = pull(b)["messages"]
+    assert pulled["id"] == m.id and pulled["group_id"] == m.group_id and pulled["kind"] == m.kind
+
+    ref = Phoenix.ChannelTest.push(ch, "ack", %{"ids" => [m.id]})
+    assert_reply ref, :ok, %{acked: 1}
+    assert pull(b)["messages"] == []
+
+    # too big for the socket → content-free "message.pull"
+    send_msg(a, b, "app", String.duplicate("x", 50_000)) |> json_response(200)
+    assert_push "message.pull", %{}
+
+    # another account can't ack my messages
+    [big] = pull(b)["messages"]
+    {:ok, a_access} = access_of(a)
+    {:ok, s2} = Phoenix.ChannelTest.connect(ThirstrWeb.UserSocket, %{"token" => a_access})
+    {:ok, _, ach} = subscribe_and_join(s2, ThirstrWeb.UserChannel, "user:me", %{"env" => true})
+    ref = Phoenix.ChannelTest.push(ach, "ack", %{"ids" => [big["id"]]})
+    assert_reply ref, :ok, %{acked: 0}
+  end
+
   defp send_raw(from, body), do: from.c |> recycle_authed() |> post("/v1/mls/messages", body)
 
   defp env(to, ct),
