@@ -10,9 +10,11 @@ const BOT = process.env.BOT_PROFILE!;
 const texts = (process.env.TEXTS ?? '').split('|').filter(Boolean);
 const waitMs = Number(process.env.WAIT_MS ?? 12_000);
 const ME = 'PEER';
+// each run is a fresh install: a new device of the same person (mockServer replaces the old one)
+const TOKEN = 'peer-' + hex(rand(6));
 
 const api = async (method: string, path: string, body?: unknown) => {
-  const r = await fetch(API + '/v1' + path, { method, headers: { 'content-type': 'application/json', authorization: 'Bearer peer' }, body: body === undefined ? undefined : JSON.stringify(body) });
+  const r = await fetch(API + '/v1' + path, { method, headers: { 'content-type': 'application/json', authorization: 'Bearer ' + TOKEN }, body: body === undefined ? undefined : JSON.stringify(body) });
   if (!r.ok) throw new Error(`${method} ${path} ${r.status}`);
   return r.json();
 };
