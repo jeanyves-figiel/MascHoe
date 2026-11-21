@@ -195,6 +195,22 @@ defmodule ThirstrWeb.ExploreTest do
     assert res["cells"] != []
   end
 
+  test "zoomed in inside one cell, the map still shows the people there (#113)", %{
+    viewer: v,
+    other: o
+  } do
+    pin_on(o)
+
+    res =
+      v.c
+      |> recycle_authed()
+      |> get("/v1/explore/map?mode=hookup&bbox=8.5412,47.3766,8.5422,47.3772")
+      |> json_response(200)
+
+    assert Enum.any?(res["pins"], &(&1["id"] == o.pid))
+    assert res["cells"] != []
+  end
+
   test "blocks hide both ways and the profile becomes Not available", %{viewer: v, other: o} do
     v.c |> recycle_authed() |> post("/v1/profiles/#{o.pid}/block") |> response(204)
     refute o.pid in ids(grid(v.c)["items"])

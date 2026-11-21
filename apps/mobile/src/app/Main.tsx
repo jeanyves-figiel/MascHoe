@@ -45,7 +45,7 @@ import { ToastHost } from '../ui/Toast';
 import { HiddenBlockedScreen } from '../trust/HiddenBlockedScreen';
 import { VenueScreen } from '../scene/VenueScreens';
 import { color, modeColor, radius, space, type } from '../theme/tokens';
-import { BackButton, Icon, ModeContext, useKeyboardShown } from '../ui';
+import { BackButton, Icon, ModeContext, useBottomPanel, useKeyboardShown } from '../ui';
 import { useSession } from './session';
 
 const Tab = createBottomTabNavigator();
@@ -257,6 +257,7 @@ export function Main() {
   useHiddenReturn();
   useShareLinks();
   const kb = useKeyboardShown();
+  const panel = useBottomPanel();
   const [navState, setNavState] = React.useState<NavigationState | undefined>(undefined);
   const top = navState?.routes[navState.index];
   const tabsState = navState?.routes.find((r) => r.name === 'Tabs')?.state;
@@ -305,7 +306,7 @@ export function Main() {
           <Stack.Screen name="AppLock" component={AppLockScreen} options={sub} />
           <Stack.Screen name="Devices" component={DevicesScreen} options={sub} />
         </Stack.Navigator>
-        {!kb && !(top && NO_BAR.has(top.name)) ? <PillBar active={active} onPick={pick} /> : null}
+        {!kb && !panel && !(top && NO_BAR.has(top.name)) ? <PillBar active={active} onPick={pick} /> : null}
         <PushPrompt />
         <ToastHost />
         <SafeModeAuto navigate={(r) => nav.isReady() && nav.navigate(r)} />

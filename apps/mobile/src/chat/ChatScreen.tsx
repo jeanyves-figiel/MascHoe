@@ -1,16 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Dimensions, FlatList, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ApiError } from '../api/client';
 import { useSession } from '../app/session';
 import { tx } from '../i18n/app';
 import { SafetySheet, SheetRow } from '../trust/SafetySheet';
 import { color, font, radius, space, type } from '../theme/tokens';
-import { Banner, Button, Icon, ListRow, Loading, Photo, Segmented, Sheet, Toggle, useAccent, useNavSpace, VerifiedTick } from '../ui';
+import { Banner, Icon, ListRow, Loading, Photo, Segmented, setBottomPanel, Sheet, Toggle, useAccent, useNavSpace, VerifiedTick } from '../ui';
 import * as E from './engine';
 import { useTopics } from './hooks';
-import { MediaBubble, pickAndSendMedia, SendOpts } from './media';
-import * as Albums from './albums';
+import { MediaBubble, sendPhotos } from './media';
+import { MediaTray } from './MediaTray';
+import { AlbumCard } from './AlbumCard';
+import { mx } from '../i18n/media';
 import { trx } from '../i18n/translate';
 import { prefs } from '../me/prefs';
 import { TranslatedText } from './TranslatedText';
@@ -26,6 +28,8 @@ type Nav = { navigate: (s: string, p?: object) => void; goBack: () => void; setO
 type Params = { cid?: string; profileId?: string; name?: string };
 
 const REACTIONS = ['🔥', '❤️', '😂', '👍', '😮'];
+// Last keyboard height seen (R-08.11: the tray takes its place).
+let lastKb = 0;
 const HIDDEN = new Set<E.Payload['t']>(['reaction', 'read', 'delivered', 'resync', 'profile.private']);
 
 function statusText(m: E.Msg, group: boolean): string {
@@ -83,12 +87,21 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
   const [hitAt, setHitAt] = useState(0);
   const listRef = useRef<FlatList<{ m: E.Msg; r: string[] }>>(null);
   P.usePeople();
-  const [mediaSheet, setMediaSheet] = useState(false);
-  const [albums, setAlbums] = useState<Albums.Album[]>([]);
+  // R-08.11 media tray in the keyboard slot (replaces the "Send a photo" sheet, #135).
+  const [tray, setTray] = useState(false);
+  const [kbH, setKbH] = useState(lastKb);
   useEffect(() => {
-    if (mediaSheet) Albums.listAlbums().then(setAlbums);
-  }, [mediaSheet]);
-  const [mopts, setMopts] = useState<SendOpts>({ once: false, expiry: 'keep', save: false });
+    const sub = Keyboard.addListener('keyboardDidShow', (e) => {
+      lastKb = e.endCoordinates.height;
+      setKbH(lastKb);
+      setTray(false);
+    });
+    return () => sub.remove();
+  }, []);
+  useEffect(() => {
+    setBottomPanel(tray);
+    return () => setBottomPanel(false);
+  }, [tray]);
   // R-07.28: language of the first translated message, for the teal note at the top of the chat.
   const [trFrom, setTrFrom] = useState<string | null>(null);
   const onTranslated = useCallback((from: string) => setTrFrom((cur) => cur ?? from), []);
@@ -343,6 +356,16 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
               />
             );
           }
+          if (m.p.t === 'album.grant') {
+            // R-08.16 album card (no bubble around it).
+            const g = m.p;
+            return (
+              <View style={{ alignItems: mine ? 'flex-end' : 'flex-start', gap: 2 }}>
+                <AlbumCard p={g} mine={mine} conv={conv} onOpen={() => navigation.navigate('Album', { cid, album: g.album })} onLongPress={() => setMsgMenu(m)} />
+                {r.length ? <Text style={{ ...type.meta }}>{r.join('')}</Text> : null}
+              </View>
+            );
+          }
           return (
             <View style={{ alignItems: mine ? 'flex-end' : 'flex-start' }}>
               <Pressable
@@ -558,22 +581,27 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
             </ScrollView>
           ) : null}
           {/* #134: no home-indicator inset while the keyboard is up (it would leave a gap above the keys). */}
-          <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space.s, paddingHorizontal: space.l, paddingBottom: navBottom + space.s }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space.s, paddingHorizontal: space.l, paddingBottom: (tray ? 0 : navBottom) + space.s }}>
             {conv.theyWrote ? (
               <Pressable
                 testID="chat-attach"
                 accessibilityRole="button"
-                accessibilityLabel={tx.chat.photo}
+                accessibilityLabel={tray ? mx.close : mx.tray}
                 disabled={busy}
-                onPress={() => setMediaSheet(true)}
-                style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: color.bgRaised, alignItems: 'center', justifyContent: 'center' }}
+                accessibilityState={{ expanded: tray }}
+                onPress={() => {
+                  if (!tray) Keyboard.dismiss();
+                  setTray((v) => !v);
+                }}
+                style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: tray ? color.bgInverse : color.bgRaised, alignItems: 'center', justifyContent: 'center' }}
               >
-                {busy ? <Text style={{ ...type.headline, color: color.fgPrimary }}>…</Text> : <Icon.Plus />}
+                {busy ? <Text style={{ ...type.headline, color: tray ? color.onAccent : color.fgPrimary }}>…</Text> : tray ? <Icon.Close c={color.onAccent} /> : <Icon.Plus />}
               </Pressable>
             ) : null}
             <TextInput
               testID="chat-input"
               value={text}
+              onFocus={() => setTray(false)}
               onChangeText={(v) => {
                 setText(v);
                 E.sendTyping(cid);
@@ -604,6 +632,27 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
               <Icon.Send c={text.trim() ? color.onAccent : color.fgMuted} />
             </Pressable>
           </View>
+          {tray && conv.theyWrote ? (
+            <MediaTray
+              conv={conv}
+              height={Math.min(Math.max(kbH, 320), Math.round(Dimensions.get('window').height * 0.45))}
+              bottom={insets.bottom}
+              onSend={(items, opts) => {
+                setTray(false);
+                setBusy(true);
+                sendPhotos(conv, items, opts)
+                  .then((failed) => {
+                    if (failed) setProblem(mx.failed(failed));
+                  })
+                  .finally(() => setBusy(false));
+              }}
+              onAlbumError={() => setProblem(tx.common.error)}
+              onEditAlbum={(id) => {
+                setTray(false);
+                navigation.navigate('AlbumEdit', { id });
+              }}
+            />
+          ) : null}
         </>
       ) : (
         <Text style={{ ...type.meta, color: color.fgMuted, textAlign: 'center', padding: space.l, paddingBottom: navBottom + space.l }}>{tx.chat.gone}</Text>
@@ -643,54 +692,6 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
       )}
 
       {!group ? <NoteSheet peer={conv.peer} visible={noteOpen} onClose={() => setNoteOpen(false)} /> : null}
-
-      <Sheet visible={mediaSheet} onClose={() => setMediaSheet(false)} title={tx.chat.sendPhoto} closeLabel={tx.common.close}>
-        <Toggle label={tx.chat.viewOnce} value={mopts.once} onChange={(v) => setMopts({ ...mopts, once: v })} />
-        <View style={{ gap: space.s }}>
-          <Text style={{ ...type.meta, color: color.fgSecondary }}>{tx.chat.expiry}</Text>
-          <Segmented
-            label={tx.chat.expiry}
-            value={mopts.expiry}
-            options={(['1h', '24h', '7d', 'keep'] as const).map((v) => ({ value: v, label: tx.chat.expiries[v] }))}
-            onChange={(v) => setMopts({ ...mopts, expiry: v })}
-          />
-        </View>
-        <Toggle label={tx.chat.allowSave} value={mopts.save} onChange={(v) => setMopts({ ...mopts, save: v })} />
-        {albums.length ? (
-          <View>
-            <Text style={{ ...type.meta, color: color.fgSecondary, marginBottom: space.xs }}>{tx.albums.share}</Text>
-            {albums.map((a) => (
-              <ListRow
-                key={a.id}
-                testID={`share-album-${a.name}`}
-                title={a.name}
-                right={`${a.items.length}`}
-                onPress={async () => {
-                  setMediaSheet(false);
-                  const exp = { '1h': 3600, '24h': 86400, '7d': 604800, keep: null }[mopts.expiry];
-                  await Albums.grant(a.id, conv.id, exp).catch((e) => setProblem(errorText(e)));
-                }}
-              />
-            ))}
-          </View>
-        ) : null}
-        <Button
-          title={tx.chat.choosePhoto}
-          busy={busy}
-          onPress={async () => {
-            setBusy(true);
-            try {
-              await pickAndSendMedia(conv, mopts);
-              setMediaSheet(false);
-            } catch (e) {
-              setMediaSheet(false);
-              setProblem(errorText(e));
-            } finally {
-              setBusy(false);
-            }
-          }}
-        />
-      </Sheet>
 
       <Sheet visible={!!msgMenu} onClose={() => setMsgMenu(null)} title="" closeLabel={tx.common.close}>
         {msgMenu ? (

@@ -35,6 +35,7 @@
 | `mobile-release.yml` (later) | tag `app-v*` | prod-pointing store builds; store submission manual |
 | `nightly.yml` | cron | dependency audits (mix, cargo, npm), staging smoke; abuse harnesses (trilateration, scraping) added as features land |
 | `infra-images.yml` | manual / infra/postgres change | build + push Postgres 16 + h3 image for `thirstr-db-<env>` |
+| `places-import.yml` | manual (target staging \| production) | F-12 R-12.9: over `fly ssh` + `bin/thirstr rpc`, cancels Places import jobs killed by a restart, queues `Thirstr.Jobs.PlaceImport` (same as admin › Places › Import now; weekly cron Mon 03:30 UTC), polls `place_imports` until done, writes added / updated / removed + venue count to the run summary. Don't merge to main while a staging import runs: the deploy restarts the machine (Oban Lifeline re-queues stuck jobs after 45 min) |
 
 ## Infra (Fly.io, EU regions only; D-03)
 - Apps per env: `thirstr-api-<env>` (Phoenix, ≥ 2 machines, fra + ams, clustered via `dns_cluster` over 6PN private network), `thirstr-valkey-<env>` (Valkey machine, no volume, RAM only), `thirstr-db-<env>` (Postgres 16 + h3-pg: Fly Managed Postgres if h3 extension supported, else self-run Postgres machine with volume + replica), `thirstr-tiles-<env>` (Protomaps tiles).

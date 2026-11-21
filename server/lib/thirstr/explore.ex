@@ -284,7 +284,18 @@ defmodule Thirstr.Explore do
 
   defp parse_bbox(_), do: {:error, {:validation, %{bbox: ["required"]}}}
 
+  # h3_polygon_to_cells keeps only cells whose centre is inside the polygon: zoomed in past one
+  # cell (or at the screen edge) the cell you are looking at was dropped and the map went empty.
+  # Pad the box by about one cell edge so every cell touching the viewport is included.
+  @cell_pad %{5 => 0.1, 7 => 0.015}
+
   defp bbox_cells(w, s, e, n, res) do
+    pad = Map.fetch!(@cell_pad, res)
+    lng_pad = pad / max(:math.cos((s + n) / 2 * :math.pi() / 180), 0.2)
+
+    {w, s, e, n} =
+      {max(w - lng_pad, -180.0), max(s - pad, -85.0), min(e + lng_pad, 180.0), min(n + pad, 85.0)}
+
     %{rows: rows} =
       Repo.query!(
         """

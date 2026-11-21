@@ -44,15 +44,25 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Pick photos for your profile."
+          "photosPermission": "Pick photos for your profile, or to send in a chat. Nothing leaves your phone until you send it."
         }
       ],
       [
         "expo-camera",
         {
-          "cameraPermission": "Thirstr uses the camera for the selfie check. Photos are checked on your phone and deleted; nothing is uploaded.",
+          "cameraPermission": "Thirstr uses the camera for the selfie check (checked on your phone and deleted) and when you take a photo to send in a chat.",
           "microphonePermission": false,
           "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Pick photos for your profile, or to send in a chat. Nothing leaves your phone until you send it.",
+          "savePhotosPermission": false,
+          "isAccessMediaLocationEnabled": false,
+          "preventAutomaticLimitedAccessAlert": true,
+          "granularPermissions": ["photo"]
         }
       ],
       "expo-apple-authentication",
