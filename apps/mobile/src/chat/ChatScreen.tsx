@@ -14,6 +14,8 @@ import * as Albums from './albums';
 import { trx } from '../i18n/translate';
 import { prefs } from '../me/prefs';
 import { TranslatedText } from './TranslatedText';
+import { ChatShield, MeetupCard, useCheckin } from '../safety/live';
+import { chatLines, cueDismissed, meetupCue } from '../safety/quick';
 import { langName, modeFor, targetLang, translateAvailable } from './translate';
 import { ppl } from '../i18n/people';
 import * as P from './people';
@@ -116,11 +118,26 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
     };
   }, []);
   const conv = cid ? E.getConv(cid) : undefined;
+  const running = useCheckin();
 
   useEffect(() => {
     if (!cid) return;
     E.messages(cid).then(setList);
   }, [cid, tick]);
+
+  // R-13.18: meetup prompt, matched on this phone only.
+  const [cueOk, setCueOk] = useState<string | null>(null); // chat id whose cue is not dismissed
+  const [hidden, setHidden] = useState(false);
+  const cueHit = !!list && !!conv && !conv.ctx && !conv.gone && meetupCue(chatLines(list));
+  useEffect(() => {
+    if (!cid || !cueHit) return;
+    let alive = true;
+    cueDismissed(cid).then((d) => alive && setCueOk(d ? null : cid));
+    return () => {
+      alive = false;
+    };
+  }, [cid, cueHit]);
+  const showCue = cueHit && cueOk === cid && !hidden && !running;
 
   useEffect(() => {
     if (cid) E.markRead(cid).catch(() => {});
@@ -397,7 +414,7 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
           </Pressable>
         </View>
       ) : (
-      <View style={{ paddingTop: insets.top + space.xs, paddingHorizontal: space.l, paddingBottom: space.s, flexDirection: 'row', alignItems: 'center', gap: space.m, borderBottomWidth: 1, borderColor: color.lineSubtle }}>
+      <View style={{ paddingTop: insets.top + space.xs, paddingHorizontal: space.l, paddingBottom: space.s, flexDirection: 'row', alignItems: 'center', gap: space.s, borderBottomWidth: 1, borderColor: color.lineSubtle }}>
         <Pressable accessibilityRole="button" accessibilityLabel={tx.common.back} onPress={() => navigation.goBack()} hitSlop={12}>
           <Icon.Back />
         </Pressable>
@@ -439,12 +456,14 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
             accessibilityLabel={fav ? ppl.removeFav : ppl.addFav}
             accessibilityState={{ selected: fav }}
             onPress={() => P.setFav(conv.peer, !fav, { name: conv.name, photo: conv.photo })}
-            style={({ pressed }) => ({ width: 44, height: 44, borderRadius: 22, backgroundColor: fav ? color.personal : color.bgRaised, alignItems: 'center', justifyContent: 'center', transform: [{ scale: pressed ? 0.94 : 1 }] })}
+            hitSlop={2}
+            style={({ pressed }) => ({ width: 40, height: 40, borderRadius: 20, backgroundColor: fav ? color.personal : color.bgRaised, alignItems: 'center', justifyContent: 'center', transform: [{ scale: pressed ? 0.94 : 1 }] })}
           >
             <Icon.Star size={21} c={fav ? color.onAccent : color.fgPrimary} fill={fav ? color.onAccent : 'none'} />
           </Pressable>
         ) : null}
-        <Pressable testID="chat-menu" accessibilityRole="button" accessibilityLabel="More" onPress={() => setMenu(true)} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: color.bgRaised, alignItems: 'center', justifyContent: 'center' }}>
+        {!group && !conv.gone ? <ChatShield cid={conv.id} navigation={navigation} /> : null}
+        <Pressable testID="chat-menu" accessibilityRole="button" accessibilityLabel="More" onPress={() => setMenu(true)} hitSlop={2} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: color.bgRaised, alignItems: 'center', justifyContent: 'center' }}>
           <Icon.More />
         </Pressable>
       </View>
@@ -476,7 +495,8 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
         onScrollToIndexFailed={(e) => setTimeout(() => listRef.current?.scrollToIndex({ index: e.index, viewPosition: 0.5, animated: true }), 200)}
       />
 
-      {!group && (me.safe_mode_active || me.safe_mode === 'on') && list && careful(conv, list) ? (
+      {showCue ? <MeetupCard cid={conv.id} name={conv.name} navigation={navigation} onHide={() => setHidden(true)} /> : null}
+      {!showCue && !group && (me.safe_mode_active || me.safe_mode === 'on') && list && careful(conv, list) ? (
         <View style={{ paddingHorizontal: space.l }}>
           <Banner testID="careful" tone="warn" text={tx.safeMode.careful} onPress={() => navigation.navigate('CheckinStart', { cid: conv.id })} />
         </View>
