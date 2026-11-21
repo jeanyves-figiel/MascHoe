@@ -115,7 +115,7 @@ Address/door code: E2EE message to accepted guests, never in DB.
 ### franking_tags (message_id, tag bytea, created_at) — R-07.11 commitments, swept with messages
 ### mls_send_keys (device_id, client_id, result jsonb, created_at; PK device_id + client_id) — R-07.18 idempotency, swept after 7 d
 ### mls_expired (to_device_id, group_id bytea, count, created_at) — R-07.22 swept-unread counts, deleted when reported to the device
-### media_blobs (id uuid, account_id, storage_key, size, expires_at, created_at) — E2EE ciphertext only; owner can delete
+### media_blobs (id uuid, account_id, storage_key, size, expires_at, created_at, once bool, fetched_by uuid null, fetched_at null) — E2EE ciphertext only; owner can delete. `once` = video check clip (R-18.12): bound to first fetcher, swept 10 min after first fetch
 ### devices.push_token / push_platform — APNs/FCM token per device (content-free pushes)
 ### trusted_contacts — **not stored server-side** beyond relay tokens (F-13).
 ### safety_relays (id uuid, account_id, rid_hash bytea unique, intro bytea, accepted_at, push jsonb {endpoint, keys}, created_at) — one per trusted contact; rid and key device-only
