@@ -3,24 +3,20 @@ import React, { useEffect, useState } from 'react';
 import { Animated, Easing, Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { api, ApiError, Me, Photo } from '../api/client';
+import { uploadPublicPhoto } from '../api/photoUpload';
 import { o } from '../i18n/onboarding';
 import { t } from '../i18n/strings';
 import { STEP_OF } from '../onboarding/flow';
 import { BigButton, k, StepShell } from '../onboarding/kit';
 import { color, font, radius, space, tiles } from '../theme/tokens';
 
-type Upload = { photo_id: string; put_url: string; content_type: string };
-
 async function upload(profileId: string, slot: number): Promise<{ photo: Photo; account: Me } | null> {
   const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.85, allowsEditing: true, aspect: [4, 5] });
   if (r.canceled) return null;
   const asset = r.assets[0];
   const type = asset.mimeType ?? 'image/jpeg';
-  const up = await api<Upload>('POST', `/me/profiles/${profileId}/photos`, { slot, content_type: type });
-  const blob = await (await fetch(asset.uri)).blob();
-  const put = await fetch(up.put_url, { method: 'PUT', headers: { 'content-type': type }, body: blob });
-  if (!put.ok) throw new Error('upload failed');
-  return api('POST', `/me/profiles/${profileId}/photos/${up.photo_id}/check`);
+  const id = await uploadPublicPhoto(profileId, slot, asset.uri, type);
+  return api('POST', `/me/profiles/${profileId}/photos/${id}/check`);
 }
 
 // S-05 v2 (R-02.7): the 4:5 frame is the picker; teal scan line while checking; extras unlock after the main passes.

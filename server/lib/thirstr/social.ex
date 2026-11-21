@@ -255,7 +255,7 @@ defmodule Thirstr.Social do
   def taps(%Account{} = a) do
     Repo.query!(
       """
-      SELECT p.id::text, p.display_name, p.age, a2.verified_at IS NOT NULL, ph.storage_key, t.created_at, t.seen,
+      SELECT p.id::text, p.display_name, p.age, a2.verified_at IS NOT NULL, COALESCE(ph.thumb_key, ph.storage_key), t.created_at, t.seen,
              EXISTS (SELECT 1 FROM taps r WHERE r.from_profile_id = t.to_profile_id AND r.to_profile_id = t.from_profile_id
                      AND r.created_at > now() - interval '7 days'), mine.kind
       FROM taps t
@@ -337,7 +337,7 @@ defmodule Thirstr.Social do
   def blocks(%Account{} = a) do
     Repo.query!(
       """
-      SELECT p.id::text, p.display_name, p.age, ph.storage_key, b.created_at FROM blocks b
+      SELECT p.id::text, p.display_name, p.age, COALESCE(ph.thumb_key, ph.storage_key), b.created_at FROM blocks b
       JOIN profiles p ON p.account_id = b.account_to AND p.kind = 'now'
       LEFT JOIN photos ph ON ph.id = p.photo_ids[1]
       WHERE b.account_from = $1 ORDER BY b.created_at DESC
@@ -351,7 +351,7 @@ defmodule Thirstr.Social do
   def hidden(%Account{} = a) do
     Repo.query!(
       """
-      SELECT p.id::text, p.display_name, p.age, ph.storage_key, h.created_at FROM profile_hides h
+      SELECT p.id::text, p.display_name, p.age, COALESCE(ph.thumb_key, ph.storage_key), h.created_at FROM profile_hides h
       JOIN profiles p ON p.id = h.profile_id
       JOIN accounts a2 ON a2.id = p.account_id AND a2.status = 'active'
       LEFT JOIN photos ph ON ph.id = p.photo_ids[1]

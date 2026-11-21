@@ -67,7 +67,7 @@ B1 stores the SV fields in the `fields` jsonb rather than one column each; `hook
 Audience-restricted values (health, socials, limits, boundaries card) are **not** stored here; they are sent E2EE to chat partners (F-06 R-06.6).
 
 ### photos
-| id · profile_id · slot (0–4) · storage_key · status enum(pending, ok_main, ok_public, rejected) · reject_reason · review_state · classifier_score jsonb (`main_ok` = passes strict check; only these show in Friends/Sport) · created_at |
+| id · profile_id · slot (0–4) · storage_key · thumb_key (480 px copy, set only when it passed the classifier on its own, SR-10) · status enum(pending, ok_main, ok_public, rejected) · reject_reason · review_state · classifier_score jsonb (`main_ok` = passes strict check; only these show in Friends/Sport) · created_at |
 
 ### location_cells (one row per visible profile, overwritten)
 | profile_id pk · level enum(city, area, exact) · cell_r9 · cell_r8 · cell_r7 · cell_r5 (bigint = `h3index::bigint`; City stores r5 only) · updated_at · hide_from_hidden bool · display_res smallint (9/8/7/5: k-anonymity, widened each minute when < 5 people share the cell) |
@@ -138,7 +138,7 @@ Address/door code: E2EE message to accepted guests, never in DB.
 | `pushq:{account}` | push throttle (1 per 20 s) | 20 s |
 
 ## Object storage
-- `public/{photo_id}.avif` — public photos (plaintext, CDN, signed URL 1 h).
+- `public/{photo_id}.avif` — public photos (plaintext, CDN, signed URL 12 h, stable per 6 h window). `public/{photo_id}-t` — 480 px JPEG copy for cards and lists (SR-10), deleted with the photo.
 - `blob/{random}` — E2EE media (ciphertext), deleted on all-recipients-ack or 30 d.
 
 ## Device-only (SQLCipher)

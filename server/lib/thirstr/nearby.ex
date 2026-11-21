@@ -58,17 +58,67 @@ defmodule Thirstr.Nearby do
     |> List.flatten()
   end
 
-  @doc "Metres between the viewer and a cell centroid."
+  @centroids :thirstr_h3_centroids
+  @max_centroids 200_000
+  # mean Earth radius used by h3_great_circle_distance (H3 EARTH_RADIUS_KM)
+  @earth_m 6_371_007.180918475
+
+  @doc "Creates the centroid memo (called once from Application.start)."
+  def init_cache do
+    if :ets.whereis(@centroids) == :undefined,
+      do: :ets.new(@centroids, [:named_table, :public, :set, read_concurrency: true])
+
+    :ok
+  end
+
+  @doc """
+  Loads the centroids of `cells` into the memo in one query (SR-09, #149). H3 cells never move,
+  so a centroid is fetched once per node; lists call this before mapping `dist_m/2` per item.
+  """
+  def warm(cells) do
+    missing = cells |> Enum.reject(&is_nil/1) |> Enum.uniq() |> Enum.reject(&cached/1)
+
+    if missing != [] do
+      if :ets.info(@centroids, :size) > @max_centroids, do: :ets.delete_all_objects(@centroids)
+
+      Repo.query!(
+        "SELECT c, (p)[0], (p)[1] FROM (SELECT c, h3_cell_to_lat_lng(c::h3index) AS p FROM unnest($1::bigint[]) c) x",
+        [missing]
+      ).rows
+      |> Enum.each(fn [c, lng, lat] -> :ets.insert(@centroids, {c, lat, lng}) end)
+    end
+
+    :ok
+  end
+
+  defp cached(c), do: :ets.member(@centroids, c)
+
+  @doc "Metres between the viewer and a cell centroid (memoized; no query once warm)."
   def dist_m(%{point: nil}, _cell), do: nil
+  def dist_m(_ctx, nil), do: nil
 
   def dist_m(%{point: p}, cell) do
-    [[d]] =
-      Repo.query!(
-        "SELECT h3_great_circle_distance(h3_cell_to_lat_lng($1::bigint::h3index), point($2::float8, $3::float8), 'm')",
-        [cell, p.lng * 1.0, p.lat * 1.0]
-      ).rows
+    case :ets.lookup(@centroids, cell) do
+      [{_, lat, lng}] ->
+        haversine(p.lat * 1.0, p.lng * 1.0, lat, lng)
 
-    d
+      [] ->
+        warm([cell])
+        [{_, lat, lng}] = :ets.lookup(@centroids, cell)
+        haversine(p.lat * 1.0, p.lng * 1.0, lat, lng)
+    end
+  end
+
+  defp haversine(lat1, lng1, lat2, lng2) do
+    r = :math.pi() / 180
+    dlat = (lat2 - lat1) * r
+    dlng = (lng2 - lng1) * r
+
+    a =
+      :math.pow(:math.sin(dlat / 2), 2) +
+        :math.cos(lat1 * r) * :math.cos(lat2 * r) * :math.pow(:math.sin(dlng / 2), 2)
+
+    2 * @earth_m * :math.asin(min(1.0, :math.sqrt(a)))
   end
 
   def bucket(nil), do: nil
@@ -86,7 +136,7 @@ defmodule Thirstr.Nearby do
   def people(ctx, ids) do
     Repo.query!(
       """
-      SELECT p.id::text, p.display_name, p.age, a.verified_at IS NOT NULL, ph.storage_key,
+      SELECT p.id::text, p.display_name, p.age, a.verified_at IS NOT NULL, COALESCE(ph.thumb_key, ph.storage_key),
              p.fields->>'sport_intent', a.id::text
       FROM profiles p JOIN accounts a ON a.id = p.account_id
       LEFT JOIN photos ph ON ph.id = p.photo_ids[1]

@@ -6,6 +6,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Fixed
+- **Grid and lists load small photos** (server + app, SR-10 #150): the app now uploads a 480 px copy (~30–60 KB) next to each public photo; Explore, Tonight, parties, activities, chats lists and block/hide lists show it instead of the full photo (1–2 MB), about 95 % less data per grid page. The copy is checked by the photo classifier on its own and is only used if it passes; otherwise the full photo is shown. Deleted together with the photo.
+- **Explore scrolls faster, lighter on the database** (server, SR-09 #149): scrolling the grid used to re-run the full nearby search (up to 1 500 profiles) for every page; later pages now read only their own 60 profiles in the order of the first page (kept 2 min; blocks and hides still apply). Distances for Tonight, parties, activities and venues are computed in memory instead of one database query per item.
 - **Pushes are retried** (server, SR-02 #142, R-16.10): a failed APNs send (rate limit, Apple outage, network) used to be dropped; it now retries after 5 s, 15 s, 45 s and 2 min. An Android device on an account no longer stops pushes to the account's iPhones. Android pushes via FCM are ready (off until the FCM key is set).
 - **Deploys no longer cut work short** (server, SR-03 #143): machines get 30 s to finish requests and jobs before they stop (was 5 s), so a push or job killed by a deploy no longer waits 45 min to be rescued.
 - **Messages kept when the app is signed out by force** (server + app, SR-04 #144, R-01.13): when the server revokes a device (refresh token re-used), messages waiting for it are kept 7 days. Signing in again on the same phone gets the same device back with its waiting messages. Before, they were deleted silently.
@@ -16,6 +18,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Less battery in the background** (app, EN-18 #177): periodic checks (check-in, chat timers, location refresh) do nothing while the app is in the background.
 - **Location visibility job** (server, SR-08 #148): the per-minute job now writes only rows that change instead of rewriting every location row.
 - **Valkey outage no longer blocks chat** (server, SR-11 #151): rate limits fall back to a per-machine counter and push wakes still go out.
+
+### Added
+- **Load test kit** (infra, SR-12 #152): k6 scenarios for grid paging, chat send → pull → ack and realtime sockets with the SLO thresholds (`infra/load/`), load accounts from `Thirstr.LoadTest.users/1` (only on `DEPLOY_ENV=load` or DEV), sizing method and run log (`docs/runbooks/capacity.md`). A real load environment is not created yet (needs owner OK: cost).
+
+### Fixed
+- **Seeding refused on prod** (server): `Thirstr.Release.seed` only refused `DEPLOY_ENV=production`, but prod sets `prod`; it now refuses both.
 
 ### Added
 - **Metrics** (server, SR-07 #147): Prometheus metrics on an internal port (Fly managed Prometheus/Grafana): API latency and errors per route, DB time, Oban queues, chat backlog age, push results, Valkey fallback, DB size. Content-free. Alert rules: `docs/runbooks/monitoring.md`.

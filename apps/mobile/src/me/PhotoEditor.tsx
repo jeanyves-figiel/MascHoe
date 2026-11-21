@@ -1,7 +1,8 @@
 import * as ImagePicker from 'expo-image-picker';
 import React, { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { api, ApiError, Me, Photo as P, putBlob } from '../api/client';
+import { api, ApiError, Me, Photo as P } from '../api/client';
+import { uploadPublicPhoto } from '../api/photoUpload';
 import type { MyProfile } from '../api/types';
 import { tx } from '../i18n/app';
 import { color, radius, space, type } from '../theme/tokens';
@@ -9,7 +10,6 @@ import { Banner, ErrorText, Icon, Meta, Photo } from '../ui';
 
 const G = space.s;
 
-type Upload = { photo_id: string; put_url: string; content_type: string };
 
 // F-06 photos: slot 0 = vanilla main (R-06.2), 4 extra; reorder, replace, remove.
 export function PhotoEditor({ profile, accent, onChange }: { profile: MyProfile; accent: string; onChange: (p: MyProfile) => void }) {
@@ -34,9 +34,8 @@ export function PhotoEditor({ profile, accent, onChange }: { profile: MyProfile;
     try {
       const asset = r.assets[0];
       const ct = asset.mimeType ?? 'image/jpeg';
-      const up = await api<Upload>('POST', `/me/profiles/${profile.id}/photos`, { slot, content_type: ct });
-      await putBlob(up.put_url, asset.uri, ct);
-      await api<{ photo: P; account: Me }>('POST', `/me/profiles/${profile.id}/photos/${up.photo_id}/check`);
+      const id = await uploadPublicPhoto(profile.id, slot, asset.uri, ct);
+      await api<{ photo: P; account: Me }>('POST', `/me/profiles/${profile.id}/photos/${id}/check`);
       await reload();
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : tx.common.error);
@@ -116,7 +115,7 @@ export function PhotoEditor({ profile, accent, onChange }: { profile: MyProfile;
                   onPress={() => setSel(sel === ph.id ? null : ph.id)}
                   style={{ position: 'absolute', ...f, borderRadius: i === 0 ? 22 : 18, borderWidth: 3, borderColor: sel === ph.id ? accent : 'transparent', overflow: 'hidden' }}
                 >
-                  <Photo uri={ph.url} id={ph.id} label="" style={{ width: '100%', height: '100%' }} />
+                  <Photo uri={ph.thumb_url ?? ph.url} id={ph.id} label="" style={{ width: '100%', height: '100%' }} />
                   {i > 0 && ph.status !== 'pending' && ph.main_ok === false ? (
                     <View style={{ position: 'absolute', left: 6, bottom: 6, height: 22, paddingHorizontal: 8, borderRadius: radius.pill, backgroundColor: color.hookup, justifyContent: 'center' }}>
                       <Text numberOfLines={1} style={{ ...type.caption, color: color.onAccent }}>{tx.edit.hookupOnly}</Text>

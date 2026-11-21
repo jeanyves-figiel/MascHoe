@@ -43,7 +43,7 @@ export type Me = {
   settings?: Settings;
 };
 
-export type Photo = { id: string; slot: number; status: string; reject_reason: string | null; url: string | null; main_ok?: boolean };
+export type Photo = { id: string; slot: number; status: string; reject_reason: string | null; url: string | null; thumb_url?: string | null; main_ok?: boolean };
 /** device_id / device_secret come with a sign-in (SR-04): kept to resume this device later. */
 export type Session = { access_token: string; refresh_token: string; expires_in: number; account: Me; device_id?: string; device_secret?: string };
 

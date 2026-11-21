@@ -136,9 +136,31 @@ defmodule Thirstr.Profiles do
       key = "public/#{Ecto.UUID.generate()}"
       photo = Repo.insert!(%Photo{profile_id: p.id, slot: slot, storage_key: key})
       {:ok, put_url} = Storage.presigned_put(key, content_type)
-      {:ok, photo, put_url}
+      {:ok, thumb_url} = Storage.presigned_put(thumb_of(key), "image/jpeg")
+      {:ok, photo, put_url, thumb_url}
     end
   end
+
+  @doc "Object key of a photo's card-size copy (SR-10). Deleted together with the photo."
+  def thumb_of(key), do: key <> "-t"
+
+  @thumb_max 300_000
+
+  # SR-10 (#150): the phone uploads a ~480 px JPEG next to the photo. It is classified on its own
+  # and used only when it passes the same bar as the photo; otherwise cards fall back to the full one.
+  defp checked_thumb(ph, status) do
+    key = thumb_of(ph.storage_key)
+
+    with {:ok, %{size: size}} when size > 0 and size <= @thumb_max <- Storage.head(key),
+         {^status, _} <- thumb_verdict(Classifier.impl().classify(key, ph.slot, "now")) do
+      key
+    else
+      _ -> nil
+    end
+  end
+
+  defp thumb_verdict({ok, s}) when ok in [:ok_main, :ok_public], do: {Atom.to_string(ok), s}
+  defp thumb_verdict(other), do: other
 
   @doc """
   R-02.7 / R-15.10: classify after upload. Slot 0 must be `ok_main`. Every photo carries
@@ -162,7 +184,8 @@ defmodule Thirstr.Profiles do
           status: status,
           reject_reason: reason,
           classifier_score: score,
-          review_state: if(status == "pending", do: "queued")
+          review_state: if(status == "pending", do: "queued"),
+          thumb_key: if(status in ~w(ok_main ok_public), do: checked_thumb(ph, status))
         )
         |> Repo.update!()
 
@@ -188,7 +211,7 @@ defmodule Thirstr.Profiles do
       from x in Photo, where: x.profile_id == ^p.id and x.slot == ^ph.slot and x.id != ^ph.id
     )
 
-    Storage.delete_many(others)
+    Storage.delete_many(others ++ Enum.map(others, &thumb_of/1))
     refresh_photo_ids(p.id)
   end
 
@@ -219,7 +242,7 @@ defmodule Thirstr.Profiles do
            ph.slot != 0 || length(p.photos) == 1 ||
              {:error, {:conflict, "Replace your main photo instead"}} do
       Repo.delete!(ph)
-      Storage.delete_many([ph.storage_key])
+      Storage.delete_many([ph.storage_key, thumb_of(ph.storage_key)])
       refresh_photo_ids(p.id)
       get_own(a, p.id)
     end

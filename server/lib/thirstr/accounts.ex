@@ -82,6 +82,7 @@ defmodule Thirstr.Accounts do
         select: ph.storage_key
       )
       |> Repo.all()
+      |> Enum.flat_map(&[&1, Thirstr.Profiles.thumb_of(&1)])
 
     Multi.new()
     |> Multi.delete(:account, a)

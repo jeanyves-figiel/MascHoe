@@ -66,6 +66,7 @@ defmodule Thirstr.Activities do
         end)
 
       people = Nearby.people(ctx, Enum.map(rows, &Enum.at(&1, 1)))
+      Nearby.warm(Enum.map(rows, &Enum.at(&1, 9)))
 
       posts =
         rows

@@ -9,13 +9,15 @@ defmodule Thirstr.Release do
         do: {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :up, all: true))
   end
 
-  @doc "Synthetic data for staging only; refuses to run when DEPLOY_ENV=production."
-  def seed do
-    if System.get_env("DEPLOY_ENV") == "production", do: raise("refusing to seed production")
+  @doc "Synthetic data for staging/load only; refuses to run on prod (fly.toml sets DEPLOY_ENV=prod)."
+  def seed(count \\ 5000) do
+    if System.get_env("DEPLOY_ENV") in ~w(prod production),
+      do: raise("refusing to seed production")
+
     load_app()
 
     for repo <- repos(),
-        do: {:ok, _, _} = Ecto.Migrator.with_repo(repo, fn _ -> Thirstr.Seeds.run() end)
+        do: {:ok, _, _} = Ecto.Migrator.with_repo(repo, fn _ -> Thirstr.Seeds.run(count) end)
   end
 
   def rollback(repo, version) do

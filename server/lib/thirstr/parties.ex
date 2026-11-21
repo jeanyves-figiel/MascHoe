@@ -193,6 +193,7 @@ defmodule Thirstr.Parties do
         end)
 
       people = Nearby.people(ctx, Enum.map(rows, & &1.host))
+      Nearby.warm(Enum.map(rows, & &1.cell))
 
       {:ok,
        %{
