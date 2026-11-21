@@ -8,7 +8,7 @@ import { distanceLabel, tx } from '../i18n/app';
 import { color, font, modeColor, radius, space, type } from '../theme/tokens';
 import { v3 } from '../i18n/v3';
 import { AUDIENCES, allowedFor, cycle } from '../me/look';
-import { Badge, Banner, Button, ErrorState, Icon, Loading, Photo, Scrim, useAccent, VerifiedTick } from '../ui';
+import { afterSheet, Badge, Banner, Button, ErrorState, Icon, Loading, Photo, Scrim, useAccent, VerifiedTick } from '../ui';
 import { getLocal } from '../me/localFields';
 import { FieldList } from './FieldList';
 import { PrivateNote } from './PrivateNote';
@@ -17,6 +17,7 @@ import * as People from '../chat/people';
 import { ppl } from '../i18n/people';
 import { LENSES, lensFields, lensPhoto } from './lens';
 import { SafetySheet, SheetRow } from '../trust/SafetySheet';
+import { toast } from '../ui/Toast';
 
 type Nav = { navigate: (s: string, p?: object) => void; goBack: () => void; setParams?: (p: Partial<Params>) => void };
 type Params = { id: string; preview?: 'stranger' | 'verified' | 'chats'; mode?: Mode };
@@ -67,7 +68,6 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
   const [err, setErr] = useState<string | null>(null);
   const [gone, setGone] = useState(false);
   const [menu, setMenu] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const width = Math.min(Dimensions.get('window').width, 560);
   const [page, setPage] = useState(0);
@@ -101,12 +101,11 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
 
   const act = async (fn: () => Promise<unknown>, after?: () => void) => {
     setBusy(true);
-    setMsg(null);
     try {
       await fn();
       after?.();
     } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : tx.common.error);
+      toast(e instanceof ApiError ? e.message : tx.common.error);
     } finally {
       setBusy(false);
     }
@@ -143,7 +142,8 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
   return (
     <View style={{ flex: 1, backgroundColor: color.bgBase }}>
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 140 }}
+        // #124: clear the floating action bar (58) + its inset + breathing room, on every phone.
+        contentContainerStyle={{ paddingBottom: p.self ? insets.bottom + space.xxl : insets.bottom + space.l + 58 + space.xxl }}
         scrollEventThrottle={32}
         onScroll={(e) => {
           const past = e.nativeEvent.contentOffset.y > width * 1.33 - 140;
@@ -250,6 +250,8 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
         </Pressable>
       ) : null}
 
+      {/* #124: content fades out under the action bar instead of showing between the buttons. */}
+      {!p.self ? <Scrim height={insets.bottom + space.l + 58 + space.xxl} max={1} steps={10} /> : null}
       {!p.self ? (
         <View style={{ position: 'absolute', left: space.l, right: space.l, bottom: insets.bottom + space.l, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <Pressable
@@ -277,14 +279,14 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
               testID="message-btn"
               title={tx.profile.message}
               fill={accent}
-              onPress={() => (me.verified ? navigation.navigate('Chat', { profileId: p.id, name: p.display_name }) : setMsg(tx.explore.unverifiedMessage))}
+              onPress={() =>
+                me.verified
+                  ? navigation.navigate('Chat', { profileId: p.id, name: p.display_name })
+                  : // #124: solid toast above the bar instead of a see-through banner floating over the content.
+                    toast(tx.explore.unverifiedMessage, { label: tx.me.verifyNow, on: () => navigation.navigate('Verify') })
+              }
             />
           </View>
-        </View>
-      ) : null}
-      {msg ? (
-        <View style={{ position: 'absolute', left: space.l, right: space.l, bottom: insets.bottom + 90 }}>
-          <Banner tone="warn" text={msg} onPress={() => (me.verified ? setMsg(null) : navigation.navigate('Verify'))} />
         </View>
       ) : null}
 
@@ -298,7 +300,11 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
         {friendRows.map((r) => (
           <SheetRow key={r.label} testID="profile-friend" title={r.label} onPress={r.on} />
         ))}
-        <SheetRow title={tx.profile.share} onPress={() => Share.share({ message: `https://thirstr.fun/p/${p.id}` }).catch(() => {})} last={!(p.vouched || p.can_vouch)} />
+        <SheetRow title={tx.profile.share} onPress={() => {
+            // #124: close the sheet first; the system share sheet opens once it is gone.
+            setMenu(false);
+            afterSheet(() => Share.share({ message: `https://thirstr.fun/p/${p.id}` }).catch(() => {}));
+          }} last={!(p.vouched || p.can_vouch)} />
         {p.vouched || p.can_vouch ? (
           <SheetRow last title={p.vouched ? tx.profile.unvouch : tx.profile.vouch} onPress={() => act(() => api(p.vouched ? 'DELETE' : 'POST', `/profiles/${p.id}/vouch`), () => { setMenu(false); load(); })} />
         ) : null}

@@ -544,7 +544,7 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
       ) : !conv.gone ? (
         <>
           {!group ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: space.s, paddingHorizontal: space.l, paddingVertical: space.s }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" style={{ flexGrow: 0, flexShrink: 0 }} contentContainerStyle={{ gap: space.s, paddingHorizontal: space.l, paddingVertical: space.s }}>
               {[...tx.chat.quick, ...custom].map((q, i) => (
                 <Pressable key={q + i} accessibilityRole="button" onPress={() => send(i < tx.chat.quick.length ? { t: 'quick_reply', text: q, k: i } : { t: 'quick_reply', text: q })} style={{ paddingHorizontal: 14, height: 36, justifyContent: 'center', borderRadius: radius.pill, backgroundColor: color.bgRaised }}>
                   <Text style={{ ...type.meta, color: color.fgPrimary, fontFamily: font.medium }}>{q}</Text>

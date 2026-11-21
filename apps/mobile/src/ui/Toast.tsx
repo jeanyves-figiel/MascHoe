@@ -85,7 +85,7 @@ export function ToastHost() {
             color: color.onAccent,
             flex: 1,
           }}
-          numberOfLines={2}
+          numberOfLines={3}
         >
           {t.text}
         </Text>

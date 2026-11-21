@@ -47,13 +47,13 @@ export function TapsScreen({ navigation }: { navigation: Nav }) {
                 </View>
                 <View style={{ flex: 1, gap: 2 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <Text style={{ ...type.headline, color: color.fgPrimary }}>
+                    <Text numberOfLines={1} style={{ ...type.headline, color: color.fgPrimary, flexShrink: 1 }}>
                       {item.profile.display_name}, {item.profile.age}
                     </Text>
                     {item.profile.verified ? <VerifiedTick size={13} /> : null}
                     {!item.seen ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color.hookup, marginLeft: 2 }} /> : null}
                   </View>
-                  <Text numberOfLines={1} style={{ ...type.meta, color: mutual ? color.hookup : color.fgMuted }}>
+                  <Text numberOfLines={2} style={{ ...type.meta, color: mutual ? color.hookup : color.fgMuted }}>
                     {mutual ? tx.profile.mutual : new Date(item.at).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })}
                   </Text>
                 </View>

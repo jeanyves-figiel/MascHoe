@@ -125,6 +125,8 @@ function VerifyRoute({ navigation }: { navigation: { goBack: () => void } }) {
 }
 
 const nav = createNavigationContainerRef<Record<string, object | undefined>>();
+// Visual audits (#124): web builds made with EXPO_PUBLIC_E2E=1 expose the navigator so a script can open any screen.
+if (Platform.OS === 'web' && process.env.EXPO_PUBLIC_E2E === '1') (globalThis as { __nav?: typeof nav }).__nav = nav;
 
 /** #114 R-05.7: when a timed Hidden ends, come back at the chosen level (needs a fresh cell from the phone). */
 function useHiddenReturn() {

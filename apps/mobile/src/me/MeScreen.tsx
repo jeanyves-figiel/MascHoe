@@ -14,7 +14,7 @@ import { LENSES } from '../profile/lens';
 import { contacts } from '../safety/safety';
 import { color, font, modeColor, radius, space, touch, type } from '../theme/tokens';
 import type { Notice } from '../trust/NoticesScreen';
-import { Banner, Button, ErrorText, Icon, Photo, Sheet, VerifiedTick } from '../ui';
+import { afterSheet, Banner, Button, ErrorText, Icon, Photo, Sheet, VerifiedTick } from '../ui';
 import { HiddenPanel } from './HiddenPanel';
 import { NowSheet } from './NowSheet';
 import { prefs, setPrefs } from './prefs';
@@ -158,7 +158,7 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
               </View>
               <View style={{ flex: 1, gap: space.xs }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.s }}>
-                  <Text style={{ ...type.title, color: color.fgPrimary, flexShrink: 1 }} numberOfLines={1}>
+                  <Text style={{ ...type.title, color: color.fgPrimary, flexShrink: 1 }} numberOfLines={2}>
                     {p.display_name}, {p.age}
                   </Text>
                   {me.verified ? <VerifiedTick size={18} /> : null}
@@ -173,11 +173,12 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
                 ) : null}
               </View>
             </View>
+            {/* #124: buttons size to their label so "Profil bearbeiten" stays on one line on small phones. */}
             <View style={{ flexDirection: 'row', gap: space.s }}>
-              <View style={{ flex: 1 }}>
+              <View style={{ flexGrow: 1, flexBasis: 'auto' }}>
                 <Button testID="edit-profile" small title={tx.me.editProfile} fill={color.fgPrimary} onPress={() => navigation.navigate('EditProfile', { id: p.id })} />
               </View>
-              <View style={{ flex: 1 }}>
+              <View style={{ flexGrow: 1, flexBasis: 'auto' }}>
                 <Button testID="me-preview" small kind="secondary" title={v3.me.preview} onPress={() => navigation.navigate('LensPreview')} />
               </View>
             </View>
@@ -211,7 +212,7 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
                       accessibilityState={{ checked: on, disabled: busy }}
                       accessibilityLabel={tx.location.levels[l][0]}
                       onPress={() => pickLevel(l)}
-                      style={{ flex: 1, height: 40, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 4, backgroundColor: on ? color.trust : 'transparent', opacity: locked ? 0.5 : 1 }}
+                      style={{ flexGrow: 1, flexShrink: 1, flexBasis: 'auto', paddingHorizontal: 6, height: 40, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 4, backgroundColor: on ? color.trust : 'transparent', opacity: locked ? 0.5 : 1 }}
                     >
                       {locked ? <Icon.Lock size={11} c={color.fgSecondary} /> : null}
                       <Text numberOfLines={1} style={{ ...type.meta, fontFamily: font.bold, fontSize: 14, color: on ? color.onAccent : color.fgSecondary }}>
@@ -391,7 +392,14 @@ function QrSheet({ visible, profileId, onClose }: { visible: boolean; profileId:
       {share ? (
         <View style={{ alignItems: 'center', gap: space.m }}>
           <Qr value={share.url} size={200} />
-          <Button title={tx.share.send} onPress={() => Share.share({ message: share.url }).catch(() => {})} />
+          <Button
+            title={tx.share.send}
+            onPress={() => {
+              // #124: system share sheet only after this sheet is gone (iOS freeze otherwise).
+              onClose();
+              afterSheet(() => Share.share({ message: share.url }).catch(() => {}));
+            }}
+          />
         </View>
       ) : share === null ? (
         <Button kind="secondary" title={tx.share.create} onPress={() => api('POST', `/me/profiles/${profileId}/share`).then(load, () => {})} />

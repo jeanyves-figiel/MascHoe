@@ -36,10 +36,12 @@ export function ProfileTile({ card, onPress, onLongPress, tray, selected }: { ca
       ) : null}
       <View style={{ position: 'absolute', left: space.s + 2, right: space.s + 2, bottom: space.s }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          {/* #124: a long name shortens, the age always stays visible. */}
           <Text numberOfLines={1} style={{ ...type.headline, fontSize: tray ? 15 : 14, color: color.fgPrimary, flexShrink: 1 }}>
             {card.display_name}
-            {tray ? `, ${card.age}` : ` ${card.age}`}
+            {tray ? ',' : ''}
           </Text>
+          <Text style={{ ...type.headline, fontSize: tray ? 15 : 14, color: color.fgPrimary }}>{card.age}</Text>
           {card.verified ? <VerifiedTick size={13} /> : null}
         </View>
         <Text numberOfLines={1} style={{ ...type.meta, fontSize: 11, color: color.fgSecondary }}>
