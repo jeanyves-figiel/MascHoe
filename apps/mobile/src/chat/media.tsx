@@ -151,7 +151,7 @@ export function videoProblem(kind: Video.VideoError['kind']) {
   return kind === 'large' ? mx.tooLarge : kind === 'long' ? mx.tooLong : mx.videoError;
 }
 
-// iOS: the system exports picked videos at 1080p H.265 (R-08.17). Android keeps the file;
+// iOS: the system exports picked and recorded videos at 1080p H.265 (R-08.17). Android keeps the file;
 // the 50 MB cap still applies.
 const VIDEO_PICK = { videoMaxDuration: Video.MAX_S, videoExportPreset: ImagePicker.VideoExportPreset.HEVC_1920x1080 } as const;
 const asSource = (a: ImagePicker.ImagePickerAsset): Source =>
@@ -165,13 +165,13 @@ export async function pickPhotos(limit = 10): Promise<Source[]> {
 }
 
 /**
- * System camera, one photo. Recording a video needs the microphone, which the app does not ask for
- * (privacy; video check records without sound), so chat videos come from the library (#231).
+ * System camera: one photo, or a video up to 3 min (#231). Recording asks for the microphone the
+ * first time (iOS). The file then goes through the same checks and metadata removal as any video (R-08.17).
  */
 export async function takePhoto(): Promise<Source | null> {
   const p = await ImagePicker.requestCameraPermissionsAsync();
   if (!p.granted) return null;
-  const r = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 1, exif: false });
+  const r = await ImagePicker.launchCameraAsync({ mediaTypes: ['images', 'videos'], quality: 1, exif: false, videoQuality: ImagePicker.UIImagePickerControllerQualityType.High, ...VIDEO_PICK });
   if (r.canceled || !r.assets[0]) return null;
   return asSource(r.assets[0]);
 }
