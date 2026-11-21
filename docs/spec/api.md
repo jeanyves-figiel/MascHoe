@@ -48,7 +48,7 @@ Outside `/v1`: `GET /.well-known/apple-app-site-association` → `{webcredential
 `PUT /me/location` (F-05) accepts `{level: area|exact, cell_r9}` or `{level: city, city_id | cell_r5}`; `hidden` requires verification. Onboarding step order: `basics → location → photo → verify → done`.
 
 ### Verification (F-03)
-| POST | /verification/challenge | → {nonce, steps: 3 of turn_left\|turn_right\|blink\|smile\|look_up, expires_in: 300, key: {n: b64url, e, bits: 3072, hash: "SHA-384"}}. 403 during the 24 h cooldown (R-03.10) |
+| POST | /verification/challenge | → {nonce, steps: 3 of turn_left\|turn_right\|smile\|look_up (blink dropped, #131), expires_in: 300, key: {n: b64url, e, bits: 3072, hash: "SHA-384"}}. 403 during the 24 h cooldown (R-03.10) |
 | POST | /verification/attest | {nonce, passed: bool, blinded?: b64url} → {signature: b64url} when passed, else {passed: false, attempts_left}. Nonce single use (AC-03.3); 3 fails / 24 h → cooldown |
 | POST | /verification/redeem | {token: b64url 32–64 B, signature: b64url} → Me (verified, epoch + 1; onboarding `verify` → `done`). Signature check: `sᵉ mod n = MGF1-SHA-384(token) mod n`; sha256(token) stored once (spent) |
 Blind signature (R-03.4, Chaum RSA-FDH): client picks random `token` and `r`, sends `FDH(token)·rᵉ mod n`, unblinds `s = s'·r⁻¹ mod n`. The issuer key is generated once and kept in `server_keys`. Credentials lapse after 12 months (daily sweep, R-03.7).

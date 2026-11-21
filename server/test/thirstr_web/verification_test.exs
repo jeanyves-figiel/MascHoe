@@ -45,6 +45,7 @@ defmodule ThirstrWeb.VerificationTest do
       req(u, "/v1/verification/challenge") |> json_response(200)
 
     assert length(steps) == 3
+    refute "blink" in steps
     token = :crypto.strong_rand_bytes(32)
     {blinded, r, n} = blind(token, key)
 

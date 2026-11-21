@@ -1,7 +1,7 @@
 import { requireOptionalNativeModule } from 'expo';
 
 /** Face measurements from Apple Vision (iOS only). Numbers only; the photo stays on the device. */
-export type FaceReading = { faces: number; yaw?: number; pitch?: number; roll?: number; size?: number; leftEye?: number; rightEye?: number; mouth?: number };
+export type FaceReading = { faces: number; yaw?: number; pitch?: number; roll?: number; size?: number; leftEye?: number; rightEye?: number; mouth?: number; noseX?: number; noseY?: number };
 
 type Native = { analyze(uri: string): Promise<FaceReading> };
 
