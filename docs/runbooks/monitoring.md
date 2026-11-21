@@ -19,6 +19,7 @@
 | `thirstr_push_send_count{platform,outcome}` | push sends: `ok`, `retry`, `skipped` |
 | `thirstr_valkey_fallback_count` | rate limits served by the per-node fallback (Valkey unreachable) |
 | `thirstr_db_size_bytes` | database size (volume is 3 GB on prod) |
+| `thirstr_retention_overdue{rule}` | rows past their retention deadline + grace, per rule (EN-17; should be 0, probe every 5 min, capped at 10 000) |
 | `thirstr_client_session_count{platform}` | app starts (one ping per start, anonymous; EN-05) |
 | `thirstr_client_error_count{platform,fatal}` | app error reports; `fatal="true"` = crash (EN-05) |
 
@@ -35,6 +36,7 @@
 | Machine memory | `max(vm_memory_total) > 400e6` (512 MB VMs) | 10 m | scale VM memory (SR-12) |
 | Backups stale | DB machine log `backup-loop: … FAILED`, or no `backup ok` in 26 h | — | `docs/runbooks/db-backups.md` › Check |
 
+| Retention overdue | `max by (rule) (thirstr_retention_overdue) > 0` | 1 h | sweep job failing? `oban_job_exception_count{worker="Thirstr.Jobs.ExpirySweep"}`; run `Thirstr.Jobs.ExpirySweep.perform(nil)` via rpc; rules in `Thirstr.Retention` |
 | App crash rate | `sum(increase(thirstr_client_error_count{fatal="true"}[1h])) / sum(increase(thirstr_client_session_count[1h])) > 0.005` (crash-free < 99.5 %) | 1 h | see App crashes below; bad build → raise `min_build` or kill the feature (`flags.md`) |
 
 Set up once per environment; staging alerts go to a muted contact point.

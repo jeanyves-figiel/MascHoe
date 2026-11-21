@@ -170,3 +170,5 @@ Beta store: one encrypted key-value table (`expo-sqlite` + SQLCipher, key in Key
 | Tonight / Now / activity posts | expiry + 1 h |
 | Reports | 1 y (legal), franked payload deleted after decision + 90 d |
 | Deleted account | hard delete ≤ 24 h; backups roll off ≤ 30 d |
+
+Enforcement is measured (EN-17): `Thirstr.Retention` counts rows past each deadline + grace and exports `thirstr_retention_overdue{rule}`; alert when > 0 for 1 h (`docs/runbooks/monitoring.md`). A new retention rule adds a probe there.

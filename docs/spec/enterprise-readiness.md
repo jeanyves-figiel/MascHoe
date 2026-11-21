@@ -32,7 +32,7 @@ Goal: run Thirstr like a mature consumer platform: no lost messages, no lost dat
 - **EN-06** (#165) On-call: rotation (owner + ≥ 1 engineer once hired), paging (phone push + SMS), runbook per alert, escalation path.
 
 ### C. Incident response
-- **EN-07** (#166) Incident process: severity levels, incident commander, comms templates (in-app banner, status page, email), GDPR 72 h breach notification flow (Art. 33/34), blameless post-mortems with tracked actions, yearly tabletop exercise.
+- **EN-07** (#166) Incident process: severity levels, incident commander, comms templates (in-app banner, status page, email), GDPR 72 h breach notification flow (Art. 33/34), blameless post-mortems with tracked actions, yearly tabletop exercise. ✔ `docs/runbooks/incident-response.md`, register `docs/incidents/` (legal wording to confirm with counsel, #9).
 
 ### D. Security
 - **EN-08** (#167) Security program: annual external pen test (API + iOS + Android + MLS implementation review), bug bounty (private → public), SAST/DAST in CI (sobelow, semgrep, ZAP on staging), dependency patch SLAs (critical 48 h), SBOM already signed (cosign).
@@ -56,7 +56,7 @@ Goal: run Thirstr like a mature consumer platform: no lost messages, no lost dat
 - **EN-16** (#175) Device test matrix: real-device runs (low-end Android, old iPhone, 3G profile) in CI nightly; performance budgets enforced (EN-18).
 
 ### H. Retention, backup & DR
-- **EN-17** (#176) Quarterly full DR drill: restore prod into the second region from backups only, measure RTO/RPO, log in `docs/runbooks/db-backups.md`. Automated checks that retention rules (data-model.md) actually delete (row age metrics).
+- **EN-17** (#176) Quarterly full DR drill: restore prod into the second region from backups only, measure RTO/RPO, log in `docs/runbooks/db-backups.md`. Automated checks that retention rules (data-model.md) actually delete (row age metrics). Retention probes ✔ (`Thirstr.Retention`, alert in monitoring.md); DR drill open.
 
 ### I. Performance, battery & data saving ("no compromises")
 - **EN-18** (#177) Performance + energy budget, measured on every release:
