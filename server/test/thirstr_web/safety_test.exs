@@ -103,6 +103,28 @@ defmodule ThirstrWeb.SafetyTest do
     assert authed(u) |> post("/v1/checkin/#{t}/ok", %{}) |> json_response(404)
   end
 
+  test "a check-in whose phone lost its copy can be ended without the token (#127)", %{
+    u: u,
+    c: c
+  } do
+    {id, rid} = contact(u, c)
+    env = [%{relay: id, ciphertext: ct()}]
+    authed(u) |> post("/v1/checkin", %{due_at: due(60), alerts: env}) |> json_response(201)
+
+    assert %{"error" => %{"code" => "checkin_active"}} =
+             authed(u)
+             |> post("/v1/checkin", %{due_at: due(60), alerts: env})
+             |> json_response(409)
+
+    authed(u) |> delete("/v1/checkin/current") |> response(204)
+    assert %{"checkin" => nil} = authed(u) |> get("/v1/checkin") |> json_response(200)
+
+    assert [[0]] = Thirstr.Repo.query!("SELECT count(*) FROM safety_msgs").rows
+    assert [] = inbox(c, rid)
+    authed(u) |> post("/v1/checkin", %{due_at: due(60), alerts: env}) |> json_response(201)
+    authed(u) |> delete("/v1/checkin/current") |> response(204)
+  end
+
   test "panic releases immediately; envelopes only to own accepted relays", %{
     u: u,
     c: c,

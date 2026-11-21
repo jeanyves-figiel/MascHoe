@@ -81,6 +81,15 @@ defmodule Thirstr.Safety do
     end
   end
 
+  @doc """
+  #127: end the account's running check-in without its token, when the phone lost its local
+  copy (reinstall, wipe). Held alerts go with it (FK cascade); nothing is sent to contacts.
+  """
+  def end_current(%Account{} = a) do
+    q!("DELETE FROM checkins WHERE account_id = $1", [uuid(a.id)])
+    :ok
+  end
+
   def start(%Account{} = a, %{"due_at" => due} = p) do
     now = DateTime.utc_now()
 
