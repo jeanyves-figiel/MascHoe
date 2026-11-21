@@ -18,7 +18,9 @@ type Props = {
   sender?: string | null;
   senderColor: string;
   reactions: string[];
-  onLongPress: () => void;
+  onLongPress?: () => void;
+  /** F-19 G1: quoted message shown above the text. */
+  quote?: React.ReactNode;
   onTranslated: (from: string) => void;
   /** R-07.39: search term to mark in the shown text. */
   mark?: string | null;
@@ -26,7 +28,7 @@ type Props = {
   ring?: boolean;
 };
 
-export function TranslatedText({ cid, id, text, mode, sender, senderColor, reactions, onLongPress, onTranslated, mark, ring }: Props) {
+export function TranslatedText({ cid, id, text, mode, sender, senderColor, reactions, onLongPress, onTranslated, mark, ring, quote }: Props) {
   const [st, setSt] = useState<TrState>({ kind: 'none' });
   const [orig, setOrig] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -68,6 +70,7 @@ export function TranslatedText({ cid, id, text, mode, sender, senderColor, react
         style={{ maxWidth: '80%', paddingHorizontal: space.m, paddingVertical: 10, borderRadius: 20, borderBottomLeftRadius: 6, backgroundColor: color.bgRaised, gap: 2, borderWidth: ring ? 2 : 0, borderColor: color.personal }}
       >
         {sender ? <Text style={{ ...type.caption, color: senderColor }}>{sender}</Text> : null}
+        {quote}
         {mark && !done ? (
           <Marked style={{ ...type.body, color: color.fgPrimary }} text={text} q={mark} />
         ) : (

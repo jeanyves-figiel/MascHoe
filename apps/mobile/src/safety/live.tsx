@@ -2,6 +2,8 @@
 import { getLocales } from 'expo-localization';
 import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Animated, Easing, Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { GestureDetector } from 'react-native-gesture-handler';
+import Reanimated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 import { useSession } from '../app/session';
@@ -9,6 +11,7 @@ import { dx } from '../i18n/date';
 import { tx } from '../i18n/app';
 import { color, font, radius, space, type } from '../theme/tokens';
 import { Button, ErrorText, Icon, Toggle } from '../ui';
+import { useDragClose } from '../ui/dragClose';
 import { getLock } from './lock';
 import { HoldButton } from './parts';
 import { dismissCue, hhmm, leftParts, startForChat, whoText } from './quick';
@@ -136,23 +139,30 @@ export function SheetFrame({ onClose, children, testID }: { onClose: () => void;
     closing.current = true;
     Animated.timing(v, { toValue: 0, duration: 180, useNativeDriver: true }).start(() => onClose());
   }, [v, onClose]);
+  const drag = useDragClose(onClose);
   return (
     <View style={{ flex: 1, justifyContent: 'flex-end' }}>
       <Animated.View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: color.scrim, opacity: v }}>
         <Pressable style={{ flex: 1 }} onPress={close} accessibilityRole="button" accessibilityLabel={tx.common.close} />
       </Animated.View>
+      <Reanimated.View style={[{ maxHeight: '90%' }, drag.sheetStyle]} onLayout={drag.onLayout}>
       <Animated.View
         testID={testID}
         accessibilityViewIsModal
-        style={{ maxHeight: '90%', backgroundColor: color.bgRaised, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [600, 0] }) }] }}
+        onAccessibilityEscape={close}
+        style={{ maxHeight: '100%', backgroundColor: color.bgRaised, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [600, 0] }) }] }}
       >
-        <View style={{ alignItems: 'center', paddingTop: space.s, paddingBottom: space.xs }}>
-          <View style={{ width: 40, height: 5, borderRadius: 3, backgroundColor: color.line }} />
-        </View>
+        {/* F-19 G15 (#187): drag the handle down to close. */}
+        <GestureDetector gesture={drag.pan}>
+          <View style={{ alignItems: 'center', paddingTop: space.s, paddingBottom: space.s }}>
+            <View style={{ width: 40, height: 5, borderRadius: 3, backgroundColor: color.line }} />
+          </View>
+        </GestureDetector>
         <ScrollView keyboardDismissMode="on-drag" contentContainerStyle={{ paddingHorizontal: space.xl, paddingTop: space.s, paddingBottom: insets.bottom + space.xxl, gap: space.l }} keyboardShouldPersistTaps="handled">
           {children}
         </ScrollView>
       </Animated.View>
+      </Reanimated.View>
     </View>
   );
 }

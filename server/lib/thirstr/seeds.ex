@@ -108,11 +108,11 @@ defmodule Thirstr.Seeds do
     Enum.each(all, fn {name, country, lat, lng} ->
       Repo.query!(
         """
-        INSERT INTO cities (name, country, lat, lng, cell_r5)
-        SELECT $1::text, $2::text, $3::float8, $4::float8, h3_lat_lng_to_cell(point($4::float8, $3::float8), 5)::bigint
-        WHERE NOT EXISTS (SELECT 1 FROM cities WHERE name = $1::text)
+        INSERT INTO cities (name, country, lat, lng, cell_r5, search_key, population)
+        SELECT $1::text, $2::text, $3::float8, $4::float8, h3_lat_lng_to_cell(point($4::float8, $3::float8), 5)::bigint, $5::text, 100000
+        WHERE NOT EXISTS (SELECT 1 FROM cities WHERE name = $1::text OR (search_key = $5::text AND country = $2::text))
         """,
-        [name, country, lat, lng]
+        [name, country, lat, lng, Thirstr.Cities.key(name)]
       )
     end)
   end

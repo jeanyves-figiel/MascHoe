@@ -544,10 +544,11 @@ defmodule Thirstr.Location do
   # ------------------------------------------------------------- cities & welcome
 
   def search_cities(q) when is_binary(q) and byte_size(q) >= 2 do
-    pattern = String.downcase(q) |> String.replace(~r/[%_\\]/, "") |> Kernel.<>("%")
+    # F-20: accent-insensitive prefix match, biggest cities first.
+    pattern = Thirstr.Cities.key(q) |> String.replace(~r/[%_\\]/, "") |> Kernel.<>("%")
 
     Repo.query!(
-      "SELECT id, name, country, cell_r5::h3index::text FROM cities WHERE lower(name) LIKE $1 ORDER BY name LIMIT 10",
+      "SELECT id, name, country, cell_r5::h3index::text FROM cities WHERE search_key LIKE $1 ORDER BY population DESC, name LIMIT 10",
       [pattern]
     ).rows
     |> Enum.map(fn [id, name, country, cell] ->
@@ -563,8 +564,8 @@ defmodule Thirstr.Location do
   """
   def welcome(city_name) do
     case Repo.query!(
-           "SELECT name, cell_r5::h3index::text, lat, lng FROM cities WHERE lower(name) = lower($1) LIMIT 1",
-           [city_name]
+           "SELECT name, cell_r5::h3index::text, lat, lng FROM cities WHERE search_key = $1 ORDER BY population DESC LIMIT 1",
+           [Thirstr.Cities.key(city_name)]
          ).rows do
       [[name, r5, lat, lng]] ->
         %{rows: cells} =

@@ -7,6 +7,7 @@ import { color, space, type } from '../theme/tokens';
 import { Banner, Button, ErrorText, Field, Hero, Icon, ListRow, Loading, Section, Toggle } from '../ui';
 import { ap } from '../i18n/addplace';
 import { Who } from './TonightScreen';
+import { usePull } from '../ui/pull';
 import type { Here, Venue } from './types';
 
 type Nav = { navigate: (s: string, p?: object) => void; goBack: () => void };
@@ -36,6 +37,7 @@ export function VenueScreen({ navigation, route }: { navigation: Nav; route: { p
   useEffect(() => {
     load();
   }, [load]);
+  const refresh = usePull(load); // F-19 G6
 
   const call = async (fn: () => Promise<unknown>) => {
     setBusy(true);
@@ -67,6 +69,7 @@ export function VenueScreen({ navigation, route }: { navigation: Nav; route: { p
 
   return (
     <ScrollView
+      refreshControl={refresh}
       style={{ flex: 1, backgroundColor: color.bgBase }}
       contentContainerStyle={{
         padding: space.l,

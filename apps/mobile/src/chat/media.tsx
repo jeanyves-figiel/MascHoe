@@ -2,7 +2,7 @@
 import { gcm } from '@noble/ciphers/aes.js';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useState } from 'react';
-import { Image, Modal, Platform, Pressable, Text, View } from 'react-native';
+import { Image, Platform, Pressable, Text, View } from 'react-native';
 import { api } from '../api/client';
 import { useSession } from '../app/session';
 import { tx } from '../i18n/app';
@@ -14,6 +14,7 @@ import { kv } from './kv';
 import * as Recent from './recent';
 import * as Lib from './library';
 import * as MediaCache from './mediaCache';
+import { PhotoViewer } from '../ui/PhotoViewer';
 
 export type SendOpts = { once: boolean; expiry: '1h' | '24h' | '7d' | 'keep'; save: boolean };
 const EXPIRY_S = { '1h': 3600, '24h': 86400, '7d': 7 * 86400, keep: null } as const;
@@ -206,13 +207,7 @@ export function MediaBubble({ m, media, mine, cid, conv }: { m: E.Msg; media: E.
   );
 }
 
-/** S-43 media viewer. */
+/** S-43 media viewer (F-19 G13: pinch / double-tap zoom, swipe down to close). One photo, so no paging. */
 function Viewer({ uri, onClose }: { uri: string | null; onClose: () => void }) {
-  return (
-    <Modal visible={!!uri} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable onPress={onClose} accessibilityLabel={tx.common.close} style={{ flex: 1, backgroundColor: color.bgBase, alignItems: 'center', justifyContent: 'center' }}>
-        {uri ? <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="contain" /> : null}
-      </Pressable>
-    </Modal>
-  );
+  return <PhotoViewer items={uri ? [uri] : null} index={0} src={(u: string) => u} onClose={onClose} single />;
 }

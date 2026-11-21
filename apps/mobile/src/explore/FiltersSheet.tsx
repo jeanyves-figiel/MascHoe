@@ -3,9 +3,12 @@ import { View } from 'react-native';
 import { useOptions } from '../api/options';
 import type { Mode } from '../api/types';
 import { opt, tx } from '../i18n/app';
-import { modeColor, space } from '../theme/tokens';
+import { color, modeColor, space } from '../theme/tokens';
+import { tr } from '../i18n/travel';
 import { Banner, Button, Chip, Chips, RangeSlider, Section, SectionLabel, Segmented, Sheet, Toggle } from '../ui';
 import { defaultFilters, Filters } from './explore';
+import { setCols, useCols, type Cols } from './gridCols';
+import { gx } from '../i18n/gestures';
 
 const DISTANCES = [1000, 5000, 10000, 25000, 50000];
 
@@ -32,6 +35,7 @@ export function FiltersSheet({
   onApply: (f: Filters) => void;
 }) {
   const options = useOptions();
+  const cols = useCols();
   const [f, setF] = useState<Filters>(value);
   // Reset the draft whenever the sheet opens or the saved filters change.
   const [seen, setSeen] = useState({ value, visible });
@@ -58,6 +62,18 @@ export function FiltersSheet({
         format={(v) => (v === 99 ? '99+' : String(v))}
         onChange={(lo, hi) => setF((cur) => ({ ...cur, age_min: lo === 18 ? undefined : lo, age_max: hi === 99 ? undefined : hi }))}
       />
+      {/* F-19 G8: same as pinching the grid; device setting, applies at once. */}
+      <View style={{ gap: space.s }}>
+        <SectionLabel>{gx.gridSize}</SectionLabel>
+        <Segmented
+          grow
+          label={gx.gridSize}
+          value={String(cols)}
+          onChange={(v) => setCols(Number(v) as Cols)}
+          fills={{ '2': fill, '3': fill, '4': fill }}
+          options={([2, 3, 4] as const).map((n) => ({ value: String(n), label: gx.perRow(n) }))}
+        />
+      </View>
       <View style={{ gap: space.s }}>
         <SectionLabel>{tx.filters.distance} · km</SectionLabel>
         <Segmented
@@ -75,6 +91,8 @@ export function FiltersSheet({
       {mode === 'hookup' ? <Toggle label={tx.filters.hasNow} value={f.has_now} onChange={(v) => set('has_now', v)} tone={fill} /> : null}
       <Toggle label={tx.filters.hideCreators} value={f.hide_creators} onChange={(v) => set('hide_creators', v)} tone={fill} />
       <Toggle label={tx.filters.newMembers} value={f.new_members} onChange={(v) => set('new_members', v)} tone={fill} />
+      {/* F-20 R-20.12 */}
+      <Toggle label={tr.showVisitors} sub={tr.showVisitorsSub} value={f.visitors !== false} onChange={(v) => set('visitors', v)} tone={color.travel} />
       </Section>
       {!verified && mode === 'hookup' ? <Banner tone="warn" text={tx.filters.verifiedHint} /> : null}
       {options

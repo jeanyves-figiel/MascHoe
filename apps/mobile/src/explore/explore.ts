@@ -10,10 +10,12 @@ export type Filters = {
   has_now: boolean;
   hide_creators: boolean;
   new_members: boolean;
+  /** F-20 R-20.12: Show visitors (default on). */
+  visitors?: boolean;
   [k: string]: unknown;
 };
 
-export const defaultFilters: Filters = { verified_only: true, online_now: false, has_now: false, hide_creators: true, new_members: false };
+export const defaultFilters: Filters = { verified_only: true, online_now: false, has_now: false, hide_creators: true, new_members: false, visitors: true };
 
 /** Filters no longer offered (#106: languages; chats translate instead). Dropped from saved filters. */
 const RETIRED = ['languages'];
@@ -37,11 +39,17 @@ export function query(intents: Mode[], f: Filters, extra: Record<string, string>
   return p.join('&');
 }
 
-export const loadGrid = (i: Mode[], f: Filters, cursor?: string | null) => api<Grid>('GET', '/explore/grid?' + query(i, f, cursor ? { cursor } : {}));
-export const loadTray = (i: Mode[], f: Filters) => api<{ items: Card[] }>('GET', '/explore/tray?' + query(i, f));
+/** F-20 R-20.15: `trip` = Look around that trip city (its id goes as `trip_id`). */
+type X = { trip?: string | null };
+const tp = (x?: X): Record<string, string> => (x?.trip ? { trip_id: x.trip } : {});
+export const loadGrid = (i: Mode[], f: Filters, cursor?: string | null, x?: X) => api<Grid>('GET', '/explore/grid?' + query(i, f, { ...(cursor ? { cursor } : {}), ...tp(x) }));
+export const loadTray = (i: Mode[], f: Filters, x?: X) => api<{ items: Card[] }>('GET', '/explore/tray?' + query(i, f, tp(x)));
 const bboxParam = (b: [number, number, number, number]) => b.map((n) => n.toFixed(5)).join(',');
-export const loadMap = (i: Mode[], f: Filters, bbox: [number, number, number, number]) => api<MapData>('GET', '/explore/map?' + query(i, f, { bbox: bboxParam(bbox) }));
-export const loadSummary = (i: Mode[], f: Filters) => api<ExploreSummary>('GET', '/explore/summary?' + query(i, f));
+export const loadMap = (i: Mode[], f: Filters, bbox: [number, number, number, number], x?: X) => api<MapData>('GET', '/explore/map?' + query(i, f, { bbox: bboxParam(bbox), ...tp(x) }));
+export const loadSummary = (i: Mode[], f: Filters, x?: X) => api<ExploreSummary>('GET', '/explore/summary?' + query(i, f, tp(x)));
+/** F-20 R-20.11: visitors for the map bubble (count, centre, first faces). */
+export const loadVisitors = (i: Mode[], f: Filters, x?: X) =>
+  api<{ count: number; center: { lat: number; lng: number } | null; items: Card[] }>('GET', '/explore/visitors?' + query(i, f, tp(x)));
 /** R-04.20: only the viewport goes out, to our own API (never a third-party place service). */
 export const loadPlaces = (kinds: string[], bbox: [number, number, number, number]) =>
   kinds.length ? api<{ places: Place[] }>('GET', `/places?bbox=${bboxParam(bbox)}&kinds=${kinds.join(',')}`) : Promise.resolve({ places: [] as Place[] });

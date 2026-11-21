@@ -52,7 +52,26 @@ export type Card = {
   lng?: number;
   /** R-04.19 (#113): his `show_in`, ordered hookup → friends → sport. */
   intents?: Mode[];
+  /** F-20 R-20.13: listed because of a trip (no distance). */
+  visitor?: boolean;
+  trip?: VisitorTrip | null;
 };
+
+/** F-20: what others see of a shown trip (never his position or other trips). */
+export type VisitorTrip = { city: string; country: string; first_day: string; last_day: string; here: boolean; from: string | null };
+
+/** F-20 own trip (GET /trips). */
+export type Trip = {
+  id: string;
+  city: { id: number; name: string; country: string; lat: number; lng: number };
+  first_day: string;
+  last_day: string;
+  show_days: number | null;
+  say_from: boolean;
+  shown_from: string | null;
+  safe_mode_country: boolean;
+};
+export type TripLimits = { max: number; ahead_days: number; max_days: number; creates_left: number };
 
 /** GET /places (#113, R-04.20). Venues/events at public coordinates; hosted parties at their r8 centroid. */
 export type Place = {
@@ -75,7 +94,7 @@ export type Place = {
 };
 
 /** GET /explore/summary (R-04.17, #104). */
-export type ExploreSummary = { place: string | null; counts: Record<Mode, number>; now: number; total?: number };
+export type ExploreSummary = { place: string | null; counts: Record<Mode, number>; now: number; total?: number; visitors?: number };
 export type Grid = { items: Card[]; next: string | null; further_from: number | null; reason: string | null; fit_m?: number | null };
 export type MapData = { cells: { cell: string; res: number; count: number }[]; pins: Card[]; avatars: Card[] };
 
@@ -103,6 +122,8 @@ export type ProfileView = {
   badges: { kind: string; since?: string; years?: number; up_pct?: number; total?: number }[];
   linked_accounts: { platform: string; handle: string; verified?: boolean; url?: string }[];
   self: boolean;
+  /** F-20 R-20.7: his shown trip to the viewer's area. */
+  trip?: VisitorTrip | null;
 };
 
 export type Settings = {
@@ -115,6 +136,8 @@ export type Settings = {
   show_in_tonight: boolean;
   show_in_activities: boolean;
   show_in_venues: boolean;
+  /** F-20 R-17.14 */
+  show_to_remote?: boolean;
   show_distance: 'exact' | 'range' | 'none';
   online_visible: boolean;
   read_receipts: boolean;

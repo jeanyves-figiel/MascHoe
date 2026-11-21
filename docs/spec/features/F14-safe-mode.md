@@ -21,6 +21,7 @@
 | Onboarding | F-02 R-02.10 variant |
 
 ## Rules
+- R-14.6 (#188) Travel (F-20): locals in Safe Mode are never returned to Look-around viewers (R-20.17); showing yourself early in a listed country needs a second confirm (R-20.19).
 - R-14.3 No server-side list of users in a country is ever produced; detection is client-side.
 - R-14.4 Leaving the country: prompt to restore previous settings.
 - R-14.5 Moderation coverage: reports from Safe Mode countries prioritized (SLA 1 h).

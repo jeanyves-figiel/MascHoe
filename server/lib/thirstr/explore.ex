@@ -11,7 +11,7 @@ defmodule Thirstr.Explore do
   - unverified viewers: no pins, distance ≥ "1–2 km" (R-04.10).
   Vouches never affect ordering (R-18.6).
   """
-  alias Thirstr.{Location, Repo, Settings, Storage, Valkey}
+  alias Thirstr.{Location, Repo, Settings, Storage, Trips, Valkey}
   alias Thirstr.Accounts.Account
 
   @modes %{"hookup" => "now", "sport" => "sport", "friends" => "friends"}
@@ -78,11 +78,22 @@ defmodule Thirstr.Explore do
       point: Location.viewer_point(a),
       # #197 R-05.16: ranges only while the viewer jumps through too many cells.
       brake: Location.spoof_brake?(a),
+      # F-20 R-20.15: true while looking around a trip city (point = its centre)
+      remote: false,
       # R-06.1: one profile per account, whatever the mode.
       profile_id: Enum.find_value(own, fn [id, _, _] -> id end),
       age: Enum.find_value(own, fn [_, k, age] -> if k == "now", do: age end) || 30
     }
   end
+
+  @doc """
+  F-20 R-20.15: Look around. The view point becomes the trip city's fixed centre; no Exact pins,
+  locals with `show_to_remote` off or in Safe Mode are left out (R-20.17).
+  """
+  def with_trip(v, nil), do: v
+
+  def with_trip(v, %{} = tp),
+    do: %{v | point: Map.take(tp, [:lat, :lng, :res, :exact, :cell]), remote: true}
 
   # ------------------------------------------------------------------ grid & tray
 
@@ -103,15 +114,16 @@ defmodule Thirstr.Explore do
   end
 
   defp grid_fresh(v, filters, offset) do
-    all = candidates(v, filters, "show_in_grid") |> sorted()
+    locals = candidates(v, filters, "show_in_grid") |> sorted()
+    all = interleave(locals, visitors(v, filters))
     page = Enum.slice(all, offset, @page)
     next = if length(all) > offset + @page, do: Integer.to_string(offset + @page)
     further_from = Enum.find_index(all, & &1.further)
-    fit = fit_m(all, v)
+    fit = fit_m(locals, v)
     put_order(v, filters, all, fit)
 
     %{
-      items: Enum.map(page, &card(&1, v)),
+      items: page |> with_here(v) |> Enum.map(&card(&1, v)),
       next: next,
       further_from: further_from && further_from - offset,
       reason: nil,
@@ -125,15 +137,25 @@ defmodule Thirstr.Explore do
   defp grid_page(v, filters, order, offset, fit) do
     slice = Enum.slice(order, offset, @page)
     further = Map.new(slice)
+    {vis, loc} = Enum.split_with(slice, &(elem(&1, 1) == :visitor))
 
     rows =
-      candidates(v, filters, "show_in_grid", Enum.map(slice, &elem(&1, 0)))
-      |> Map.new(&{&1.id, %{&1 | further: Map.get(further, &1.id, false)}})
+      candidates(v, filters, "show_in_grid", Enum.map(loc, &elem(&1, 0)))
+      |> Map.new(&{&1.id, %{&1 | further: Map.get(further, &1.id) == true}})
+      |> Map.merge(
+        if(vis == [],
+          do: %{},
+          else: visitors(v, filters, Enum.map(vis, &elem(&1, 0))) |> Map.new(&{&1.id, &1})
+        )
+      )
 
-    further_from = Enum.find_index(order, &elem(&1, 1))
+    further_from = Enum.find_index(order, &(elem(&1, 1) == true))
 
     %{
-      items: for({id, _} <- slice, r = rows[id], do: card(r, v)),
+      items:
+        for({id, _} <- slice, r = rows[id], do: r)
+        |> with_here(v)
+        |> Enum.map(&card(&1, v)),
       next: if(length(order) > offset + @page, do: Integer.to_string(offset + @page)),
       further_from: further_from && further_from - offset,
       reason: nil,
@@ -157,7 +179,8 @@ defmodule Thirstr.Explore do
     do:
       {v.account.id,
        :erlang.phash2(
-         {v.intents, v.mode, v.point, v.verified, v.hidden, v.new, v.safe_mode, v.age, filters}
+         {v.intents, v.mode, v.point, v.remote, v.verified, v.hidden, v.new, v.safe_mode, v.age,
+          filters}
        )}
 
   # online_now is decided per page (presence moves fast), so those pages are never cached.
@@ -168,7 +191,15 @@ defmodule Thirstr.Explore do
 
     # packed 17 bytes per profile (uuid + further flag) keeps 1 500 rows ≈ 25 KB
     packed =
-      for r <- all, into: <<>>, do: <<dump(r.id)::binary-16, if(r.further, do: 1, else: 0)>>
+      for r <- all,
+          into: <<>>,
+          do:
+            <<dump(r.id)::binary-16,
+              cond do
+                Map.get(r, :visitor) -> 2
+                r.further -> 1
+                true -> 0
+              end>>
 
     :ets.insert(
       @order_cache,
@@ -185,7 +216,9 @@ defmodule Thirstr.Explore do
 
     case :ets.lookup(@order_cache, order_key(v, filters)) do
       [{_, at, packed, fit}] when now - at <= @order_ttl_s ->
-        {for(<<id::binary-16, f <- packed>>, do: {Ecto.UUID.load!(id), f == 1}), fit}
+        {for(<<id::binary-16, f <- packed>>,
+           do: {Ecto.UUID.load!(id), if(f == 2, do: :visitor, else: f == 1)}
+         ), fit}
 
       _ ->
         nil
@@ -214,6 +247,72 @@ defmodule Thirstr.Explore do
     if v.verified, do: step, else: max(step, 2_000)
   end
 
+  # ------------------------------------------------------------------ visitors (F-20)
+
+  @doc """
+  F-20 R-20.12: visitors listed for the viewer's area, with every Explore visibility rule applied
+  (via `candidates/4` on their ids), in trip order. Never pinned, never a distance (R-20.13).
+  `filters.visitors == false` (Filters › Show visitors off) → none.
+  """
+  def visitors(v, filters, only_ids \\ nil)
+  def visitors(%{point: nil}, _filters, _ids), do: []
+  def visitors(_v, %{visitors: false}, _ids), do: []
+
+  def visitors(v, filters, only_ids) do
+    trips = Trips.visitor_trips(v)
+    trips = if only_ids, do: Enum.filter(trips, &(elem(&1, 0) in only_ids)), else: trips
+
+    case trips do
+      [] ->
+        []
+
+      _ ->
+        rows =
+          candidates(
+            v,
+            Map.delete(filters, :distance_max),
+            "show_in_grid",
+            Enum.map(trips, &elem(&1, 0))
+          )
+          |> Map.new(&{&1.id, &1})
+
+        for {id, trip} <- trips, r = rows[id] do
+          %{r | further: false, pin: nil}
+          |> Map.merge(%{visitor: true, trip: trip, dist_m: 0.0})
+        end
+    end
+  end
+
+  @doc "F-20 R-20.10: first visitor at position 2, then every 6th tile, before Further away."
+  def interleave(locals, []), do: locals
+
+  def interleave(locals, visitors) do
+    {near, far} = Enum.split_while(locals, &(not &1.further))
+    weave(near, visitors, 0, []) ++ far
+  end
+
+  defp weave(near, [v | vs], i, acc) when rem(i, 6) == 1, do: weave(near, vs, i + 1, [v | acc])
+  defp weave([n | ns], vs, i, acc), do: weave(ns, vs, i + 1, [n | acc])
+  defp weave([], vs, _i, acc), do: Enum.reverse(acc, vs)
+
+  # R-20.9: travellers already here keep their rank and get the "Here now" trip.
+  defp with_here(rows, v) do
+    ids = for r <- rows, not Map.get(r, :visitor, false), do: r.id
+
+    case v.point && Trips.here(v.point, ids) do
+      m when map_size(m) > 0 ->
+        Enum.map(rows, fn r ->
+          case m[r.id] do
+            nil -> r
+            t -> Map.put(r, :trip, t)
+          end
+        end)
+
+      _ ->
+        rows
+    end
+  end
+
   @doc "GET /explore/tray (R-04.4): up to 20 active-now cards."
   def tray(v, filters) do
     if v.point do
@@ -233,8 +332,9 @@ defmodule Thirstr.Explore do
   Now count (none when Sport is the only intent) and the viewer's own city-level place name.
   Legacy call (no `intents`): `filters` apply to the active mode only; other modes use defaults.
   """
-  def summary(%Account{} = a, mode, filters, intents \\ nil) do
-    v = viewer(a, mode, intents)
+  def summary(%Account{} = a, mode, filters, intents \\ nil, trip \\ nil) do
+    v = viewer(a, mode, intents) |> with_trip(trip)
+    viewer = fn m, i -> viewer(a, m, i) |> with_trip(trip) end
 
     case v.point do
       nil ->
@@ -252,10 +352,10 @@ defmodule Thirstr.Explore do
                   length(active)
 
                 intents ->
-                  viewer(a, m, [m]) |> candidates(filters, "show_in_grid") |> near.() |> length()
+                  viewer.(m, [m]) |> candidates(filters, "show_in_grid") |> near.() |> length()
 
                 true ->
-                  viewer(a, m)
+                  viewer.(m, nil)
                   |> candidates(parse_filters(%{}), "show_in_grid")
                   |> near.()
                   |> length()
@@ -264,10 +364,15 @@ defmodule Thirstr.Explore do
             {m, n}
           end)
 
+        visiting = length(visitors(v, filters))
+
         %{
-          place: place(point),
+          # F-20: looking around → the trip city itself
+          place: if(trip, do: trip.trip.city.name, else: place(point)),
           counts: counts,
-          total: length(active),
+          # F-20 R-20.10: "N around" includes listed visitors
+          total: length(active) + visiting,
+          visitors: visiting,
           now: if(v.intents == ["sport"], do: 0, else: Enum.count(active, & &1.now))
         }
     end
@@ -469,6 +574,7 @@ defmodule Thirstr.Explore do
       AND (a.settings->>'hide_from_age_min' IS NULL OR $8 >= (a.settings->>'hide_from_age_min')::int)
       AND (a.settings->>'hide_from_age_max' IS NULL OR $8 <= (a.settings->>'hide_from_age_max')::int)
       AND (NOT (a.safe_mode = 'on' OR a.safe_mode_active) OR ($5 AND NOT $7))
+      #{remote_sql(v)}
       #{where}
     ORDER BY 18
     LIMIT 1500
@@ -492,6 +598,13 @@ defmodule Thirstr.Explore do
 
     rows |> enrich(v) |> post_filter(filters)
   end
+
+  # F-20 R-20.17: looking around from afar never returns locals who opted out or are in Safe Mode.
+  defp remote_sql(%{remote: true}),
+    do:
+      "AND COALESCE((a.settings->>'show_to_remote')::boolean, true) AND NOT (a.safe_mode = 'on' OR a.safe_mode_active)"
+
+  defp remote_sql(_), do: ""
 
   defp row([
          id,
@@ -589,7 +702,10 @@ defmodule Thirstr.Explore do
 
     now = System.system_time(:second)
     see_online? = v.settings["online_visible"]
-    pins_ok? = v.verified and not v.safe_mode and Map.get(v, :intents, [v.mode]) != ["sport"]
+
+    pins_ok? =
+      v.verified and not v.safe_mode and Map.get(v, :intents, [v.mode]) != ["sport"] and
+        not Map.get(v, :remote, false)
 
     Enum.map(rows, fn r ->
       pin = if pins_ok?, do: allowed_pin(pins[r.id], r.id, v, chats)
@@ -695,7 +811,9 @@ defmodule Thirstr.Explore do
       online_now: bool.("online_now", false),
       has_now: bool.("has_now", false),
       hide_creators: bool.("hide_creators", true),
-      new_members: bool.("new_members", false)
+      new_members: bool.("new_members", false),
+      # F-20 R-20.12: Filters › Show visitors
+      visitors: bool.("visitors", true)
     }
 
     Enum.reduce(@field_filters, base, fn {k, _}, acc ->
@@ -794,7 +912,7 @@ defmodule Thirstr.Explore do
       verified: not is_nil(r.verified_at),
       photo: r.photo_key && Storage.presigned_get(r.photo_key),
       online: r.online,
-      distance: distance(r, v),
+      distance: if(Map.get(r, :visitor), do: nil, else: distance(r, v)),
       now: r.now,
       exact: not is_nil(r.pin),
       pin_expires_at: r.pin && r.pin.expires_at,
@@ -803,7 +921,10 @@ defmodule Thirstr.Explore do
       intent: fields["sport_intent"],
       position: fields["position"],
       new: DateTime.diff(DateTime.utc_now(), r.inserted_at, :day) < 14,
-      intents: intents_of(Map.get(r, :show_in))
+      intents: intents_of(Map.get(r, :show_in)),
+      # F-20 R-20.13
+      visitor: Map.get(r, :visitor, false),
+      trip: Map.get(r, :trip)
     }
   end
 
@@ -893,18 +1014,24 @@ defmodule Thirstr.Explore do
     if m < min, do: {min, true}, else: {m, false}
   end
 
-  defp city_name(nil), do: nil
+  @doc "City name for an r5 cell (nearest `cities` row), cached."
+  def city_name(nil), do: nil
 
-  defp city_name(r5hex) do
-    key = "cityname:" <> r5hex
+  def city_name(r5hex) do
+    # v2 (#188): the catalogue grew to every city ≥ 15 000; prefer a big city (≥ 50 000) within
+    # 15 km so suburbs don't replace the city people know.
+    key = "cityname2:" <> r5hex
 
     case Valkey.command!(["GET", key]) do
       nil ->
         name =
           case Repo.query!(
                  """
-                 SELECT name FROM cities
-                 ORDER BY h3_great_circle_distance(h3_cell_to_lat_lng(cell_r5::h3index), h3_cell_to_lat_lng($1::text::h3index)) LIMIT 1
+                 SELECT name FROM (
+                   SELECT name, population,
+                          h3_great_circle_distance(point(lng, lat), h3_cell_to_lat_lng($1::text::h3index), 'm') AS d
+                   FROM cities) c
+                 ORDER BY CASE WHEN population >= 50000 AND d < 15000 THEN 0 ELSE 1 END, d LIMIT 1
                  """,
                  [r5hex]
                ).rows do

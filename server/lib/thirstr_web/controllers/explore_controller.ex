@@ -2,7 +2,7 @@ defmodule ThirstrWeb.ExploreController do
   @moduledoc "F-04 Explore (S-10 map, S-11 grid, tray), F-05 location & visibility, F-09 Now, F-17 settings."
   use ThirstrWeb, :controller
 
-  alias Thirstr.{Explore, Location, Settings, Social}
+  alias Thirstr.{Explore, Location, Settings, Social, Trips}
   alias ThirstrWeb.MeJSON
 
   action_fallback ThirstrWeb.FallbackController
@@ -25,13 +25,28 @@ defmodule ThirstrWeb.ExploreController do
     intents = Explore.parse_intents(params["intents"])
     mode = if intents, do: hd(intents), else: params["mode"] || "hookup"
 
-    if mode in @modes,
-      do:
-        json(
-          conn,
-          Explore.summary(conn.assigns.account, mode, Explore.parse_filters(params), intents)
-        ),
-      else: {:error, {:validation, %{mode: ["hookup, sport or friends"]}}}
+    with true <- mode in @modes || {:error, {:validation, %{mode: ["hookup, sport or friends"]}}},
+         {:ok, trip} <- trip_point(conn, params) do
+      json(
+        conn,
+        Explore.summary(conn.assigns.account, mode, Explore.parse_filters(params), intents, trip)
+      )
+    end
+  end
+
+  @doc "F-20 GET /explore/visitors: listed visitors (map bubble, See all)."
+  def visitors(conn, params) do
+    with {:ok, v} <- viewer(conn, params) do
+      filters = Explore.parse_filters(params)
+      rows = Explore.visitors(v, filters)
+      center = with [r | _] <- rows, do: Trips.city_center(r.trip.city, r.trip.country)
+
+      json(conn, %{
+        count: length(rows),
+        center: if(is_map(center), do: center),
+        items: rows |> Enum.take(60) |> Enum.map(&Explore.card(&1, v))
+      })
+    end
   end
 
   def map(conn, params) do
@@ -46,10 +61,16 @@ defmodule ThirstrWeb.ExploreController do
     intents = Explore.parse_intents(params["intents"])
     mode = if intents, do: hd(intents), else: params["mode"] || "hookup"
 
-    if mode in @modes,
-      do: {:ok, Explore.viewer(conn.assigns.account, mode, intents)},
-      else: {:error, {:validation, %{mode: ["hookup, sport or friends"]}}}
+    with true <- mode in @modes || {:error, {:validation, %{mode: ["hookup, sport or friends"]}}},
+         {:ok, trip} <- trip_point(conn, params) do
+      {:ok, Explore.viewer(conn.assigns.account, mode, intents) |> Explore.with_trip(trip)}
+    end
   end
+
+  # F-20 R-20.15: `trip_id` = look around that (own) trip's city.
+  defp trip_point(_conn, %{"trip_id" => id}) when id in [nil, ""], do: {:ok, nil}
+  defp trip_point(conn, %{"trip_id" => id}), do: Trips.point(conn.assigns.account, id)
+  defp trip_point(_conn, _), do: {:ok, nil}
 
   # --- location (F-05)
 

@@ -1,3 +1,6 @@
+import { a11yLabel, daysUntil, rangeLabel, shortLabel, TravelLabel } from '../travel/travel';
+import { usePeerTrip } from '../travel/peerTrips';
+import { tr } from '../i18n/travel';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Dimensions, FlatList, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -26,11 +29,19 @@ import { findHits, Marked } from './find';
 import * as V from './vcheck';
 import { vcAvailable, VcAskSheet, VcBadge, VcRecorder, VcRow, VcViewer } from './VideoCheck';
 import { vcx } from '../i18n/vcheck';
+import * as Clipboard from 'expo-clipboard';
+import { gx } from '../i18n/gestures';
+import { feel } from '../ui/haptics';
+import { toast } from '../ui/Toast';
+import { hitSlot, MsgRow, ReactionBar, useChatGestures, type Hold } from './MsgGestures';
 
 type Nav = { navigate: (s: string, p?: object) => void; goBack: () => void; setOptions: (o: object) => void };
 type Params = { cid?: string; profileId?: string; name?: string };
 
-const REACTIONS = ['🔥', '❤️', '😂', '👍', '😮'];
+const REACTIONS = ['❤️', '🔥', '😂', '😮', '👍'];
+// F-19 G3: reaction bar geometry (5 emoji).
+const BAR_W = 5 * 52;
+const BAR_H = 52;
 // Last keyboard height seen (R-08.11: the tray takes its place).
 let lastKb = 0;
 const HIDDEN = new Set<E.Payload['t']>(['reaction', 'read', 'delivered', 'resync', 'profile.private']);
@@ -81,14 +92,27 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
   const [text, setText] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
   const [menu, setMenu] = useState(false);
-  const [msgMenu, setMsgMenu] = useState<E.Msg | null>(null);
+  // F-19 G1 reply being written, G3 held message (reaction bar + actions).
+  const [reply, setReply] = useState<{ re: E.Re; mine: boolean } | null>(null);
+  const input = useRef<React.ComponentRef<typeof TextInput>>(null);
+  const [held, setHeld] = useState<(Hold & { m: E.Msg }) | null>(null);
+  const heldRef = useRef(held);
+  useEffect(() => {
+    heldRef.current = held;
+  }, [held]);
+  useEffect(() => {
+    if (reply) input.current?.focus();
+  }, [reply]);
+  const g = useChatGestures();
+  const anchor = useRef<React.ComponentRef<typeof View>>(null);
+  const [rootY, setRootY] = useState(0);
   const [custom, setCustom] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
   // R-07.39 search in this chat (null = off).
   const [find, setFind] = useState<string | null>(null);
   const [hitAt, setHitAt] = useState(0);
-  const listRef = useRef<FlatList<{ m: E.Msg; r: string[] }>>(null);
+  const listRef = useRef<FlatList<{ m: E.Msg; r: string[]; mineR: string }>>(null);
   P.usePeople();
   V.useVc();
   // F-18 R-18.8–R-18.14 (#159) video check: request sheet, recorder, viewer.
@@ -142,6 +166,8 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
   }, []);
   const conv = cid ? E.getConv(cid) : undefined;
   const running = useCheckin();
+  // F-20 R-20.8: Visiting label + one-time note (fetched, kept in memory 10 min).
+  const peerTrip = usePeerTrip(conv && !conv.ctx && !conv.gone ? conv.peer : null);
 
   useEffect(() => {
     if (!cid) return;
@@ -181,11 +207,12 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
 
   const visible = useMemo(() => {
     if (!list) return [];
-    const reactions: Record<string, string[]> = {};
-    for (const m of list) if (m.p.t === 'reaction') (reactions[m.p.to] ??= []).push(m.p.emoji);
+    // F-19 G2: one reaction per person per message, the latest wins; an empty emoji takes it back.
+    const by: Record<string, Record<string, string>> = {};
+    for (const m of list) if (m.p.t === 'reaction') (by[m.p.to] ??= {})[m.from === 'me' ? 'me' : (m.by ?? 'them')] = m.p.emoji;
     return list
       .filter((m) => !HIDDEN.has(m.p.t))
-      .map((m) => ({ m, r: reactions[m.id] ?? [] }))
+      .map((m) => ({ m, r: Object.values(by[m.id] ?? {}).filter(Boolean), mineR: by[m.id]?.me ?? '' }))
       .reverse();
   }, [list]);
 
@@ -227,7 +254,57 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
     const t = text.trim();
     if (!t) return;
     setText('');
-    send({ t: 'text', text: t });
+    send(reply ? { t: 'text', text: t, re: reply.re } : { t: 'text', text: t });
+    setReply(null);
+  };
+
+  // F-19 G1: start a reply to `m` (swipe right, hold menu, screen reader action).
+  const startReply = (m: E.Msg) => {
+    const n = m.from === 'me' ? me.profile?.display_name ?? gx.you : group ? who(m) : conv.name;
+    setReply({ re: { id: m.id, n, s: (E.preview(m.p) || gx.photo).slice(0, 80) }, mine: m.from === 'me' });
+    setHeld(null);
+    setTray(false);
+  };
+  const react = (m: E.Msg, emoji: string, mineR: string) => {
+    feel('tap');
+    send({ t: 'reaction', to: m.id, emoji: emoji === mineR ? '' : emoji });
+    setHeld(null);
+  };
+  const barAt = (h: Hold & { m: E.Msg }) => {
+    const W = Dimensions.get('window').width;
+    const mine = h.m.from === 'me';
+    const x = mine ? W - space.l - BAR_W : space.l;
+    const top = h.top - rootY;
+    const y = top - BAR_H - space.s < insets.top + 8 ? top + h.height + space.s : top - BAR_H - space.s;
+    return { x, y, top };
+  };
+  const holdEnd = (fx: number, fy: number) => {
+    const h = heldRef.current;
+    if (!h) return;
+    const { x, y } = barAt(h);
+    const i = hitSlot(fx, fy, x, y + rootY, BAR_W / REACTIONS.length, REACTIONS.length);
+    if (i >= 0) {
+      const row = visible.find((v) => v.m.id === h.m.id);
+      react(h.m, REACTIONS[i], row?.mineR ?? '');
+    }
+  };
+  // Quoted message above a reply (F-19 G1). Tapping it scrolls to the original when it is still here.
+  const quoteOf = (m: E.Msg, mine: boolean) => {
+    if (m.p.t !== 'text' || !m.p.re) return null;
+    const re = m.p.re;
+    const orig = visible.findIndex((v) => v.m.id === re.id);
+    const name = orig >= 0 ? (visible[orig].m.from === 'me' ? gx.you : group ? who(visible[orig].m) : conv.name) : re.n;
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${gx.replyingTo(name)}: ${re.s}`}
+        onPress={orig >= 0 ? () => listRef.current?.scrollToIndex({ index: orig, viewPosition: 0.5, animated: true }) : undefined}
+        style={{ borderLeftWidth: 3, borderColor: mine ? color.onAccent : color.friends, paddingLeft: space.s, paddingVertical: 2, marginBottom: 4, opacity: 0.85 }}
+      >
+        <Text style={{ ...type.caption, color: mine ? color.onAccent : color.friends }} numberOfLines={1}>{name}</Text>
+        <Text style={{ ...type.meta, color: mine ? color.onAccent : color.fgSecondary }} numberOfLines={2}>{re.s}</Text>
+      </Pressable>
+    );
   };
 
   const ttlLabel = tx.chat.ttl[conv.ttl];
@@ -236,6 +313,7 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
   // Group chats (party / activity / club): no single peer, sender names from the E2EE payload.
   const group = !!conv.ctx;
   const fav = !group && P.isFav(conv.peer);
+  const tripNote = peerTrip && !peerTrip.here && daysUntil(peerTrip.first_day) > 0 ? tr.chatNote(conv.name, peerTrip.city, rangeLabel(peerTrip.first_day, peerTrip.last_day)) : null;
   const friend = group ? null : P.friendOf(conv.peer);
   const askFriend = () => {
     if (!me.verified) {
@@ -296,7 +374,30 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
     </>
   );
   const q = hits.length ? find : null;
-  const renderRow = ({ m, r }: { m: E.Msg; r: string[] }, ring: boolean) => {
+  type Row = { m: E.Msg; r: string[]; mineR: string };
+  // F-19 G1–G4: every real message gets the row gestures; `plain` = the lifted copy shown while holding.
+  const wrap = (row: Row, el: React.ReactElement, plain: boolean) =>
+    plain ? (
+      el
+    ) : (
+      <MsgRow
+        mine={row.m.from === 'me'}
+        at={row.m.at}
+        g={g}
+        onReply={() => startReply(row.m)}
+        onHeart={row.m.from === 'them' ? () => react(row.m, '❤️', row.mineR) : undefined}
+        onHold={(h) => {
+          feel('tap');
+          setHeld({ ...h, m: row.m });
+        }}
+        onHoldEnd={holdEnd}
+        a11yMore={() => setHeld({ m: row.m, top: rootY + 200, height: 0 })}
+      >
+        {el}
+      </MsgRow>
+    );
+  const renderRow = (row: Row, ring: boolean, plain = false) => {
+    const { m, r } = row;
           if (m.p.t === 'notice') {
             return (
               <View testID={`notice-${m.p.kind}`} style={{ alignSelf: 'center', maxWidth: '86%', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: space.m, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: color.bgRaised, marginVertical: space.s }}>
@@ -353,36 +454,42 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
           // R-07.25: incoming text and custom quick replies are translated on this phone.
           if (!mine && (m.p.t === 'text' || (m.p.t === 'quick_reply' && m.p.k === undefined))) {
             return (
-              <TranslatedText
-                cid={cid}
-                id={m.id}
-                text={m.p.text}
-                mode={trMode}
-                sender={group ? who(m) : null}
-                senderColor={accent}
-                reactions={r}
-                onLongPress={() => setMsgMenu(m)}
-                onTranslated={onTranslated}
-                mark={q}
-                ring={ring}
-              />
+              wrap(
+                row,
+                <TranslatedText
+                  cid={cid}
+                  id={m.id}
+                  text={m.p.text}
+                  mode={trMode}
+                  sender={group ? who(m) : null}
+                  senderColor={accent}
+                  reactions={r}
+                  quote={quoteOf(m, false)}
+                  onTranslated={onTranslated}
+                  mark={q}
+                  ring={ring}
+                />,
+                plain,
+              )
             );
           }
           if (m.p.t === 'album.grant') {
             // R-08.16 album card (no bubble around it).
-            const g = m.p;
-            return (
+            const ag = m.p;
+            return wrap(
+              row,
               <View style={{ alignItems: mine ? 'flex-end' : 'flex-start', gap: 2 }}>
-                <AlbumCard p={g} mine={mine} conv={conv} onOpen={() => navigation.navigate('Album', { cid, album: g.album })} onLongPress={() => setMsgMenu(m)} />
+                <AlbumCard p={ag} mine={mine} conv={conv} onOpen={() => navigation.navigate('Album', { cid, album: ag.album })} />
                 {r.length ? <Text style={{ ...type.meta }}>{r.join('')}</Text> : null}
-              </View>
+              </View>,
+              plain,
             );
           }
-          return (
+          return wrap(
+            row,
             <View style={{ alignItems: mine ? 'flex-end' : 'flex-start' }}>
               <Pressable
                 testID={ring ? 'find-current' : `msg-${m.id}`}
-                onLongPress={() => setMsgMenu(m)}
                 onPress={() => {
                   if (m.status === 'failed') E.retry(cid, m.id).catch((e) => setProblem(errorText(e)));
                   else if (m.p.t === 'album.grant' && m.from === 'them') navigation.navigate('Album', { cid, album: m.p.album });
@@ -401,6 +508,7 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
                 }}
               >
                 {group && !mine ? <Text style={{ ...type.caption, color: accent }}>{who(m)}</Text> : null}
+                {quoteOf(m, mine)}
                 <Bubble m={m} mine={mine} cid={cid} conv={conv} mark={q} />
               </Pressable>
               {r.length ? <Text style={{ ...type.meta, marginTop: -4 }}>{r.join('')}</Text> : null}
@@ -409,7 +517,8 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
                   {statusText(m, group)}
                 </Text>
               ) : null}
-            </View>
+            </View>,
+            plain,
           );
   };
   // R-07.39: while searching, non-matches dim and the current match gets a sunflower ring.
@@ -425,6 +534,7 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: color.bgBase }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <View ref={anchor} pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, width: 1, height: 1 }} onLayout={() => anchor.current?.measureInWindow((_x, y) => setRootY(y))} />
       {find !== null ? (
         <View style={{ paddingTop: insets.top + space.xs, paddingHorizontal: space.m, paddingBottom: space.s, flexDirection: 'row', alignItems: 'center', gap: space.s, borderBottomWidth: 1, borderColor: color.lineSubtle }}>
           <View style={{ flex: 1, height: 44, borderRadius: radius.pill, backgroundColor: color.bgRaised, borderWidth: 2, borderColor: color.personal, flexDirection: 'row', alignItems: 'center', gap: space.s, paddingHorizontal: 14 }}>
@@ -470,6 +580,8 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
               ) : null}
             </View>
             {!group ? <VcBadge peer={conv.peer} /> : null}
+            {/* F-20 R-20.8 */}
+            {peerTrip ? <TravelLabel small text={shortLabel(peerTrip)} a11y={a11yLabel(peerTrip)} /> : null}
             {offline ? (
               <View testID="chat-offline" style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: color.fgMuted }} />
@@ -507,6 +619,11 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
       </View>
       )}
       {!group && find === null ? <NoteStrip peer={conv.peer} onPress={() => setNoteOpen(true)} /> : null}
+      {tripNote && find === null ? (
+        <View testID="trip-note" style={{ alignSelf: 'center', maxWidth: '92%', marginTop: space.s, paddingHorizontal: space.m, paddingVertical: 7, borderRadius: 14, backgroundColor: color.bgRaised }}>
+          <Text style={{ ...type.meta, fontSize: 12, color: color.fgSecondary, textAlign: 'center' }}>{tripNote}</Text>
+        </View>
+      ) : null}
 
       <FlatList
         ref={listRef}
@@ -593,6 +710,18 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
               ))}
             </ScrollView>
           ) : null}
+          {reply ? (
+            // F-19 G1: the message being answered, above the composer. ✕ cancels.
+            <View testID="reply-bar" style={{ marginHorizontal: space.l, marginBottom: space.xs, paddingVertical: space.s, paddingLeft: space.m, paddingRight: space.xs, borderRadius: radius.sm, backgroundColor: color.bgRaised, borderLeftWidth: 3, borderColor: color.friends, flexDirection: 'row', alignItems: 'center', gap: space.s }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ ...type.caption, color: color.friends }} numberOfLines={1}>{gx.replyingTo(reply.mine ? gx.you : reply.re.n)}</Text>
+                <Text style={{ ...type.meta, color: color.fgSecondary }} numberOfLines={1}>{reply.re.s}</Text>
+              </View>
+              <Pressable testID="reply-cancel" accessibilityRole="button" accessibilityLabel={gx.cancelReply} onPress={() => setReply(null)} hitSlop={8} style={{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' }}>
+                <Icon.Close size={16} c={color.fgSecondary} />
+              </Pressable>
+            </View>
+          ) : null}
           {/* #134: no home-indicator inset while the keyboard is up (it would leave a gap above the keys). */}
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space.s, paddingHorizontal: space.l, paddingBottom: (tray ? 0 : navBottom) + space.s }}>
             {conv.theyWrote ? (
@@ -613,6 +742,7 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
             ) : null}
             <TextInput
               testID="chat-input"
+              ref={input}
               value={text}
               onFocus={() => setTray(false)}
               onChangeText={(v) => {
@@ -724,33 +854,52 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
         </>
       ) : null}
 
-      <Sheet visible={!!msgMenu} onClose={() => setMsgMenu(null)} title="" closeLabel={tx.common.close}>
-        {msgMenu ? (
-          <>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-around' }}>
-              {REACTIONS.map((e) => (
-                <Pressable key={e} accessibilityRole="button" onPress={() => { send({ t: 'reaction', to: msgMenu.id, emoji: e }); setMsgMenu(null); }} style={{ padding: space.s }}>
-                  <Text style={{ fontSize: 28 }}>{e}</Text>
-                </Pressable>
-              ))}
-            </View>
-            <View>
-              {msgMenu.from === 'them' ? (
-                <ListRow
-                  title={tx.chat.report}
-                  danger
-                  onPress={() => {
-                    const { id, by } = msgMenu;
-                    setMsgMenu(null);
-                    navigation.navigate('Report', { profileId: by ?? conv.peer, cid: conv.id, messageIds: [id] });
-                  }}
-                />
-              ) : null}
-              <ListRow title={tx.chat.deleteForMe} danger onPress={() => E.deleteMessage(cid, msgMenu.id).then(() => setMsgMenu(null))} />
-            </View>
-          </>
-        ) : null}
-      </Sheet>
+      {held
+        ? (() => {
+            const row = visible.find((v) => v.m.id === held.m.id);
+            if (!row) return null;
+            const { x, y, top } = barAt(held);
+            const m = held.m;
+            const canCopy = m.p.t === 'text' || m.p.t === 'quick_reply';
+            const below = Math.max(y + BAR_H, top + held.height) + space.s;
+            const acts = [
+              { k: 'reply', label: gx.reply, icon: <Icon.Reply />, on: () => startReply(m) },
+              ...(canCopy
+                ? [{ k: 'copy', label: gx.copy, icon: <Icon.Copy />, on: () => { Clipboard.setStringAsync(E.preview(m.p)).then(() => toast(gx.copied), () => {}); setHeld(null); } }]
+                : []),
+              ...(m.from === 'them'
+                ? [{ k: 'report', label: tx.chat.report, icon: <Icon.Flag c={color.danger} />, danger: true, on: () => { setHeld(null); navigation.navigate('Report', { profileId: m.by ?? conv.peer, cid: conv.id, messageIds: [m.id] }); } }]
+                : []),
+              { k: 'delete', label: tx.chat.deleteForMe, icon: <Icon.Trash c={color.danger} />, danger: true, on: () => E.deleteMessage(cid, m.id).then(() => setHeld(null)) },
+            ];
+            return (
+              // F-19 G3: the held message lifts over a dimmed chat; reactions above, actions below. Tap outside closes.
+              <View testID="msg-held" style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} accessibilityViewIsModal onAccessibilityEscape={() => setHeld(null)}>
+                <Pressable style={{ flex: 1, backgroundColor: color.scrim }} onPress={() => setHeld(null)} accessibilityRole="button" accessibilityLabel={tx.common.close} />
+                {held.height ? (
+                  <View pointerEvents="none" style={{ position: 'absolute', left: space.l, right: space.l, top, transform: [{ scale: 1.03 }] }}>
+                    {renderRow(row, false, true)}
+                  </View>
+                ) : null}
+                <ReactionBar emojis={REACTIONS} x={x} y={y} oy={rootY} w={BAR_W} g={g} onPick={(e) => react(m, e, row.mineR)} />
+                <View style={{ position: 'absolute', top: Math.min(below, Dimensions.get('window').height - rootY - 4 * 48 - navBottom - space.l), [m.from === 'me' ? 'right' : 'left']: space.l, width: 220, borderRadius: radius.md, backgroundColor: color.bgOverlay, overflow: 'hidden' }}>
+                  {acts.map((a, i) => (
+                    <Pressable
+                      key={a.k}
+                      testID={`held-${a.k}`}
+                      accessibilityRole="button"
+                      onPress={a.on}
+                      style={({ pressed }) => ({ height: 48, paddingHorizontal: space.l, flexDirection: 'row', alignItems: 'center', gap: space.m, backgroundColor: pressed ? color.bgRaised : 'transparent', borderTopWidth: i ? 1 : 0, borderColor: color.line })}
+                    >
+                      {a.icon}
+                      <Text style={{ ...type.body, fontFamily: font.medium, color: 'danger' in a && a.danger ? color.danger : color.fgPrimary }}>{a.label}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            );
+          })()
+        : null}
     </KeyboardAvoidingView>
   );
 }

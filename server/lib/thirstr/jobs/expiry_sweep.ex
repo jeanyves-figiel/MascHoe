@@ -20,6 +20,8 @@ defmodule Thirstr.Jobs.ExpirySweep do
     # SR-04: revoked devices not resumed within 7 d (their queued ciphertext goes with them)
     Thirstr.Accounts.purge_revoked_devices()
     Thirstr.Verification.sweep()
+    # F-20 R-20.4: trips end at 12:00 UTC the day after their last day
+    Thirstr.Trips.sweep()
     Thirstr.Linked.recheck()
     :ok
   end
