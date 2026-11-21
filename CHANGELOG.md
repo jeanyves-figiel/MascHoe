@@ -29,6 +29,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Add a place** (server + app, #191, F-12 R-12.11): not listed? Tonight › Venues nearby › "Add a place" pins a club, bar, sauna, gym or other place at your exact position and checks you in. A clear warning says this shares your exact location and that everyone will see the place. No review before: it is on the map and in Tonight for everyone at once, labelled "Added by a member" (the creator is never shown). Similar name within 75 m → "Check in there" instead. 3 per day. The creator can remove it while nobody else is checked in. Admin console › Places › Added by members lists them with Hide / Delete. Places you added are in your data export.
 
 ### Fixed
+- **Chats use less memory** (app, SR-15 #155): only the 12 most recently opened chats stay decrypted in memory (others reload from the encrypted store when opened); long chats render the newest 20 messages first and the rest in small batches while scrolling.
 - **Hidden venues stay hidden in Tonight** (server, #191): Venues nearby listed venues the team had hidden, and they could still be checked into. Venue counts now ignore expired check-ins. New coordinates index for the map's place query.
 
 ### Changed

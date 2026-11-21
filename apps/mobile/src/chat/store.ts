@@ -13,6 +13,17 @@ const prefix = (cid: string) => `m:${cid}\u0001`;
 export const trKey = (cid: string, id: string) => `tr:${cid}\u0001${id}`;
 
 const cache = new Map<string, Row[]>();
+/** SR-15 (#155): decrypted rows of the most recently used chats only; older ones reload from disk. */
+const CACHE_CHATS = 12;
+function touch(cid: string, list: Row[]) {
+  cache.delete(cid);
+  cache.set(cid, list);
+  while (cache.size > CACHE_CHATS) {
+    const oldest = cache.keys().next().value as string;
+    if (locks.has('c:' + oldest)) break; // never evict a chat that is being edited
+    cache.delete(oldest);
+  }
+}
 const locks = new Map<string, Promise<unknown>>();
 let seq = 0;
 
@@ -49,8 +60,8 @@ export async function all<T extends Row>(cid: string): Promise<T[]> {
       await kv.del('msgs:' + cid);
       list.sort(order);
     }
-    cache.set(cid, list);
-  }
+    touch(cid, list);
+  } else touch(cid, list);
   return list.map((r) => ({ ...r })) as T[];
 }
 
