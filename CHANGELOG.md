@@ -6,6 +6,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Fixed
+- **Every photo slot opens the picker** (app, #213): on Edit profile only one of the empty "+" slots reacted on iPhone. The photo grid is now a plain flex layout (no absolutely placed tiles), each slot shows press feedback, a haptic and its own spinner, the picker can't be launched twice, and a picker that fails to open shows an error instead of doing nothing. Edit profile swipes back from the screen edge only, so taps on the grid are never taken for a swipe. Reordering copy fixed: "Tap a photo to make it main, move it or remove it" (no more "arrows"); Move left/right are now Move earlier/later. "Who sees this" pills get a larger tap area.
 - **Test bots keep their device** (staging, #208): a bot whose refresh token is lost or rejected resumes its existing device (`resume: true` on `POST /v1/testbot/session`) instead of replacing it, so chats with it no longer break with 422 unknown device; refreshes are single-flight.
 - **Duplicate migration version** (server, #200): test bot handles migration renamed to `20261121160001` (clashed with precise distance `20261121150001`, broke `mix test` on main).
 
