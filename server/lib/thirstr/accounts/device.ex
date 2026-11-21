@@ -10,6 +10,7 @@ defmodule Thirstr.Accounts.Device do
     belongs_to :account, Thirstr.Accounts.Account
     field :platform, :string
     field :attestation_ok, :boolean, default: false
+
     # #25 iOS App Attest (Thirstr.DeviceAttest): public key + counter, last good attestation/assertion
     field :attest_key_id, :binary
     field :attest_public_key, :binary

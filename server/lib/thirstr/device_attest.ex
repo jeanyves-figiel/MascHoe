@@ -28,7 +28,8 @@ defmodule Thirstr.DeviceAttest do
          {:ok, att} <- unb64(att),
          {:ok, ch} <- take(ch, device_id),
          %Device{} = d <- Repo.get(Device, device_id) || {:error, :not_found},
-         {:ok, %{public_key: pub, env: env}} <- AppAttest.verify_attestation(att, kid, ch, app_ids()),
+         {:ok, %{public_key: pub, env: env}} <-
+           AppAttest.verify_attestation(att, kid, ch, app_ids()),
          :ok <- env_allowed(env) do
       d
       |> Ecto.Changeset.change(
@@ -43,9 +44,14 @@ defmodule Thirstr.DeviceAttest do
 
       {:ok, %{attested: true}}
     else
-      {:error, :not_found} = e -> e
-      {:error, :challenge} -> {:error, {:unprocessable, "challenge", "Challenge expired, ask for a new one"}}
-      {:error, reason} -> {:error, {:unprocessable, "attestation_invalid", "Attestation failed (#{reason})"}}
+      {:error, :not_found} = e ->
+        e
+
+      {:error, :challenge} ->
+        {:error, {:unprocessable, "challenge", "Challenge expired, ask for a new one"}}
+
+      {:error, reason} ->
+        {:error, {:unprocessable, "attestation_invalid", "Attestation failed (#{reason})"}}
     end
   end
 
@@ -58,15 +64,26 @@ defmodule Thirstr.DeviceAttest do
            Repo.get(Device, device_id) || {:error, :not_found},
          {:ok, counter} <- AppAttest.verify_assertion(a, ch, pub, n || 0, app_ids()) do
       d
-      |> Ecto.Changeset.change(attest_counter: counter, attestation_ok: true, attested_at: DateTime.utc_now())
+      |> Ecto.Changeset.change(
+        attest_counter: counter,
+        attestation_ok: true,
+        attested_at: DateTime.utc_now()
+      )
       |> Repo.update!()
 
       {:ok, %{attested: true}}
     else
-      %Device{} -> {:error, {:conflict_code, "not_attested", "Attest this device first"}}
-      {:error, :not_found} = e -> e
-      {:error, :challenge} -> {:error, {:unprocessable, "challenge", "Challenge expired, ask for a new one"}}
-      {:error, reason} -> {:error, {:unprocessable, "assertion_invalid", "Assertion failed (#{reason})"}}
+      %Device{} ->
+        {:error, {:conflict_code, "not_attested", "Attest this device first"}}
+
+      {:error, :not_found} = e ->
+        e
+
+      {:error, :challenge} ->
+        {:error, {:unprocessable, "challenge", "Challenge expired, ask for a new one"}}
+
+      {:error, reason} ->
+        {:error, {:unprocessable, "assertion_invalid", "Assertion failed (#{reason})"}}
     end
   end
 
@@ -75,13 +92,23 @@ defmodule Thirstr.DeviceAttest do
   @doc "Attested within the last #{@fresh_days} days."
   def attested?(device_id) do
     since = DateTime.add(DateTime.utc_now(), -@fresh_days * 86_400)
-    Repo.exists?(from(d in Device, where: d.id == ^device_id and d.attestation_ok and d.attested_at > ^since))
+
+    Repo.exists?(
+      from(d in Device, where: d.id == ^device_id and d.attestation_ok and d.attested_at > ^since)
+    )
   end
 
   def status(device_id) do
     case Repo.get(Device, device_id) do
-      %Device{} = d -> %{attested: attested?(device_id), has_key: d.attest_key_id != nil, attested_at: d.attested_at}
-      _ -> %{attested: false, has_key: false, attested_at: nil}
+      %Device{} = d ->
+        %{
+          attested: attested?(device_id),
+          has_key: d.attest_key_id != nil,
+          attested_at: d.attested_at
+        }
+
+      _ ->
+        %{attested: false, has_key: false, attested_at: nil}
     end
   end
 
@@ -100,9 +127,18 @@ defmodule Thirstr.DeviceAttest do
 
   # Development-environment keys (Xcode debug builds) are only accepted outside prod.
   defp env_allowed(:production), do: :ok
-  defp env_allowed(:development), do: if(Application.get_env(:thirstr, :app_attest_allow_dev, true), do: :ok, else: {:error, :environment})
+  defp env_allowed(:development),
+    do:
+      if(Application.get_env(:thirstr, :app_attest_allow_dev, true),
+        do: :ok,
+        else: {:error, :environment}
+      )
 
-  defp app_ids, do: Application.get_env(:thirstr, :app_attest_app_ids) || Application.get_env(:thirstr, :apple_app_ids, [])
+  defp app_ids,
+    do:
+      Application.get_env(:thirstr, :app_attest_app_ids) ||
+        Application.get_env(:thirstr, :apple_app_ids, [])
+
   defp key(raw), do: "attest:" <> Base.url_encode64(raw, padding: false)
   defp b64(b), do: Base.url_encode64(b, padding: false)
 

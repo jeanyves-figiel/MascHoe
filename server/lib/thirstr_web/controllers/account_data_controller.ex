@@ -31,7 +31,8 @@ defmodule ThirstrWeb.AccountDataController do
   def attest_status(conn, _), do: json(conn, DeviceAttest.status(dev(conn)))
 
   def attest_challenge(conn, _) do
-    with {:ok, _} <- Social.limit(me(conn), "attest", 20, 3600), do: DeviceAttest.challenge(dev(conn)) |> done(conn)
+    with {:ok, _} <- Social.limit(me(conn), "attest", 20, 3600),
+         do: DeviceAttest.challenge(dev(conn)) |> done(conn)
   end
 
   def attest(conn, p), do: DeviceAttest.attest(dev(conn), p) |> done(conn)

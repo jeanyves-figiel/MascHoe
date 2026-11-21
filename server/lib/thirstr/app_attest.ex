@@ -27,7 +27,13 @@ defmodule Thirstr.AppAttest do
   Returns `{:ok, %{public_key: <<4, x::32, y::32>>, env: :production | :development}}`.
   """
   def verify_attestation(attestation, key_id, challenge, app_ids, opts \\ []) do
-    with {:ok, %{"fmt" => "apple-appattest", "attStmt" => %{"x5c" => [leaf | inter]}, "authData" => auth}, ""} <-
+    with {:ok,
+          %{
+            "fmt" => "apple-appattest",
+            "attStmt" => %{"x5c" => [leaf | inter]},
+            "authData" => auth
+          },
+          ""} <-
            safe_decode(attestation),
          leaf = bytes(leaf),
          chain = Enum.map(inter, &bytes/1),
@@ -37,7 +43,8 @@ defmodule Thirstr.AppAttest do
          :ok <- check_nonce(leaf, nonce),
          {:ok, pub} <- leaf_public_key(leaf),
          true <- :crypto.hash(:sha256, pub) == key_id || {:error, :key_id},
-         <<rp::binary-32, _flags, counter::32, aaguid::binary-16, len::16, cred::binary-size(len), _::binary>> <-
+         <<rp::binary-32, _flags, counter::32, aaguid::binary-16, len::16, cred::binary-size(len),
+           _::binary>> <-
            auth,
          true <- Enum.any?(app_ids, &(:crypto.hash(:sha256, &1) == rp)) || {:error, :app_id},
          true <- counter == 0 || {:error, :counter},
@@ -57,7 +64,9 @@ defmodule Thirstr.AppAttest do
          auth = bytes(auth),
          <<rp::binary-32, _flags, counter::32, _::binary>> <- auth,
          nonce = :crypto.hash(:sha256, auth <> :crypto.hash(:sha256, client_data)),
-         true <- :crypto.verify(:ecdsa, :sha256, nonce, sig, [public_key, :prime256v1]) || {:error, :signature},
+         true <-
+           :crypto.verify(:ecdsa, :sha256, nonce, sig, [public_key, :prime256v1]) ||
+             {:error, :signature},
          true <- Enum.any?(app_ids, &(:crypto.hash(:sha256, &1) == rp)) || {:error, :app_id},
          true <- counter > last_counter || {:error, :counter} do
       {:ok, counter}
@@ -99,7 +108,9 @@ defmodule Thirstr.AppAttest do
          end, nil}
       end
 
-    case :public_key.pkix_path_validation(root_der(), Enum.reverse(chain) ++ [leaf], verify_fun: verify_fun) do
+    case :public_key.pkix_path_validation(root_der(), Enum.reverse(chain) ++ [leaf],
+           verify_fun: verify_fun
+         ) do
       {:ok, _} -> :ok
       {:error, _} -> {:error, :chain}
     end
