@@ -1,7 +1,9 @@
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -356,6 +358,22 @@ export function Scrim({ height = '60%', max = 0.9, steps = 10 }: { height?: View
 // RN Modal: after "Cancel" the dead Modal keeps the touches and the screen freezes. Close the
 // sheet, then run the action from `afterSheet` once the Modal is gone (onDismiss, or a timeout
 // where onDismiss doesn't exist).
+/** #134: true while the software keyboard is up. A bar that sits on the keyboard must drop the
+ *  home-indicator inset then (the keyboard already covers it), or a gap shows above the keys. */
+export function useKeyboardShown() {
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    const ios = Platform.OS === 'ios';
+    const a = Keyboard.addListener(ios ? 'keyboardWillShow' : 'keyboardDidShow', () => setShown(true));
+    const b = Keyboard.addListener(ios ? 'keyboardWillHide' : 'keyboardDidHide', () => setShown(false));
+    return () => {
+      a.remove();
+      b.remove();
+    };
+  }, []);
+  return shown;
+}
+
 let afterDismiss: (() => void) | null = null;
 let afterTimer: ReturnType<typeof setTimeout> | null = null;
 const flushAfterSheet = () => {
@@ -374,6 +392,8 @@ export function afterSheet(fn: () => void) {
 export function Sheet({ visible, onClose, title, children, closeLabel = 'Close' }: { visible: boolean; onClose: () => void; title: string; children: React.ReactNode; closeLabel?: string }) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} onDismiss={flushAfterSheet}>
+      {/* #134: the sheet rides up with the keyboard so its fields stay visible. */}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Pressable style={s.scrim} onPress={onClose} accessibilityLabel={closeLabel} />
       <View style={s.sheet} accessibilityViewIsModal>
         <View style={s.sheetHead}>
@@ -384,10 +404,11 @@ export function Sheet({ visible, onClose, title, children, closeLabel = 'Close' 
             <Icon.Close />
           </Pressable>
         </View>
-        <ScrollView contentContainerStyle={{ gap: space.l, paddingBottom: space.huge }} keyboardShouldPersistTaps="handled">
+        <ScrollView contentContainerStyle={{ gap: space.l, paddingBottom: space.huge }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
           {children}
         </ScrollView>
       </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

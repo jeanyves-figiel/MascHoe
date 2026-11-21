@@ -67,7 +67,7 @@ export function PartyNewScreen({ navigation }: { navigation: Nav }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: color.bgBase }}>
-    <ScrollView
+    <ScrollView keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets
       style={{ flex: 1, backgroundColor: color.bgBase }}
       contentContainerStyle={{
         padding: space.l,

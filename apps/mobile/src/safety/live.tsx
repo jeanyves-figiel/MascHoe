@@ -149,7 +149,7 @@ export function SheetFrame({ onClose, children, testID }: { onClose: () => void;
         <View style={{ alignItems: 'center', paddingTop: space.s, paddingBottom: space.xs }}>
           <View style={{ width: 40, height: 5, borderRadius: 3, backgroundColor: color.line }} />
         </View>
-        <ScrollView contentContainerStyle={{ paddingHorizontal: space.xl, paddingTop: space.s, paddingBottom: insets.bottom + space.xxl, gap: space.l }} keyboardShouldPersistTaps="handled">
+        <ScrollView keyboardDismissMode="on-drag" contentContainerStyle={{ paddingHorizontal: space.xl, paddingTop: space.s, paddingBottom: insets.bottom + space.xxl, gap: space.l }} keyboardShouldPersistTaps="handled">
           {children}
         </ScrollView>
       </Animated.View>

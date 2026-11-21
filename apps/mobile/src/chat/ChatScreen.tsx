@@ -6,7 +6,7 @@ import { useSession } from '../app/session';
 import { tx } from '../i18n/app';
 import { SafetySheet, SheetRow } from '../trust/SafetySheet';
 import { color, font, radius, space, type } from '../theme/tokens';
-import { Banner, Button, Icon, ListRow, Loading, Photo, Segmented, Sheet, Toggle, useAccent, VerifiedTick } from '../ui';
+import { Banner, Button, Icon, ListRow, Loading, Photo, Segmented, Sheet, Toggle, useAccent, useKeyboardShown, VerifiedTick } from '../ui';
 import * as E from './engine';
 import { useTopics } from './hooks';
 import { MediaBubble, pickAndSendMedia, SendOpts } from './media';
@@ -67,6 +67,7 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
   const { me } = useSession();
   const accent = useAccent();
   const insets = useSafeAreaInsets();
+  const kb = useKeyboardShown();
   const [cid, setCid] = useState<string | null>(route.params.cid ?? null);
   const [list, setList] = useState<E.Msg[] | null>(null);
   const [text, setText] = useState('');
@@ -473,6 +474,9 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
       <FlatList
         ref={listRef}
         inverted
+        // #134: dragging the messages closes the keyboard.
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
         data={visible}
         keyExtractor={(x) => x.m.id}
         contentContainerStyle={{ padding: space.l, gap: space.xs }}
@@ -513,7 +517,7 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
       ) : null}
 
       {find !== null ? (
-        <View testID="find-bar" style={{ paddingHorizontal: space.m, paddingTop: 10, paddingBottom: insets.bottom + space.s, borderTopWidth: 1, borderColor: color.lineSubtle, backgroundColor: color.bgMap, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <View testID="find-bar" style={{ paddingHorizontal: space.m, paddingTop: 10, paddingBottom: (kb ? 0 : insets.bottom) + space.s, borderTopWidth: 1, borderColor: color.lineSubtle, backgroundColor: color.bgMap, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <View style={{ flex: 1 }}>
             <Text testID="find-count" style={{ ...type.headline, color: color.fgPrimary }}>
               {(find ?? '').trim().length < 2 ? ppl.findHint : hits.length ? ppl.findCount(Math.min(hitAt, hits.length - 1) + 1, hits.length) : ppl.findNone}
@@ -552,7 +556,8 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
               ))}
             </ScrollView>
           ) : null}
-          <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space.s, paddingHorizontal: space.l, paddingBottom: insets.bottom + space.s }}>
+          {/* #134: no home-indicator inset while the keyboard is up (it would leave a gap above the keys). */}
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space.s, paddingHorizontal: space.l, paddingBottom: (kb ? 0 : insets.bottom) + space.s }}>
             {conv.theyWrote ? (
               <Pressable
                 testID="chat-attach"

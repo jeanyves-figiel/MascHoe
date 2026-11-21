@@ -140,7 +140,7 @@ export function EditProfileScreen({ route, navigation }: { route: { params: Para
 
   return (
     <View style={{ flex: 1, backgroundColor: color.bgBase }}>
-      <ScrollView ref={scroll} contentContainerStyle={{ padding: space.l, paddingTop: space.s, gap: space.xl, paddingBottom: 150, maxWidth: 560, width: '100%', alignSelf: 'center' }} keyboardShouldPersistTaps="handled">
+      <ScrollView keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets ref={scroll} contentContainerStyle={{ padding: space.l, paddingTop: space.s, gap: space.xl, paddingBottom: 150, maxWidth: 560, width: '100%', alignSelf: 'center' }} keyboardShouldPersistTaps="handled">
         <Text accessibilityRole="header" style={{ ...type.display, color: color.fgPrimary }}>
           {tx.edit.title}
         </Text>
