@@ -79,7 +79,7 @@ export function PlaceMarker({ p, selected }: { p: Place; selected?: boolean }) {
   );
 }
 
-/** Chips above the grid sheet (left of Locate me). On = filled white (Parties yellow). */
+/** Chips above the grid sheet (left of Locate me). On = filled white (Parties yellow); off = solid raised ink (#250). */
 export function PlaceChips({ active, onToggle }: { active: PlaceKind[]; onToggle: (k: PlaceKind) => void }) {
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} accessibilityLabel={pl.layersLabel} contentContainerStyle={{ gap: 6, paddingRight: space.s }}>
@@ -102,7 +102,8 @@ export function PlaceChips({ active, onToggle }: { active: PlaceKind[]; onToggle
                 justifyContent: 'center',
                 borderWidth: 1,
                 borderColor: on ? fill : color.line,
-                backgroundColor: on ? fill : color.glass,
+                // #250: solid when off, so map markers never show through the chip.
+                backgroundColor: on ? fill : color.bgRaised,
                 shadowColor: color.shadow,
                 shadowOpacity: 0.35,
                 shadowRadius: 8,
