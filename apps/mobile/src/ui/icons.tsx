@@ -234,6 +234,49 @@ export const Icon = {
       <Path d="M4 21h16M6 21V4l10-1v18M13 12v.5" {...base(c, w)} />
     </Svg>
   ),
+  /** #189 plan types and house rules. */
+  Drink: ({ size = 22, c = color.fgPrimary, w = 2.1 }: P) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M5 4h14l-7 8zM12 12v8M8 20h8" {...base(c, w)} />
+    </Svg>
+  ),
+  Party: ({ size = 22, c = color.fgPrimary, w = 2.1 }: P) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M5.8 11.3L2 22l10.7-3.8M8.6 8.6l6.8 6.8M22 2l-2.2.7a2 2 0 00-1.3 2.6c.4 1.1-.4 2.3-1.5 2.4L16 8M15 2h.01M22 8h.01" {...base(c, w)} />
+    </Svg>
+  ),
+  Age: ({ size = 22, c = color.fgPrimary, w = 2.1 }: P) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Rect x={4} y={5} width={16} height={15} rx={3} {...base(c, w)} />
+      <Path d="M4 10h16M9 3v4M15 3v4M9 15h6" {...base(c, w)} />
+    </Svg>
+  ),
+  Pill: ({ size = 22, c = color.fgPrimary, w = 2.1 }: P) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Rect x={3} y={8} width={18} height={8} rx={4} {...base(c, w)} />
+      <Path d="M12 8v8" {...base(c, w)} />
+    </Svg>
+  ),
+  Vers: ({ size = 22, c = color.fgPrimary, w = 2.1 }: P) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M7 4v16M7 4L3 8M7 4l4 4M17 20V4M17 20l-4-4M17 20l4-4" {...base(c, w)} />
+    </Svg>
+  ),
+  Glass: ({ size = 22, c = color.fgPrimary, w = 2.1 }: P) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M8 3h8l-1 7a3 3 0 01-6 0zM12 13v8M9 21h6" {...base(c, w)} />
+    </Svg>
+  ),
+  Toy: ({ size = 22, c = color.fgPrimary, w = 2.1 }: P) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M4 20l6-6M14 4l6 6-8 8-6-6z" {...base(c, w)} />
+    </Svg>
+  ),
+  Shirt: ({ size = 22, c = color.fgPrimary, w = 2.1 }: P) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M8 3l4 3 4-3 4 4-3 3v11H7V10L4 7z" {...base(c, w)} />
+    </Svg>
+  ),
   /** #159 video check: camera with a check mark. */
   VideoCheck: ({ size = 22, c = color.fgPrimary, w = 2.1 }: P) => (
     <Svg width={size} height={size} viewBox="0 0 24 24">

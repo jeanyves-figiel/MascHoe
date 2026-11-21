@@ -37,12 +37,12 @@ Tab bar (4): **Explore** S-10 · **Tonight** S-13 · **Chats** S-40 · **Me** S-
 
 ## Tonight & Now
 | S-13 | Tonight [v2 Tonight] | F-09 | city · day caption, 34 pt title, time window chips, featured party card (art, spots badge, Request), plan rows (avatar ring in mode colour, Message), white "Post a plan" FAB | drag slider; tap card → S-20 | empty → "Be the first tonight" + FAB |
-| S-13b | Post plan sheet | F-09 R-09.9 | window, text, tag, audience | post | limit reached → message |
+| S-13b | Post plan sheet | F-09 R-09.9 | live preview, What (5 icon choices), line, When (timeline scrubber), Who sees it (#189) | drag window, post | limit reached → message |
 | S-18 | Now sheet | F-09 | status options, text, TTL | set/end | — |
 
 ## Parties
 | S-14 | Party detail [Party] | F-10 | header, seats, rules, requests (host) / status (guest), Guest chat, Send address | accept/decline; request; leave | full / ended / cancelled |
-| S-15 | Create party sheet | F-10 R-10.1 | fields | create | account < 7 d → disabled with reason |
+| S-15 | Host a party | F-10 R-10.1 | header row, live card preview, title, Today/Tomorrow + timeline scrubber, guest stepper, rule tiles + own rules, audience, area note, sticky Create (#189) | create | Safe Mode → disabled with reason |
 
 ## Activities
 | S-16 | Sport feed [Activities] | F-11 | sport chips, posts, clubs carousel | join/leave; open club | no posts → "Start one" |
@@ -50,7 +50,8 @@ Tab bar (4): **Explore** S-10 · **Tonight** S-13 · **Chats** S-40 · **Me** S-
 | S-19 | Club page | F-11 R-11.6 | header, events, members count, join | join/request | pending |
 
 ## Venues
-| S-17 | Venue here-now [Venue] | F-12 | stats, here grid, visibility toggle, check out | tap profile; go invisible | not checked in → venue info + Check in |
+| S-17 | Venue here-now [Venue] | F-12 | stats, here grid, visibility toggle, check out; "Added by a member" pill; "Remove this place" for the creator while alone (R-12.11) | tap profile; go invisible | not checked in → venue info + Check in |
+| S-17a | Add a place [AddPlace] (#191) | F-12 R-12.11 | still map at the exact fix + accuracy, name, kind chips, coral exact-location card, "I understand, add & check in" | add → S-17 checked in; duplicate → "Check in there" | no location / accuracy > 100 m → banner + retry; not verified → Verify; Safe Mode → off |
 
 ## Chats & media
 | S-40 | Inbox [v2 Chats, #115] | F-07 | 34 pt title, search (names, messages, own notes/tags, R-07.34), segmented All / Unread / Favorites / Friends (R-07.33), favorites strip (All), Taps row (flame), rows (56 pt avatar, online dot, sunflower star = favorite, violet Friend badge, note line, bold preview + coral count when unread), Friends: requests row + Online / Friends sections, Parties & groups, E2EE footer (teal) | swipe: archive/mute; long-press favorite / pin (groups) | empty → "Say hi to someone nearby" |

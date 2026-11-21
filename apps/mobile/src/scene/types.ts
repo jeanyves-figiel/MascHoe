@@ -105,6 +105,8 @@ export type Venue = {
   here: string;
   area_cell: string;
   distance: Distance;
+  /** R-12.11 added by a member */
+  member?: boolean;
 };
 export type Checkin = {
   venue_id: string;
@@ -115,7 +117,7 @@ export type Checkin = {
   auto_out_at: string;
 };
 export type Here = {
-  venue: { id: string; name: string; kind: string };
+  venue: { id: string; name: string; kind: string; member?: boolean; mine?: boolean; removable?: boolean };
   me: { profile_id: string; visible: boolean };
   stats: { total: string; visible_to_you: number; tapped_you: number };
   people: {

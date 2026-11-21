@@ -58,6 +58,18 @@ export async function currentPosition(): Promise<LatLng | null> {
   return p;
 }
 
+/**
+ * #191 Add a place (F-12 R-12.11): a fresh high-accuracy fix with its accuracy in metres. This is
+ * the only flow that sends exact coordinates, after the member confirmed the exact-location warning.
+ */
+export async function precisePosition(): Promise<(LatLng & { accuracy: number }) | null> {
+  if (!(await ensurePermission())) return null;
+  const pos = await ExpoLocation.getCurrentPositionAsync({ accuracy: ExpoLocation.Accuracy.Highest });
+  const p = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+  setDevice(p);
+  return { ...p, accuracy: Math.round(pos.coords.accuracy ?? 999) };
+}
+
 /** Sends the current r9 cell if needed. Returns updated Me, or null when nothing was sent. */
 export async function syncLocation(me: Me, force = false): Promise<Me | null> {
   const level = me.location?.level;

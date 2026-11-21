@@ -46,6 +46,7 @@ import { ReportScreen } from '../trust/ReportScreen';
 import { ToastHost } from '../ui/Toast';
 import { HiddenBlockedScreen } from '../trust/HiddenBlockedScreen';
 import { VenueScreen } from '../scene/VenueScreens';
+import { AddPlaceScreen } from '../scene/AddPlaceScreen';
 import { color, modeColor, radius, space, type } from '../theme/tokens';
 import { BackButton, Icon, ModeContext, useBottomPanel, useKeyboardShown } from '../ui';
 import { useSession } from './session';
@@ -371,12 +372,13 @@ export function Main() {
           <Stack.Screen name="AlbumEdit" component={AlbumEditScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="Album" component={AlbumViewScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="Party" component={PartyScreen as React.ComponentType} options={sub} />
-          <Stack.Screen name="PartyNew" component={PartyNewScreen as React.ComponentType} options={sub} />
+          <Stack.Screen name="PartyNew" component={PartyNewScreen as React.ComponentType} options={{ headerShown: false }} />
           <Stack.Screen name="Activity" component={ActivityScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="ActivityNew" component={ActivityNewScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="Club" component={ClubScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="ClubNew" component={ClubNewScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="Venue" component={VenueScreen as React.ComponentType} options={sub} />
+          <Stack.Screen name="AddPlace" component={AddPlaceScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="Report" component={ReportScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="Notices" component={NoticesScreen} options={sub} />
           <Stack.Screen name="Safety" component={SafetyScreen as React.ComponentType} options={sub} />

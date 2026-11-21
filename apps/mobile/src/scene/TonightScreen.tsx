@@ -9,6 +9,7 @@ import { color, radius, space, type } from '../theme/tokens';
 import { Banner, Button, Chip, Chips, EmptyState, Icon, Loading, Photo, SectionLabel, Tag, useAccent, VerifiedTick } from '../ui';
 import { PlanSheet } from './PlanSheet';
 import type { Club, MyPlan, Party, Plan, Post, Venue } from './types';
+import { ap } from '../i18n/addplace';
 import { day, time } from './types';
 
 type Nav = { navigate: (s: string, p?: object) => void };
@@ -88,6 +89,7 @@ export function TonightScreen({ navigation }: { navigation: Nav }) {
   const [sheet, setSheet] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const safeMode = me.safe_mode === 'on' || !!me.safe_mode_active;
   const sport = mode === 'sport';
 
   const load = useCallback(async () => {
@@ -349,7 +351,7 @@ export function TonightScreen({ navigation }: { navigation: Nav }) {
           </>
         )}
 
-        {venues.length ? (
+        {!safeMode ? (
           <View style={{ gap: space.s }}>
             <SectionLabel>{tx.tonight.venues}</SectionLabel>
             {venues.slice(0, 5).map((v) => (
@@ -368,13 +370,31 @@ export function TonightScreen({ navigation }: { navigation: Nav }) {
                     {v.name}
                   </Text>
                   <Text numberOfLines={1} style={{ ...type.meta, color: color.fgMuted }}>
-                    {[tx.venue.kinds[v.kind], distanceLabel(v.distance)].filter(Boolean).join(' · ')}
+                    {[tx.venue.kinds[v.kind], distanceLabel(v.distance), v.member ? ap.member : null].filter(Boolean).join(' · ')}
                   </Text>
                 </View>
                 <Text style={{ ...type.meta, fontFamily: type.headline.fontFamily, color: color.trust }}>{tx.venue.here(v.here)}</Text>
                 <Icon.Next />
               </Pressable>
             ))}
+            <Pressable
+              testID="add-place"
+              accessibilityRole="button"
+              accessibilityLabel={ap.row}
+              onPress={() => navigation.navigate('AddPlace')}
+              style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: space.m, padding: space.m, borderRadius: 22, borderWidth: 1.5, borderStyle: 'dashed', borderColor: color.line, opacity: pressed ? 0.85 : 1 })}
+            >
+              <View style={{ width: 48, height: 48, borderRadius: 16, backgroundColor: color.bgInverse, alignItems: 'center', justifyContent: 'center' }}>
+                <Icon.Plus c={color.onAccent} />
+              </View>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={{ ...type.headline, color: color.fgPrimary }}>{ap.row}</Text>
+                <Text numberOfLines={2} style={{ ...type.meta, color: color.fgMuted }}>
+                  {ap.rowSub}
+                </Text>
+              </View>
+              <Icon.Next />
+            </Pressable>
           </View>
         ) : null}
       </ScrollView>

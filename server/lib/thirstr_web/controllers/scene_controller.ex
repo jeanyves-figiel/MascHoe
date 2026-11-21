@@ -111,6 +111,11 @@ defmodule ThirstrWeb.SceneController do
 
   def venues(conn, p), do: with({:ok, c} <- ctx(conn, p), do: Venues.nearby(c) |> reply(conn))
 
+  def create_venue(conn, p),
+    do: with({:ok, c} <- ctx(conn, p), do: Venues.create(c, p) |> reply(conn))
+
+  def remove_venue(conn, %{"id" => id}), do: Venues.remove(hookup(conn), id) |> reply(conn)
+
   def checkin(conn, %{"id" => id} = p),
     do: with({:ok, c} <- ctx(conn, p), do: Venues.checkin(c, id, p) |> reply(conn))
 

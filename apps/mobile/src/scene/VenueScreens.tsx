@@ -5,6 +5,7 @@ import { useSession } from '../app/session';
 import { distanceLabel, tx } from '../i18n/app';
 import { color, space, type } from '../theme/tokens';
 import { Banner, Button, ErrorText, Field, Hero, Icon, ListRow, Loading, Section, Toggle } from '../ui';
+import { ap } from '../i18n/addplace';
 import { Who } from './TonightScreen';
 import { usePull } from '../ui/pull';
 import type { Here, Venue } from './types';
@@ -51,6 +52,19 @@ export function VenueScreen({ navigation, route }: { navigation: Nav; route: { p
     }
   };
 
+  // R-12.11: the creator removes their place while nobody else is checked in.
+  const remove = async () => {
+    setBusy(true);
+    setErr(null);
+    try {
+      await api('DELETE', `/venues/${v.id}`);
+      navigation.goBack();
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : tx.common.error);
+      setBusy(false);
+    }
+  };
+
   if (here === undefined) return <Loading />;
 
   return (
@@ -63,7 +77,7 @@ export function VenueScreen({ navigation, route }: { navigation: Nav; route: { p
         paddingBottom: 120,
       }}
     >
-      <Hero fill={color.trust} pill={tx.venue.kinds[v.kind] ?? v.kind} title={v.name} meta={here ? undefined : [distanceLabel(v.distance), tx.venue.here(v.here)].filter(Boolean).join(' · ')} />
+      <Hero fill={color.trust} pill={[tx.venue.kinds[v.kind] ?? v.kind, (here?.venue.member ?? v.member) ? ap.member : null].filter(Boolean).join(' · ')} title={v.name} meta={here ? undefined : [distanceLabel(v.distance), tx.venue.here(v.here)].filter(Boolean).join(' · ')} />
       <ErrorText text={err} />
 
       {here ? (
@@ -88,6 +102,11 @@ export function VenueScreen({ navigation, route }: { navigation: Nav; route: { p
           <Section>
             <ListRow testID="venue-checkout" title={tx.venue.checkout} danger onPress={() => call(() => api('POST', '/venues/checkout'))} />
           </Section>
+          {here.venue.removable ? (
+            <Section>
+              <ListRow testID="venue-remove" title={ap.remove} sub={ap.removeSub} danger onPress={remove} />
+            </Section>
+          ) : null}
         </>
       ) : (
         <>
