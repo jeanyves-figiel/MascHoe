@@ -41,6 +41,11 @@ kill_timeout = 30
   path = "/v1/health"
   timeout = "5s"
 
+# SR-07 (#147): Fly managed Prometheus scrapes the internal metrics port (not public).
+[metrics]
+  port = 9091
+  path = "/metrics"
+
 [[vm]]
   size = "shared-cpu-1x"
   memory = "512mb"

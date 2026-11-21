@@ -92,9 +92,21 @@ defmodule Thirstr.Push do
     end
   end
 
-  defp send_one("ios", token, safe), do: send_apns(token, payload(safe))
-  defp send_one("android", token, safe), do: send_fcm(token, fcm_message(token, safe))
-  defp send_one(_, _, _), do: :skipped
+  defp send_one(platform, token, safe) do
+    outcome =
+      case platform do
+        "ios" -> send_apns(token, payload(safe))
+        "android" -> send_fcm(token, fcm_message(token, safe))
+        _ -> :skipped
+      end
+
+    :telemetry.execute([:thirstr, :push, :send], %{count: 1}, %{
+      platform: platform,
+      outcome: outcome
+    })
+
+    outcome
+  end
 
   defp wanted?(a, event) do
     {toggle, urgent} = Map.fetch!(@types, event)
