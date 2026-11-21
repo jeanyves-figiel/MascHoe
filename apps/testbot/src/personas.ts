@@ -22,6 +22,8 @@ export type Persona = {
   /** Private album shared on "album" (or the Pics? quick reply). */
   album?: { name: string; n: number; hue: number };
   plan?: { tag: 'hosting' | 'can_travel' | 'drinks_first' | 'party' | 'other'; text: string };
+  /** Trip (F-20): shows as Visiting in that city while the bot lives elsewhere. */
+  trip?: { city: string; days: number };
   party?: { title: string; rules: string[]; capacity: number };
   activity?: { sport: string; title: string; place: string };
   /** Writes first to people who chatted with another bot (once each). */
@@ -76,9 +78,9 @@ export const PERSONAS: Persona[] = [
     here_for: ['friends', 'chat', 'tonight'],
     show_in: ['friends', 'hookup'],
     lang: 'pt',
-    fields: { bio: 'City-level location, Tonight plan. Fala comigo!', languages: ['pt', 'en', 'es'], build: 'average', relationship: 'single' },
-    location: { level: 'city', lat: 47.3769, lng: 8.5417 },
-    plan: { tag: 'drinks_first', text: 'Test bot · drinks in Kreis 4?' },
+    fields: { bio: 'Lives in Lisbon (City level), visiting Zurich this week (trip). Fala comigo!', languages: ['pt', 'en', 'es'], build: 'average', relationship: 'single' },
+    location: { level: 'city', lat: 38.7223, lng: -9.1393 },
+    trip: { city: 'Zurich', days: 7 },
     photos: { n: 3, hue: 150 },
   },
   {
@@ -115,8 +117,9 @@ export const PERSONAS: Persona[] = [
     here_for: ['chat', 'friends'],
     show_in: ['hookup', 'friends'],
     lang: 'ja',
-    fields: { bio: 'Non-binary, read receipts off: you only see Sent.', languages: ['ja', 'en'] },
+    fields: { bio: 'Non-binary, read receipts off (you only see Sent), Tonight plan.', languages: ['ja', 'en'] },
     settings: { read_receipts: false },
+    plan: { tag: 'drinks_first', text: 'Test bot · drinks in Kreis 5?' },
     location: { level: 'area', lat: 47.3866, lng: 8.5172 },
     photos: { n: 2, hue: 285 },
   },

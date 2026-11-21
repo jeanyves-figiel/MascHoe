@@ -22,12 +22,12 @@ before(async () => {
   const botDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bot-'));
   bot = spawn('node', ['dist/bot.mjs'], {
     cwd: root,
-    env: { ...process.env, API_URL: srv.url, TESTBOT_KEY: KEY, BOT_DATA_DIR: botDir, BOT_POLL_MS: '300', BOT_SCENE_MS: '500', BOTS: 'testbot,luca,remi,ghost' },
+    env: { ...process.env, API_URL: srv.url, TESTBOT_KEY: KEY, BOT_DATA_DIR: botDir, BOT_POLL_MS: '300', BOT_SCENE_MS: '500', BOTS: 'testbot,luca,tiago,remi,ghost' },
   });
   bot.stdout!.on('data', (d) => (botLog += d));
   bot.stderr!.on('data', (d) => (botLog += d));
   for (let i = 0; i < 300 && !botLog.includes('test bots up'); i++) await new Promise((r) => setTimeout(r, 100));
-  assert.match(botLog, /test bots up: testbot, luca, remi, ghost/, botLog);
+  assert.match(botLog, /test bots up: testbot, luca, tiago, remi, ghost/, botLog);
 });
 
 after(() => {
@@ -50,8 +50,8 @@ async function peer(env: Record<string, string>) {
 test('setup through the public API: persona, location modes, photos, Now, party', async () => {
   // setup jobs run in the background after start: give them a moment
   for (let i = 0; i < 100; i++) {
-    const done = srv.calls.filter((c) => /photos\/\w+\/check/.test(c.route)).length >= 1 + 2 + 5 + 3 && Object.keys(srv.parties).length;
-    if (done && srv.calls.some((c) => c.who === 'BOT-GHOST' && c.route === 'PUT /v1/me/location')) break;
+    const done = srv.calls.filter((c) => /photos\/\w+\/check/.test(c.route)).length >= 2 + 5 + 3 + 3 + 1 && Object.keys(srv.parties).length;
+    if (done && srv.calls.some((c) => c.who === 'BOT-GHOST' && c.route === 'PUT /v1/me/location') && srv.calls.some((c) => c.route === 'POST /v1/trips')) break;
     await new Promise((r) => setTimeout(r, 100));
   }
   const who = (p: string) => srv.calls.filter((c) => c.who === p);
@@ -68,6 +68,9 @@ test('setup through the public API: persona, location modes, photos, Now, party'
   const png = srv.blobs[Object.keys(srv.blobs).find((k) => k.startsWith('/s3/public/'))!];
   assert.equal(png.subarray(1, 4).toString(), 'PNG');
   assert.equal(Object.keys(srv.parties).length, 1);
+  const trip = srv.calls.find((c) => c.who === 'BOT-TIAGO' && c.route === 'POST /v1/trips')!;
+  assert.equal(trip.body.city_id, 7);
+  assert.equal(who('BOT-TIAGO').find((c) => c.route === 'PUT /v1/me/location')!.body.level, 'city');
 });
 
 test('Testbot: Delivered + Read, German, then Portuguese, quick reply with k', async () => {

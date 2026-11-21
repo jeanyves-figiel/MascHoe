@@ -157,6 +157,7 @@ export class Bot {
     every(5 * H, () => this.setNow(), 'now');
     every(6 * H, () => this.photos(), 'photos');
     every(30 * 60_000, () => this.planTonight(), 'plan');
+    every(6 * H, () => this.trip(), 'trip');
     every(SCENE_MS, () => this.party(), 'party');
     every(SCENE_MS, () => this.activity(), 'activity');
     every(5 * 60_000, () => this.tapBack(), 'taps');
@@ -210,6 +211,22 @@ export class Bot {
     });
     await this.set('plan_exp', r.expires_at);
     this.say('tonight plan until', r.expires_at);
+  }
+
+  /** Trip (F-20): visiting another city from today, re-planned when it ends. */
+  async trip() {
+    const cfg = this.p.trip;
+    if (!cfg) return;
+    const last = (await this.get<string>('trip_last')) ?? '';
+    const today = localDay(0);
+    if (last && last >= today) return;
+    const r = await this.api<{ cities: { id: number; name: string }[] }>('GET', '/cities?q=' + encodeURIComponent(cfg.city));
+    const city = r.cities.find((c) => c.name === cfg.city) ?? r.cities[0];
+    if (!city) throw new Error('no city ' + cfg.city);
+    const lastDay = localDay(cfg.days - 1);
+    await this.api('POST', '/trips', { city_id: city.id, first_day: today, last_day: lastDay, show_days: 0, say_from: true, tz_offset_min: tzZurich() });
+    await this.set('trip_last', lastDay);
+    this.say('trip to', cfg.city, 'until', lastDay);
   }
 
   /** Hosts a party (R-10.1), accepts every request and keeps the guest group chat in step. */
@@ -650,6 +667,11 @@ function hash(s: string) {
   let h = 2166136261;
   for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
   return h >>> 0;
+}
+
+/** Local (Zurich) date + n days, YYYY-MM-DD. */
+function localDay(n: number) {
+  return new Date(Date.now() + n * 86_400_000).toLocaleDateString('sv-SE', { timeZone: 'Europe/Zurich' });
 }
 
 /** Europe/Zurich offset in minutes (+60 winter, +120 summer). */

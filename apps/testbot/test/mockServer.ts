@@ -121,6 +121,10 @@ export function start(key: string) {
         return send(200, { members: [] });
       case route === 'POST /v1/tonight':
         return send(201, { id: 't' + seq++, expires_at: new Date(Date.now() + 4 * 3600_000).toISOString() });
+      case route === 'GET /v1/cities':
+        return send(200, { cities: [{ id: 7, name: 'Zurich' }] });
+      case route === 'POST /v1/trips':
+        return send(201, { id: 'trip' + seq++ });
       case route === 'GET /v1/taps':
         return send(200, { taps: [] });
       case ['PUT /v1/me/location', 'PUT /v1/me/pin', 'PUT /v1/me/now', 'POST /v1/taps/seen'].includes(route):
