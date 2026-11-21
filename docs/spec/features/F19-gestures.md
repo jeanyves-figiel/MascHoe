@@ -46,7 +46,7 @@ Beta: G1–G18 below. Jean-Yves picked all 18 on the mockup (2026-11-21). Out of
 
 ## Data
 - G1 adds optional `reply_to` (message id) and `reply_preview` (≤ 80 chars, sender display name) inside the E2EE `text` payload. Server unchanged (payload is opaque). Old clients ignore unknown fields and show the plain text.
-- G8 grid size: device setting `thirstr.explore.cols` (2|3|4, default 3), plain storage (not private).
+- G8 grid size: device setting `thirstr.explore.cols` (2|3|4, default 4 = smallest tiles, #223), plain storage (not private).
 - G1 reply quote: the reader names the quoted sender from its own copy of that message ("You" or the name); `re.n` only when the original is gone.
 
 ## Performance

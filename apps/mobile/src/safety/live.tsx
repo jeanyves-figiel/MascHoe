@@ -344,6 +344,7 @@ export function MeetupCard({ cid, name, navigation, onHide }: { cid: string; nam
       onHide();
     } catch (e) {
       if (e instanceof Error && e.message === 'no_contacts') navigation.navigate('CheckinStart', { cid });
+      else if ((e as { code?: string }).code === 'checkin_active' && !(await S.active())) navigation.navigate('CheckinDue'); // #127
       else setErr(tx.common.error);
     } finally {
       setBusy(false);

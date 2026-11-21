@@ -1,4 +1,5 @@
 import { mod } from '../../i18n/mod';
+import { mx as momentsTx } from '../../i18n/moments';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Platform, Pressable, Text, View } from 'react-native';
@@ -19,7 +20,7 @@ import { biometrics, biometricsAvailable, getLock } from '../../safety/lock';
 import { color, font, radius, space, type } from '../../theme/tokens';
 import type { Notice } from '../../trust/NoticesScreen';
 import { Button, Field, RangeSlider, Sheet } from '../../ui';
-import { exportData } from '../exportData';
+import { ExportCancelled, exportData, ExportProgress, ExportStage } from '../exportData';
 import { type Prefs, prefs, setPrefs, type TranslateMode } from '../prefs';
 import { SignInEmailSheet } from '../SignInEmail';
 import { Group, Page, Row, SegBlock, SwitchRow, useSettings } from './parts';
@@ -94,6 +95,8 @@ export function PrivacySettings() {
       <Group label={S.whatSee}>
         <SegBlock testID="distance" title={S.distance} value={st.show_distance} options={(['exact', 'range', 'none'] as const).map((k) => [k, S.distOpts[k]])} onChange={(v) => put({ show_distance: v })} caption={S.distSub[st.show_distance]} />
         <SwitchRow title={S.online} sub={S.onlineSub} value={st.online_visible} onChange={(v) => put({ online_visible: v })} />
+        {/* F-21 R-21.17 (#212, D-21b C) */}
+        <SwitchRow title={momentsTx.quietTitle} sub={momentsTx.quietSub} value={st.moments_quiet === true} onChange={(v) => put({ moments_quiet: v })} />
       </Group>
       <LocationSheet visible={loc} onClose={() => setLoc(false)} />
     </Page>
@@ -318,6 +321,8 @@ export function AccountSettings({ navigation }: { navigation: Nav }) {
   const [err, setErr] = useState<string | null>(null);
   const [emailSheet, setEmailSheet] = useState(false);
   const [exported, setExported] = useState(false);
+  const [packing, setPacking] = useState<Partial<Record<ExportStage, ExportProgress>> | null>(null);
+  const cancelExport = React.useRef(false);
   const [devices, setDevices] = useState<number | null>(null);
   useFocusEffect(
     useCallback(() => {
@@ -340,7 +345,19 @@ export function AccountSettings({ navigation }: { navigation: Nav }) {
         <Row testID="settings-devices" title={tx.devices.title} sub={S.devicesSub} value={devices != null ? String(devices) : undefined} onPress={() => navigation.navigate('Devices')} />
       </Group>
       <Group label={S.yourData}>
-        <Row testID="settings-export" title={tx.exportData.title} sub={exported ? tx.exportData.ready : S.exportSub} chevron={false} onPress={() => call(async () => { await exportData(); setExported(true); })} />
+        <Row testID="settings-export" title={tx.exportData.title} sub={exported ? tx.exportData.ready : S.exportSub} chevron={false} onPress={packing ? undefined : async () => {
+            setErr(null);
+            cancelExport.current = false;
+            setPacking({});
+            try {
+              await exportData((p) => setPacking((x) => (x ? { ...x, [p.stage]: p } : x)), () => cancelExport.current);
+              setExported(true);
+            } catch (e) {
+              if (!(e instanceof ExportCancelled)) setErr(tx.exportData.failed);
+            } finally {
+              setPacking(null);
+            }
+          }} />
       </Group>
       <Group label={S.leave}>
         <Row testID="settings-pause" title={paused ? S.resume : S.pause} sub={paused ? S.resumeSub : S.pauseSub} chevron={false} onPress={() => call(async () => setMe(await api<Me>('POST', paused ? '/account/resume' : '/account/pause')))} />
@@ -348,7 +365,37 @@ export function AccountSettings({ navigation }: { navigation: Nav }) {
         <Row testID="settings-delete" title={S.delete} sub={S.deleteSub} danger onPress={() => navigation.navigate('DeleteAccount')} />
       </Group>
       <SignInEmailSheet visible={emailSheet} onClose={() => setEmailSheet(false)} />
+      <ExportSheet progress={packing} onCancel={() => (cancelExport.current = true)} />
     </Page>
+  );
+}
+
+// R-01.11 "Packing your data" (#25): live per-stage counts while the phone builds the .zip.
+function ExportSheet({ progress, onCancel }: { progress: Partial<Record<ExportStage, ExportProgress>> | null; onCancel: () => void }) {
+  const E = tx.exportData;
+  const stages: Exclude<ExportStage, 'zip'>[] = ['account', 'photos', 'albums', 'chats'];
+  const p = progress ?? {};
+  const weight = { account: 0.1, photos: 0.25, albums: 0.5, chats: 0.15 };
+  const frac = stages.reduce((n, k) => n + (p[k]?.total ? (p[k]!.done / p[k]!.total) * weight[k] : 0), 0);
+  return (
+    <Sheet visible={progress != null} onClose={onCancel} title={E.packing} closeLabel={E.cancel}>
+      <View testID="export-sheet" style={{ gap: space.m, paddingBottom: space.xl }}>
+        <View style={{ height: 8, borderRadius: 4, backgroundColor: color.bgBase, overflow: 'hidden' }} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: Math.round(frac * 100) }}>
+          <View style={{ height: 8, borderRadius: 4, width: `${Math.max(4, Math.round(frac * 100))}%`, backgroundColor: color.trust }} />
+        </View>
+        {stages.map((k) => {
+          const s = p[k];
+          const done = s && s.done >= s.total;
+          return (
+            <View key={k} style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={{ ...type.body, color: color.fgSecondary }}>{E.stages[k]}</Text>
+              <Text style={{ ...type.body, fontFamily: font.bold, color: s ? color.fgPrimary : color.fgMuted, fontVariant: ['tabular-nums'] }}>{!s ? '–' : k === 'account' ? (done ? '✓' : '…') : `${s.done} / ${s.total}`}</Text>
+            </View>
+          );
+        })}
+        <Text style={{ ...type.caption, color: color.fgMuted }}>{E.stays}</Text>
+      </View>
+    </Sheet>
   );
 }
 

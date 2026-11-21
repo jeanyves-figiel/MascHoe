@@ -199,6 +199,17 @@ defmodule ThirstrWeb.Router do
       post "/trips", TripController, :create
       patch "/trips/:id", TripController, :update
       delete "/trips/:id", TripController, :delete
+      # F-21 Moments (#212)
+      post "/moments/uploads", MomentController, :upload
+      post "/moments/:id/publish", MomentController, :publish
+      get "/moments/mine", MomentController, :mine
+      post "/moments/views", MomentController, :views
+      post "/moments/:id/tap", MomentController, :tap
+      post "/moments/:id/screenshot", MomentController, :screenshot
+      delete "/moments/:id", MomentController, :delete
+      put "/moments/mutes/:profile_id", MomentController, :mute
+      delete "/moments/mutes/:profile_id", MomentController, :unmute
+      get "/profiles/:id/moments", MomentController, :for_profile
 
       # F-09 Now
       put "/me/now", ExploreController, :set_now
@@ -272,6 +283,7 @@ defmodule ThirstrWeb.Router do
       delete "/trusted/:id", SafetyController, :remove
       get "/checkin", SafetyController, :current
       post "/checkin", SafetyController, :start
+      delete "/checkin", SafetyController, :cancel
       post "/checkin/panic", SafetyController, :panic
       put "/checkin/:token/alerts", SafetyController, :refresh
       post "/checkin/:token/extend", SafetyController, :extend

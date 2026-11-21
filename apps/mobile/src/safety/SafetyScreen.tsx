@@ -58,6 +58,7 @@ export function SafetyScreen({ navigation }: { navigation: Nav }) {
   const fallback = me.profile?.display_name ?? 'Me';
   const [list, setList] = useState<S.Contact[]>([]);
   const [act, setAct] = useState<S.Active | null>(null);
+  const [orphan, setOrphan] = useState<S.Orphan | null>(null);
   const [name, setName] = useState('');
   const [adding, setAdding] = useState(false);
   const [label, setLabel] = useState('');
@@ -66,7 +67,12 @@ export function SafetyScreen({ navigation }: { navigation: Nav }) {
 
   const load = useCallback(() => {
     S.contacts().then(setList);
-    S.syncActive().then(setAct);
+    S.syncActive()
+      .then(async (a) => {
+        setAct(a);
+        setOrphan(a ? null : await S.orphanCheckin());
+      })
+      .catch(() => {});
     S.myName(fallback).then(setName);
   }, [fallback]);
   useFocusEffect(load);
@@ -97,12 +103,13 @@ export function SafetyScreen({ navigation }: { navigation: Nav }) {
         {tx.safety.title}
       </Text>
       {act ? <Banner tone="trust" text={tx.safety.active(time(act.due))} onPress={() => navigation.navigate('CheckinDue')} /> : null}
+      {orphan ? <Banner testID="checkin-orphan" tone="warn" text={tx.safety.orphanBanner(time(orphan.due))} onPress={() => navigation.navigate('CheckinDue')} /> : null}
       <Sos name={name || fallback} onSent={load} />
 
       <View style={{ gap: space.s }}>
         <SectionLabel>{tx.safety.checkin}</SectionLabel>
         {!ok ? <Banner tone="warn" text={tx.safety.needContacts} /> : null}
-        {act ? null : <Button testID="checkin-start" kind="trust" title={tx.safety.start} disabled={!ok} onPress={() => navigation.navigate('CheckinStart', {})} />}
+        {act || orphan ? null : <Button testID="checkin-start" kind="trust" title={tx.safety.start} disabled={!ok} onPress={() => navigation.navigate('CheckinStart', {})} />}
       </View>
 
       <View style={{ gap: space.s }}>
