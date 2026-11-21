@@ -2,7 +2,7 @@ defmodule ThirstrWeb.AuthController do
   @moduledoc "F-01 auth endpoints (api.md › Auth)."
   use ThirstrWeb, :controller
 
-  alias Thirstr.Accounts
+  alias Thirstr.{Accounts, Recovery}
   alias Thirstr.Auth.{EmailLink, OIDC, Passkeys}
   alias ThirstrWeb.{MeJSON, Plugs}
 
@@ -38,6 +38,19 @@ defmodule ThirstrWeb.AuthController do
     with {:ok, a} <- Passkeys.verify_authentication(params),
          :ok <- usable(a),
          {:ok, session} <- Accounts.start_session(a, params["platform"] || "web", resume(conn)) do
+      json(conn, MeJSON.session(session))
+    end
+  end
+
+  # --- recovery phrase (R-01.7, #25)
+
+  def recovery_options(conn, _), do: Recovery.options() |> then(fn {:ok, r} -> json(conn, r) end)
+
+  def recovery(conn, params) do
+    with {:ok, a} <- Recovery.verify(params),
+         :ok <- usable(a),
+         {:ok, session} <- Accounts.start_session(a, params["platform"] || "web", resume(conn)),
+         :ok <- Recovery.sign_out_others(a, session.device_id) do
       json(conn, MeJSON.session(session))
     end
   end

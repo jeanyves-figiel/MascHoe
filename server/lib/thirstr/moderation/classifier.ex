@@ -22,6 +22,8 @@ defmodule Thirstr.Moderation.Classifier do
   ≥ 0.6 on a blocked label rejects, 0.4–0.6 goes to human review (auto-hidden, R-15.13).
   """
   def decide(detections, slot, kind) do
+    detections = drop_chest_confusion(detections)
+
     max = fn labels ->
       detections
       |> Enum.filter(&(&1["class"] in labels))
@@ -49,6 +51,22 @@ defmodule Thirstr.Moderation.Classifier do
       slot == 0 -> {:ok_main, scores}
       true -> {:ok_public, scores}
     end
+  end
+
+  # NudeNet often tags a shirtless man's chest as FEMALE_BREAST_EXPOSED next to a stronger
+  # MALE_BREAST_EXPOSED (seen on staging, #26). Shirtless is allowed even on the main photo
+  # (R-15.10), so the female label only counts when it beats the male one on the same photo.
+  defp drop_chest_confusion(detections) do
+    score = fn label ->
+      detections
+      |> Enum.filter(&(&1["class"] == label))
+      |> Enum.map(& &1["score"])
+      |> Enum.max(fn -> 0.0 end)
+    end
+
+    if score.("MALE_BREAST_EXPOSED") >= score.("FEMALE_BREAST_EXPOSED"),
+      do: Enum.reject(detections, &(&1["class"] == "FEMALE_BREAST_EXPOSED")),
+      else: detections
   end
 end
 

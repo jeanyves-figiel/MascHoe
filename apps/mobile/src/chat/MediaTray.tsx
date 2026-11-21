@@ -281,7 +281,7 @@ export function MediaTray({
       <View style={{ flex: 1, minHeight: 0 }} onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)}>
         {tab === 'photos' ? (
           showGrid && cell ? (
-            <FlatList
+            <FlatList showsVerticalScrollIndicator={false}
               testID="roll-grid"
               data={rollData}
               keyExtractor={(s) => s.id}
@@ -291,7 +291,6 @@ export function MediaTray({
               contentContainerStyle={{ gap }}
               onEndReachedThreshold={0.6}
               onEndReached={() => next && loadRoll(false, next)}
-              showsVerticalScrollIndicator={false}
               renderItem={({ item }) =>
                 item.id === '__camera' ? (
                   <Pressable testID="tray-camera" accessibilityRole="button" accessibilityLabel={mx.camera} onPress={() => takePhoto().then((s) => s && send([s]), () => {})} style={{ width: cell, height: cell, borderRadius: 10, backgroundColor: color.bgOverlay, alignItems: 'center', justifyContent: 'center' }}>

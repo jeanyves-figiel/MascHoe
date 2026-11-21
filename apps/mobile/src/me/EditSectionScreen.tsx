@@ -98,7 +98,7 @@ export function EditSectionScreen({ route, navigation }: { route: { params: Para
 
   return (
     <View style={{ flex: 1, backgroundColor: color.bgBase }}>
-      <ScrollView
+      <ScrollView showsVerticalScrollIndicator={false}
         ref={scroll}
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"

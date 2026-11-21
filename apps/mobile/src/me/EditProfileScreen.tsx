@@ -58,7 +58,7 @@ export function EditProfileScreen({ route, navigation }: { route: { params?: Par
 
   return (
     <View style={{ flex: 1, backgroundColor: color.bgBase }}>
-      <ScrollView contentContainerStyle={{ padding: space.l, paddingTop: space.xs, gap: space.xl, paddingBottom: 140, maxWidth: 560, width: '100%', alignSelf: 'center' }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: space.l, paddingTop: space.xs, gap: space.xl, paddingBottom: 140, maxWidth: 560, width: '100%', alignSelf: 'center' }}>
         <Text accessibilityRole="header" style={{ ...type.display, fontSize: 28, lineHeight: 34, color: color.fgPrimary }}>
           {tx.edit.title}
         </Text>

@@ -86,7 +86,7 @@ export function HiddenBlockedScreen({ route }: { route?: { params?: { tab?: Tab 
       ) : list.length === 0 ? (
         <EmptyState title={tab === 'hidden' ? mod.list.emptyHidden : mod.list.emptyBlocked} body={mod.list.emptySub} />
       ) : (
-        <FlatList
+        <FlatList showsVerticalScrollIndicator={false}
           refreshControl={refresh}
           data={list}
           keyExtractor={(b) => b.profile_id}

@@ -16,6 +16,32 @@ const tab = (screen: string): Target => ({ route: 'Tabs', params: { screen } });
 
 export const NOTES: Note[] = [
   {
+    id: 3,
+    date: '2026-11-21',
+    lines: [
+      {
+        tone: 'trust',
+        glyph: 'pin',
+        to: tab('Explore'),
+        text: {
+          en: ['Calmer map', 'No more zones. Clubs and saunas on demand.'],
+          fr: ['Carte plus claire', 'Plus de zones. Clubs et saunas au choix.'],
+          de: ['Ruhigere Karte', 'Keine Zonen mehr. Clubs, Saunas nach Wahl.'],
+        },
+      },
+      {
+        tone: 'hookup',
+        glyph: 'spark',
+        to: tab('Explore'),
+        text: {
+          en: ['Active now, simpler', 'Pull up for everyone, down for the map.'],
+          fr: ['Actifs, plus simple', 'Tire vers le haut : tout le monde.'],
+          de: ['Aktiv jetzt, einfacher', 'Hochziehen für alle, runter für die Karte.'],
+        },
+      },
+    ],
+  },
+  {
     id: 2,
     date: '2026-11-21',
     lines: [
