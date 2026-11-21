@@ -15,6 +15,7 @@ import { ExploreScreen } from '../explore/ExploreScreen';
 import { tx } from '../i18n/app';
 import { DevicesScreen } from '../me/DevicesScreen';
 import { EditProfileScreen } from '../me/EditProfileScreen';
+import { EditSectionScreen } from '../me/EditSectionScreen';
 import { MeScreen } from '../me/MeScreen';
 import { backOf, hiddenExpired, stayOf, untilFor } from '../me/hidden';
 import { gx } from '../i18n/gestures';
@@ -360,6 +361,7 @@ export function Main() {
           <Stack.Screen name="Tabs" component={Tabs} />
           <Stack.Screen name="Profile" component={ProfileScreen as React.ComponentType} options={edgeOnly} />
           <Stack.Screen name="EditProfile" component={EditProfileScreen as React.ComponentType} options={(x) => ({ ...sub(x), ...edgeOnly })} />
+          <Stack.Screen name="EditSection" component={EditSectionScreen as React.ComponentType} options={(x) => ({ ...sub(x), ...edgeOnly })} />
           <Stack.Screen name="Settings" component={SettingsScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="PrivacySettings" component={PrivacySettings} options={sub} />
           <Stack.Screen name="ChatSettings" component={ChatSettings} options={sub} />

@@ -31,7 +31,7 @@ let last: { audience: M.Audience; ttl: M.Ttl } = { audience: 'everyone', ttl: 86
 const chatPeers = () => E.getConvs().filter((c) => !c.ctx && !c.gone && c.iWrote && c.theyWrote).map((c) => c.peer);
 const favPeers = () => People.favList().map((f) => f.peer);
 
-// S-74 Moment composer (F-21 R-21.1–R-21.5).
+// S-76 Moment composer (F-21 R-21.1–R-21.5).
 export function MomentNewScreen({ navigation }: { navigation: Nav }) {
   const { me } = useSession();
   const insets = useSafeAreaInsets();

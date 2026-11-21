@@ -26,7 +26,7 @@ type Nav = { goBack: () => void; navigate: (r: string, p?: object) => void };
 
 const SHOW_MS = 6000;
 
-// S-75 Moment viewer (F-21 R-21.11–R-21.13, R-21.17–R-21.18). Full screen, no tab bar.
+// S-77 Moment viewer (F-21 R-21.11–R-21.13, R-21.17–R-21.18). Full screen, no tab bar.
 export function MomentViewerScreen({ route, navigation }: { route: { params: Params }; navigation: Nav }) {
   const { queue, mode, self } = route.params;
   const { me } = useSession();

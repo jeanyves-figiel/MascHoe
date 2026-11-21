@@ -1,4 +1,4 @@
-// F-21 Moments (#212): viewer flow (S-75), Moments row order (R-21.10), expiry on the phone (R-21.22).
+// F-21 Moments (#212): viewer flow (S-77), Moments row order (R-21.10), expiry on the phone (R-21.22).
 import { describe, expect, jest, test } from '@jest/globals';
 jest.mock('../src/api/client', () => ({ api: jest.fn(() => Promise.resolve({})), putBlob: jest.fn() }));
 jest.mock('expo-image-manipulator', () => ({ ImageManipulator: { manipulate: jest.fn() }, SaveFormat: { JPEG: 'jpeg' } }));

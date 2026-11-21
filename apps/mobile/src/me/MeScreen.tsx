@@ -4,11 +4,11 @@ import { Pressable, ScrollView, Share, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { api, ApiError } from '../api/client';
-import type { Mode, MyProfile } from '../api/types';
+import type { Mode, MyProfile, Trip } from '../api/types';
 import { useSession } from '../app/session';
 import { listAlbums, onAlbums } from '../chat/albums';
 import { type Level } from '../explore/level';
-import { LocationControl } from '../explore/LocationControl';
+import { LocationSheet } from '../explore/LocationSheet';
 import { tx } from '../i18n/app';
 import { v3 } from '../i18n/v3';
 import { LENSES } from '../profile/lens';
@@ -16,7 +16,9 @@ import { contacts } from '../safety/safety';
 import { color, font, modeColor, radius, space, touch, type } from '../theme/tokens';
 import type { Notice } from '../trust/NoticesScreen';
 import { afterSheet, Banner, Button, ErrorText, Icon, Photo, Sheet, VerifiedTick } from '../ui';
-import { loadTrips, Plane } from '../travel/travel';
+import { loadTrips, Plane, rangeLabel } from '../travel/travel';
+import { pe } from '../i18n/profileEdit';
+import { quickWins } from '../profile/quickWins';
 import { tr } from '../i18n/travel';
 import { mx } from '../i18n/moments';
 import * as Moments from '../moments/api';
@@ -52,7 +54,8 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
   const [notices, setNotices] = useState<Notice[]>([]);
   const [albums, setAlbums] = useState(0);
   const [trusted, setTrusted] = useState(0);
-  const [trips, setTrips] = useState(0);
+  const [trips, setTrips] = useState<Trip[]>([]);
+  const [loc, setLoc] = useState(false);
   const [moments, setMoments] = useState(0);
 
   useEffect(() => {
@@ -64,7 +67,7 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
   useFocusEffect(
     useCallback(() => {
       contacts().then((c) => setTrusted(c.filter((x) => x.accepted).length), () => {});
-      loadTrips().then((r) => setTrips(r.trips.length), () => {});
+      loadTrips().then((r) => setTrips(r.trips), () => {});
       if (me.verified) Moments.mine().then((l) => setMoments(Moments.alive(l).length), () => {});
     }, [me.verified]),
   );
@@ -93,7 +96,7 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
     run(async () => {
       await api('PATCH', `/me/profiles/${p.id}`, { show_in: next });
       const sports = p.fields.sports;
-      if (m === 'sport' && on && !(Array.isArray(sports) && sports.length)) navigation.navigate('EditProfile', { id: p.id, focus: 'sport' });
+      if (m === 'sport' && on && !(Array.isArray(sports) && sports.length)) navigation.navigate('EditSection', { id: p.id, section: 'sport' });
     });
   };
 
@@ -128,7 +131,13 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
   const main = p?.photos.find((x) => x.slot === 0);
   const photoCount = p?.photos.filter((x) => x.url && x.status !== 'rejected').length ?? 0;
   const accent = modeColor.hookup;
-  const others = v3.me.othersSee[level];
+  const precise = level === 'area' && !!me.location?.precise;
+  const others = precise ? `${tx.location.othersSee}: ~150 m` : v3.me.othersSee[level];
+  const levelName = tx.location.levels[level]?.[0] ?? level;
+  const pinLive = !!me.location?.pin;
+  const nextTrip = [...trips].sort((a, b) => a.first_day.localeCompare(b.first_day))[0];
+  const complete = !!p && p.completeness >= 100;
+  const wins = p ? quickWins({ ...p.fields }, photoCount, showIn).length : 0;
 
   return (
     <View style={{ flex: 1, backgroundColor: color.bgBase }}>
@@ -148,77 +157,75 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
         {p ? (
           <View style={{ padding: space.l, borderRadius: radius.tray, backgroundColor: color.bgRaised, gap: space.l }}>
             <View style={{ flexDirection: 'row', gap: space.l, alignItems: 'center' }}>
-              <View style={{ width: 92, height: 92, alignItems: 'center', justifyContent: 'center' }}>
-                <Ring pct={p.completeness} c={accent} />
-                <Photo uri={main?.url} id={p.id} label={p.display_name} style={{ position: 'absolute', width: 76, height: 76, borderRadius: 38 }} />
+              <View style={{ width: 72, height: 72, alignItems: 'center', justifyContent: 'center' }}>
+                <Ring pct={p.completeness} c={accent} size={72} />
+                <Photo uri={main?.url} id={p.id} label={p.display_name} style={{ position: 'absolute', width: 58, height: 58, borderRadius: 29 }} />
               </View>
-              <View style={{ flex: 1, gap: space.xs }}>
+              <View style={{ flex: 1, gap: 2 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.s }}>
-                  <Text style={{ ...type.title, color: color.fgPrimary, flexShrink: 1 }} numberOfLines={2}>
+                  <Text style={{ ...type.title, fontSize: 20, color: color.fgPrimary, flexShrink: 1 }} numberOfLines={1}>
                     {p.display_name}, {p.age}
                   </Text>
                   {me.verified ? <VerifiedTick size={18} /> : null}
                 </View>
-                <Text accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: p.completeness }} style={{ ...type.meta, fontFamily: font.bold, color: accent }}>
-                  {tx.me.completeness(p.completeness)}
+                <Text testID="me-completeness" accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: p.completeness }} style={{ ...type.meta, fontFamily: font.bold, color: complete ? color.trust : color.alertIcon }}>
+                  {complete ? pe.complete : `${pe.profilePct(p.completeness)} · ${pe.winsLeft(wins)}`}
                 </Text>
-                {p.completeness < 100 ? (
-                  <Pressable accessibilityRole="link" onPress={() => navigation.navigate('EditProfile', { id: p.id })} hitSlop={8}>
-                    <Text style={{ ...type.meta, color: color.fgSecondary }}>{photoCount < 3 ? v3.me.nextPhoto : v3.me.nextStep}</Text>
-                  </Pressable>
-                ) : null}
               </View>
             </View>
-            {/* #124: buttons size to their label so "Profil bearbeiten" stays on one line on small phones. */}
+            {/* #124: buttons size to their label so long labels stay on one line on small phones. */}
             <View style={{ flexDirection: 'row', gap: space.s }}>
               <View style={{ flexGrow: 1, flexBasis: 'auto' }}>
-                <Button testID="edit-profile" small title={tx.me.editProfile} fill={color.fgPrimary} onPress={() => navigation.navigate('EditProfile', { id: p.id })} />
+                <Button testID="edit-profile" small title={complete ? pe.edit : pe.finish} fill={color.fgPrimary} onPress={() => navigation.navigate('EditProfile', { id: p.id })} />
               </View>
-              <View style={{ flexGrow: 1, flexBasis: 'auto' }}>
-                <Button testID="me-preview" small kind="secondary" title={v3.me.preview} onPress={() => navigation.navigate('LensPreview')} />
+              <View style={{ flexGrow: 0, flexBasis: 'auto' }}>
+                <Button testID="me-preview" small kind="secondary" title={pe.preview} onPress={() => navigation.navigate('LensPreview')} />
               </View>
             </View>
           </View>
         ) : null}
 
+        {/* #219: Right now = 3 rows; the level control lives in the Location sheet (S-30). */}
         <View style={{ gap: space.s }}>
-          <GroupLabel tone={color.trust}>{v3.me.rightNow}</GroupLabel>
+          <GroupLabel tone={color.trust}>{pe.rightNow}</GroupLabel>
           <View style={{ borderRadius: radius.md, backgroundColor: color.bgRaised, overflow: 'hidden' }}>
-            <View style={{ padding: space.l, paddingTop: space.m, gap: space.m }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.m }}>
-                <IconTile tone={color.trust}>
-                  <Icon.Pin size={18} c={color.trust} />
-                </IconTile>
-                <View style={{ flex: 1 }}>
-                  <Text style={rowTitle}>{tx.me.location}</Text>
-                  <Text testID="me-others-see" style={rowSub}>
-                    {others}
-                  </Text>
-                </View>
+            <Row testID="me-location" onPress={() => setLoc(true)} label={`${tx.me.location}: ${levelName}`} first>
+              <IconTile tone={color.trust}>
+                <Icon.Pin size={18} c={color.trust} />
+              </IconTile>
+              <View style={{ flex: 1 }}>
+                <Text style={rowTitle}>{tx.me.location}</Text>
+                <Text testID="me-others-see" style={rowSub} numberOfLines={1}>
+                  {others}
+                </Text>
               </View>
-              <LocationControl onLocked={() => navigation.navigate('Verify')} />
-            </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 28, paddingHorizontal: space.m, borderRadius: radius.pill, backgroundColor: color.trust }}>
+                {pinLive ? <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: color.hookup }} /> : null}
+                <Text style={{ ...type.caption, fontSize: 13, color: color.onAccent }}>{levelName}</Text>
+              </View>
+              <Icon.Next />
+            </Row>
             <Row testID="me-now" onPress={() => setNow(true)} label={tx.me.now}>
               <IconTile tone={color.hookup}>
                 <Icon.Bolt size={18} c={color.hookup} />
               </IconTile>
               <View style={{ flex: 1 }}>
                 <Text style={rowTitle}>{tx.me.now}</Text>
-                <Text style={rowSub}>{v3.me.nowSub}</Text>
+                <Text style={rowSub} numberOfLines={1}>{v3.me.nowSub}</Text>
               </View>
               <Text style={rowValue}>{me.now ? tx.now[me.now.status] : v3.me.off}</Text>
               <Icon.Next />
             </Row>
-            {/* F-20 R-20.1: Trips under How you show up right now */}
+            {/* F-20 R-20.1 */}
             <Row testID="me-trips" onPress={() => navigation.navigate('Trips')} label={tr.trips}>
               <IconTile tone={color.travel}>
                 <Plane size={18} c={color.travel} />
               </IconTile>
               <View style={{ flex: 1 }}>
                 <Text style={rowTitle}>{tr.trips}</Text>
-                <Text style={rowSub}>{tr.rowSub}</Text>
+                <Text style={rowSub} numberOfLines={1}>{nextTrip ? `${nextTrip.city.name} · ${rangeLabel(nextTrip.first_day, nextTrip.last_day)}` : tr.rowSub}</Text>
               </View>
-              <Text style={rowValue}>{tr.tripsRow(trips)}</Text>
+              {trips.length ? <Text style={rowValue}>{trips.length}</Text> : null}
               <Icon.Next />
             </Row>
             {/* F-21 R-21.14 (#212): Moments, live count; tap = own viewer, or post the first one */}
@@ -247,7 +254,13 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
 
         {p ? (
           <View style={{ gap: space.s }}>
-            <GroupLabel>{tx.me.showMeIn}</GroupLabel>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <GroupLabel>{tx.me.showMeIn}</GroupLabel>
+              <Pressable testID="me-see-how" accessibilityRole="link" onPress={() => navigation.navigate('LensPreview')} hitSlop={10} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 32 }}>
+                <Text style={{ ...type.meta, fontFamily: font.bold, color: color.trust }}>{pe.howILook}</Text>
+                <Icon.Next c={color.trust} size={13} />
+              </Pressable>
+            </View>
             <View style={{ flexDirection: 'row', gap: space.s }}>
               {LENSES.map((m) => {
                 const on = showIn.includes(m);
@@ -260,57 +273,36 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
                     accessibilityState={{ checked: on, disabled: busy }}
                     accessibilityLabel={`${tx.me.showMeIn} ${tx.modes[m]}`}
                     onPress={() => setLens(m)}
-                    style={{ flex: 1, minHeight: 112, padding: space.m, gap: 6, borderRadius: 18, borderWidth: 2, borderColor: on ? c : color.line, backgroundColor: on ? `${c}1F` : color.bgRaised }}
+                    style={({ pressed }) => ({ flex: 1, height: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: space.s, borderRadius: radius.pill, borderWidth: 2, borderColor: on ? c : color.line, backgroundColor: on ? `${c}26` : color.bgRaised, opacity: pressed ? 0.85 : 1 })}
                   >
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: c }} />
-                      <View style={{ width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? c : color.line }}>
-                        {on ? <Icon.Check size={12} /> : null}
-                      </View>
+                    {/* On: the lens dot becomes a check in the lens colour. */}
+                    <View style={{ width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? c : 'transparent' }}>
+                      {on ? <Icon.Check size={11} /> : <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: c }} />}
                     </View>
-                    <Text style={{ ...type.headline, color: color.fgPrimary }}>{tx.modes[m]}</Text>
-                    <Text style={{ ...type.meta, fontSize: 12, lineHeight: 16, color: color.fgSecondary }}>{v3.me.lensShort[m]}</Text>
+                    <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={{ ...type.headline, fontSize: 15, color: color.fgPrimary, flexShrink: 1 }}>
+                      {tx.modes[m]}
+                    </Text>
                   </Pressable>
                 );
               })}
             </View>
             {lensNote ? <Text style={{ ...type.meta, color: color.personal }}>{tx.me.lensLastOne}</Text> : null}
-            <Pressable testID="me-see-how" accessibilityRole="link" onPress={() => navigation.navigate('LensPreview')} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: space.s, paddingHorizontal: space.xs, minHeight: touch }}>
-              <Text style={{ ...type.meta, fontFamily: font.bold, fontSize: 14, color: color.trust }}>{v3.me.seeHow}</Text>
-              <Icon.Next c={color.trust} />
-            </Pressable>
           </View>
         ) : null}
 
         <View style={{ gap: space.s }}>
           <GroupLabel>{v3.me.yours}</GroupLabel>
-          <View style={{ borderRadius: radius.md, backgroundColor: color.bgRaised, overflow: 'hidden' }}>
-            <Row testID="me-albums" onPress={() => navigation.navigate('Albums')} label={tx.albums.title} first>
-              <IconTile>
-                <Icon.Lock size={18} c={color.fgPrimary} />
-              </IconTile>
-              <View style={{ flex: 1 }}>
-                <Text style={rowTitle}>{tx.albums.title}</Text>
-                <Text style={rowSub}>{v3.me.albumsSub}</Text>
-              </View>
-              {albums ? <Text style={rowValue}>{albums}</Text> : null}
-              <Icon.Next />
-            </Row>
-            <Row testID="me-safety" onPress={() => navigation.navigate('Safety')} label={v3.me.checkin}>
-              <IconTile>
-                <Icon.Shield size={18} c={color.fgPrimary} />
-              </IconTile>
-              <View style={{ flex: 1 }}>
-                <Text style={rowTitle}>{v3.me.checkin}</Text>
-                <Text style={rowSub}>{v3.me.checkinSub(trusted)}</Text>
-              </View>
-              <Icon.Next />
-            </Row>
+          <View style={{ flexDirection: 'row', gap: space.s }}>
+            <Tile testID="me-albums" onPress={() => navigation.navigate('Albums')} icon={<Icon.Lock size={20} c={color.fgPrimary} />} title={tx.albums.title} sub={pe.albums(albums)} />
+            <Tile testID="me-safety" onPress={() => navigation.navigate('Safety')} icon={<Icon.Shield size={20} c={color.fgPrimary} />} title={v3.me.checkin} sub={pe.checkin(trusted)} />
           </View>
         </View>
         <ErrorText text={err} />
       </ScrollView>
+      {/* #219: content never shows under the status bar. */}
+      <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: insets.top, backgroundColor: color.bgBase }} />
       <NowSheet visible={now} onClose={() => setNow(false)} />
+      <LocationSheet visible={loc} onClose={() => setLoc(false)} onLocked={() => { setLoc(false); navigation.navigate('Verify'); }} />
       <SignInEmailSheet visible={emailSheet} onClose={() => setEmailSheet(false)} />
       {p ? <QrSheet visible={qr} profileId={p.id} onClose={() => setQr(false)} /> : null}
     </View>
@@ -344,6 +336,26 @@ function Row({ children, onPress, testID, label, first }: { children: React.Reac
   );
 }
 
+function Tile({ icon, title, sub, onPress, testID }: { icon: React.ReactNode; title: string; sub: string; onPress: () => void; testID?: string }) {
+  return (
+    <Pressable
+      testID={testID}
+      accessibilityRole="button"
+      accessibilityLabel={`${title}, ${sub}`}
+      onPress={onPress}
+      style={({ pressed }) => ({ flex: 1, minHeight: 104, padding: space.m + 2, gap: space.s, borderRadius: 20, justifyContent: 'space-between', backgroundColor: pressed ? color.bgOverlay : color.bgRaised })}
+    >
+      {icon}
+      <View>
+        <Text style={{ ...type.headline, color: color.fgPrimary }}>{title}</Text>
+        <Text numberOfLines={1} style={{ ...type.meta, color: color.fgSecondary }}>
+          {sub}
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
 function RoundBtn({ icon, label, onPress, testID }: { icon: React.ReactNode; label: string; onPress: () => void; testID?: string }) {
   return (
     <Pressable testID={testID} accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => ({ width: touch, height: touch, borderRadius: touch / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: pressed ? color.bgOverlay : color.bgRaised })}>
@@ -373,13 +385,14 @@ function QrIcon() {
 }
 
 // Completeness ring around the main photo (App v2, issue 58).
-function Ring({ pct, c }: { pct: number; c: string }) {
-  const r = 43;
+function Ring({ pct, c, size = 92 }: { pct: number; c: string; size?: number }) {
+  const h = size / 2;
+  const r = h - 3;
   const len = 2 * Math.PI * r;
   return (
-    <Svg width={92} height={92} viewBox="0 0 92 92">
-      <Circle cx={46} cy={46} r={r} stroke={color.line} strokeWidth={5} fill="none" />
-      <Circle cx={46} cy={46} r={r} stroke={c} strokeWidth={5} fill="none" strokeLinecap="round" strokeDasharray={`${(len * Math.max(0, Math.min(100, pct))) / 100} ${len}`} transform="rotate(-90 46 46)" />
+    <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <Circle cx={h} cy={h} r={r} stroke={color.line} strokeWidth={4} fill="none" />
+      <Circle cx={h} cy={h} r={r} stroke={c} strokeWidth={4} fill="none" strokeLinecap="round" strokeDasharray={`${(len * Math.max(0, Math.min(100, pct))) / 100} ${len}`} transform={`rotate(-90 ${h} ${h})`} />
     </Svg>
   );
 }

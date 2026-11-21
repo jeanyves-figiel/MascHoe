@@ -1,6 +1,6 @@
 import { getLocales } from 'expo-localization';
 
-// F-21 Moments (#212): composer (S-74), viewer (S-75), Moments row, rings, Seen by.
+// F-21 Moments (#212): composer (S-76), viewer (S-77), Moments row, rings, Seen by.
 const en = {
   moments: 'Moments',
   you: 'You',

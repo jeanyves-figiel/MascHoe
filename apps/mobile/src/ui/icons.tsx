@@ -188,6 +188,12 @@ export const Icon = {
       <Path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 002 2h10a2 2 0 002-2v-6" {...base(c, w)} />
     </Svg>
   ),
+  Eye: ({ size = 20, c = color.fgPrimary, w = 2.1 }: P) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M2.5 12S6 5 12 5s9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7z" {...base(c, w)} />
+      <Circle cx={12} cy={12} r={3} {...base(c, w)} />
+    </Svg>
+  ),
   EyeOff: ({ size = 20, c = color.fgPrimary, w = 2.1 }: P) => (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Path d="M3 3l18 18M10.6 5.1A10 10 0 0112 5c6 0 9.5 7 9.5 7a17 17 0 01-3.2 4.1M6.3 6.4C3.9 8 2.5 12 2.5 12S6 19 12 19a9.6 9.6 0 004.3-1" {...base(c, w)} />

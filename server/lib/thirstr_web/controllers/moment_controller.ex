@@ -1,5 +1,5 @@
 defmodule ThirstrWeb.MomentController do
-  @moduledoc "F-21 Moments (#212): temporary photos (S-74 composer, S-75 viewer)."
+  @moduledoc "F-21 Moments (#212): temporary photos (S-76 composer, S-77 viewer)."
   use ThirstrWeb, :controller
 
   alias Thirstr.{Moments, Social}

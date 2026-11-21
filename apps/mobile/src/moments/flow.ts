@@ -1,4 +1,4 @@
-// F-21 (#212): viewer state machine (S-75). Pure, unit-tested.
+// F-21 (#212): viewer state machine (S-77). Pure, unit-tested.
 import * as M from './api';
 import type { Moment, MyMoment } from './api';
 
