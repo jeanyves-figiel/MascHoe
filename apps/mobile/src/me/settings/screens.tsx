@@ -6,6 +6,9 @@ import { api, ApiError, clearSession, Me } from '../../api/client';
 import { useSession } from '../../app/session';
 import { askPushPermission } from '../../chat/engine';
 import { customQuickReplies, setCustomQuickReplies } from '../../chat/quick';
+import * as Recent from '../../chat/recent';
+import { mx } from '../../i18n/media';
+import { toast } from '../../ui/Toast';
 import { LocationSheet } from '../../explore/LocationSheet';
 import { langName, targetLang, translateAvailable } from '../../chat/translate';
 import { tx } from '../../i18n/app';
@@ -102,8 +105,12 @@ export function ChatSettings() {
   const [pf, setPf] = useState<Prefs>(prefs());
   const [quick, setQuick] = useState<string[]>([]);
   const [quickOpen, setQuickOpen] = useState(false);
+  const [recentN, setRecentN] = useState(0);
   useEffect(() => {
     customQuickReplies().then(setQuick);
+    const load = () => Recent.list().then((l) => setRecentN(l.length));
+    load();
+    return Recent.onRecent(load);
   }, []);
   if (!st) return <Page title={S.chats} loading />;
   const tone = color.friends;
@@ -128,6 +135,13 @@ export function ChatSettings() {
       <Group label={S.media}>
         <SegBlock testID="explicit" tone={tone} title={S.explicit} value={st.explicit_from_strangers} options={(['blur', 'allow', 'block'] as const).map((k) => [k, S.explicitOpts[k]])} onChange={(v) => put({ explicit_from_strangers: v })} />
         <SwitchRow tone={tone} title={tx.prefs.autoDelete} value={pf.autoDelete || !!me.safe_mode_active} disabled={!!me.safe_mode_active} onChange={(v) => setPrefs({ autoDelete: v }).then(setPf)} />
+        <Row
+          testID="clear-recent"
+          title={mx.clearRecent}
+          sub={mx.clearRecentSub}
+          value={recentN ? String(recentN) : undefined}
+          onPress={() => Recent.clear().then(() => toast(mx.cleared))}
+        />
       </Group>
       <Group label={S.messages}>
         <SegBlock testID="disappear" tone={tone} title={S.disappear} value={st.disappearing_default} options={(['24h', '7d', 'never'] as const).map((k) => [k, S.disOpts[k]])} onChange={(v) => put({ disappearing_default: v })} />
