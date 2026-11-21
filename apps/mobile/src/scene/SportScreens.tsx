@@ -86,7 +86,7 @@ export function ActivityScreen({ navigation, route }: { navigation: Nav; route: 
   };
 
   return (
-    <ScrollView keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets
+    <ScrollView showsVerticalScrollIndicator={false} keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets
       refreshControl={refresh}
       style={{ flex: 1, backgroundColor: color.bgBase }}
       contentContainerStyle={{
@@ -191,7 +191,7 @@ export function ActivityNewScreen({ navigation }: { navigation: Nav }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: color.bgBase }}>
-    <ScrollView keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets
+    <ScrollView showsVerticalScrollIndicator={false} keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets
       style={{ flex: 1, backgroundColor: color.bgBase }}
       contentContainerStyle={{
         padding: space.l,
@@ -271,7 +271,7 @@ export function ClubScreen({ navigation, route }: { navigation: Nav; route: { pa
   };
 
   return (
-    <ScrollView keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets
+    <ScrollView showsVerticalScrollIndicator={false} keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets
       refreshControl={refresh}
       style={{ flex: 1, backgroundColor: color.bgBase }}
       contentContainerStyle={{
@@ -358,7 +358,7 @@ export function ClubNewScreen({ navigation }: { navigation: Nav }) {
   };
   return (
     <View style={{ flex: 1, backgroundColor: color.bgBase }}>
-    <ScrollView keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets
+    <ScrollView showsVerticalScrollIndicator={false} keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets
       style={{ flex: 1, backgroundColor: color.bgBase }}
       contentContainerStyle={{
         padding: space.l,

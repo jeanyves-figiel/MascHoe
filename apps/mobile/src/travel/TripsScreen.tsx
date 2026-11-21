@@ -41,7 +41,7 @@ export function TripsScreen({ navigation }: { navigation: Nav }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: color.bgBase }}>
-      <ScrollView contentContainerStyle={{ padding: space.l, paddingTop: space.s, gap: space.m, paddingBottom: 140 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: space.l, paddingTop: space.s, gap: space.m, paddingBottom: 140 }}>
         <Text accessibilityRole="header" style={{ ...type.display, fontSize: 34, lineHeight: 40, color: color.fgPrimary }}>
           {tr.trips}
         </Text>

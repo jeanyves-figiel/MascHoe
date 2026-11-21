@@ -32,7 +32,7 @@ export const useAccent = () => modeColor[useContext(ModeContext)];
 
 export function Screen({ children, progress, padded = true }: { children: React.ReactNode; progress?: number; padded?: boolean }) {
   return (
-    <ScrollView style={s.screen} contentContainerStyle={[s.content, !padded && { padding: 0 }]} keyboardShouldPersistTaps="handled">
+    <ScrollView showsVerticalScrollIndicator={false} style={s.screen} contentContainerStyle={[s.content, !padded && { padding: 0 }]} keyboardShouldPersistTaps="handled">
       {progress ? <Progress step={progress} /> : null}
       {children}
     </ScrollView>
@@ -460,7 +460,7 @@ export function Sheet({ visible, onClose, title, children, closeLabel = 'Close' 
             </View>
           </View>
         </GestureDetector>
-        <ScrollView contentContainerStyle={{ gap: space.l, paddingBottom: space.huge }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: space.l, paddingBottom: space.huge }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
           {children}
         </ScrollView>
       </Animated.View>

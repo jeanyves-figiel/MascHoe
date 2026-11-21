@@ -75,7 +75,7 @@ export function DevicesScreen() {
 
   if (!list) return <Loading />;
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: color.bgBase }} contentContainerStyle={{ padding: space.l, gap: space.l, paddingBottom: 120 }}>
+    <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1, backgroundColor: color.bgBase }} contentContainerStyle={{ padding: space.l, gap: space.l, paddingBottom: 120 }}>
       <Text style={{ ...type.display, color: color.fgPrimary }}>{tx.devices.title}</Text>
       <Text style={{ ...type.meta, color: color.fgSecondary }}>{tx.devices.hint}</Text>
       <Section>

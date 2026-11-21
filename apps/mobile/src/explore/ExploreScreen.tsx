@@ -635,7 +635,7 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
         >
           <GestureDetector gesture={gridGesture}>
           <Animated.View style={[{ flex: 1 }, pinchStyle]}>
-          <FlatList
+          <FlatList showsVerticalScrollIndicator={false}
             key={`cols-${cols}`}
             ref={list}
             data={items}

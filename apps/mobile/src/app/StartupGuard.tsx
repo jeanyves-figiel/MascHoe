@@ -33,7 +33,7 @@ export function ErrorView({ error }: { error: unknown }) {
     <View style={{ flex: 1, backgroundColor: color.bgBase, paddingTop: 80, paddingHorizontal: 24 }}>
       <Text style={{ color: color.fgPrimary, fontSize: 20, fontWeight: '700', marginBottom: 12 }}>Something went wrong</Text>
       <Text style={{ color: color.fgSecondary, marginBottom: 16 }}>Please send a screenshot of this screen.</Text>
-      <ScrollView>
+      <ScrollView showsVerticalScrollIndicator={false}>
         <Text selectable style={{ color: color.danger, fontFamily: 'Menlo', fontSize: 12 }}>
           {String(e?.message ?? error)}
           {'\n\n'}

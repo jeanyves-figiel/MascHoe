@@ -180,7 +180,7 @@ export function InboxScreen({ navigation }: { navigation: Nav }) {
           ]}
         />
       </View>
-      <SectionList keyboardDismissMode="on-drag"
+      <SectionList showsVerticalScrollIndicator={false} keyboardDismissMode="on-drag"
         refreshControl={refresh}
         sections={sections}
         keyExtractor={(r) => (r.kind === 'fav' ? 'f:' + r.peer : (r.kind === 'request' ? 'r:' : '') + r.c.id)}

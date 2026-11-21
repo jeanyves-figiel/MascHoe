@@ -167,7 +167,7 @@ export function MomentNewScreen({ navigation }: { navigation: Nav }) {
           </Pressable>
         </View>
       </View>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ backgroundColor: color.bgOverlay, borderTopLeftRadius: 26, borderTopRightRadius: 26, marginTop: -26, padding: space.l, paddingBottom: insets.bottom + space.l, gap: space.m, flexGrow: 1 }} keyboardShouldPersistTaps="handled">
+      <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={{ backgroundColor: color.bgOverlay, borderTopLeftRadius: 26, borderTopRightRadius: 26, marginTop: -26, padding: space.l, paddingBottom: insets.bottom + space.l, gap: space.m, flexGrow: 1 }} keyboardShouldPersistTaps="handled">
         <TextInput
           testID="moment-caption"
           value={caption}
