@@ -67,6 +67,7 @@ Every F-01…F-18 / I-01…I-03 rule in beta scope ships before the closed beta 
 | 1–4 Now/Friends | `*_GENITALIA_EXPOSED`, `ANUS_EXPOSED` |
 | 1–4 Sport | same as main + `*_GENITALIA_COVERED` (> swimwear, AC-11.1) |
 Scores 0.4–0.6 → `pending_review` (A-03 queue), auto-hidden until reviewed (R-15.13).
+`FEMALE_BREAST_EXPOSED` is ignored when `MALE_BREAST_EXPOSED` scores at least as high on the same photo (NudeNet confuses bare male chests; shirtless is allowed on main, #26).
 
 ## Out of beta (unchanged "Later")
 Video calls, Plus billing, open protocol, web client for end users (web build stays a DEV tool).
