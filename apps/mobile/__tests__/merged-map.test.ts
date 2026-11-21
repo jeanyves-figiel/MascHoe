@@ -65,9 +65,9 @@ describe('intent ring (R-04.19, AC-04.11)', () => {
 });
 
 describe('place layers (R-04.20)', () => {
-  test('defaults: clubs, saunas, parties; gyms only by themselves in Sport-only', () => {
-    expect(activeKinds(defaultLayers, ['hookup', 'friends', 'sport'])).toEqual(['clubs', 'saunas', 'parties']);
-    expect(activeKinds(defaultLayers, ['sport'])).toEqual(['clubs', 'saunas', 'parties', 'gyms']);
+  test('defaults (#223): parties only; gyms by themselves in Sport-only', () => {
+    expect(activeKinds(defaultLayers, ['hookup', 'friends', 'sport'])).toEqual(['parties']);
+    expect(activeKinds(defaultLayers, ['sport'])).toEqual(['parties', 'gyms']);
   });
 
   test('toggling gyms once stops the automatic rule', () => {
@@ -79,7 +79,7 @@ describe('place layers (R-04.20)', () => {
   });
 
   test('saved layers restore over defaults', () => {
-    expect(restoreLayers('{"on":{"saunas":false}}').on).toEqual({ clubs: true, saunas: false, parties: true, gyms: false });
+    expect(restoreLayers('{"on":{"saunas":true}}').on).toEqual({ clubs: false, saunas: true, parties: true, gyms: false });
     expect(restoreLayers('nope')).toEqual(defaultLayers);
   });
 

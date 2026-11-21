@@ -1,4 +1,5 @@
 import { mod } from '../../i18n/mod';
+import { mx as momentsTx } from '../../i18n/moments';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Platform, Pressable, Text, View } from 'react-native';
@@ -94,6 +95,8 @@ export function PrivacySettings() {
       <Group label={S.whatSee}>
         <SegBlock testID="distance" title={S.distance} value={st.show_distance} options={(['exact', 'range', 'none'] as const).map((k) => [k, S.distOpts[k]])} onChange={(v) => put({ show_distance: v })} caption={S.distSub[st.show_distance]} />
         <SwitchRow title={S.online} sub={S.onlineSub} value={st.online_visible} onChange={(v) => put({ online_visible: v })} />
+        {/* F-21 R-21.17 (#212, D-21b C) */}
+        <SwitchRow title={momentsTx.quietTitle} sub={momentsTx.quietSub} value={st.moments_quiet === true} onChange={(v) => put({ moments_quiet: v })} />
       </Group>
       <LocationSheet visible={loc} onClose={() => setLoc(false)} />
     </Page>
