@@ -2,6 +2,7 @@
 import { beforeEach, expect, jest, test } from '@jest/globals';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import React from 'react';
+import { color } from '../src/theme/tokens';
 
 const mockLaunch = jest.fn<() => Promise<unknown>>();
 jest.mock('expo-image-picker', () => ({ launchImageLibraryAsync: () => mockLaunch() }));
@@ -23,7 +24,7 @@ beforeEach(() => {
 
 test('each of the 4 empty slots opens the picker', async () => {
   mockLaunch.mockResolvedValue({ canceled: true, assets: null });
-  await render(<PhotoEditor profile={profile} accent="#f00" onChange={() => {}} />);
+  await render(<PhotoEditor profile={profile} accent={color.hookup} onChange={() => {}} />);
   const ids = ['photo-add', 'photo-add-2', 'photo-add-3', 'photo-add-4'];
   for (const id of ids) {
     await act(async () => {
@@ -35,7 +36,7 @@ test('each of the 4 empty slots opens the picker', async () => {
 
 test('a picker that fails to open shows an error, and the next tap works', async () => {
   mockLaunch.mockRejectedValueOnce(new Error('Picker unavailable')).mockResolvedValueOnce({ canceled: true, assets: null });
-  await render(<PhotoEditor profile={profile} accent="#f00" onChange={() => {}} />);
+  await render(<PhotoEditor profile={profile} accent={color.hookup} onChange={() => {}} />);
   await act(async () => {
     await fireEvent.press(screen.getByTestId('photo-add-3'));
   });
