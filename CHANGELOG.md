@@ -5,6 +5,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+- **App version 0.9.0** (app, #198): first v1 release candidate; was 0.1.0. Shown in TestFlight and the App Store as 0.9.0. Build numbers unchanged (CI run number + offset), so TestFlight keeps accepting every build.
+
 ### Added
 - **Travel plans** (server + app, F-20 #188, D-20): Me › Trips: plan up to 3 trips (city, 1–30 days, start within 180 days). **Look around** a trip city before going: Explore from the city centre (fixed point, no Exact pins, locals who turned off "Show me to people looking from afar" or are in Safe Mode are left out). Optionally **show yourself there** 14/7/3 days early or on arrival (verified only; Safe Mode countries need a second confirm): locals see you mixed into their grid (every 6th tile, sky outline + "In 12 d" tag, never a map pin; one "N visiting" bubble at the city centre), and everywhere you appear there is a "Visiting Berlin · 3–7 Dec" / "Arriving in N days" label (profile, chat header, inbox). Trips delete themselves the day after they end. Limits: 6 new trips per 30 days, 20 new chats a day with people far away. New setting "Show visitors" in Filters; new colour token `travel` (sky).
 - **Worldwide city catalogue** (server): 22,717 cities (≥15k people, plus travel spots) from GeoNames (CC BY 4.0), accent-insensitive search ranked by size. Explore place names now prefer the nearby big city over a district name.
