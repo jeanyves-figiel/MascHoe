@@ -76,7 +76,11 @@ defmodule ThirstrWeb.TrustTest do
 
     test "a Tonight plan can be reported (#210)", %{alice: a, bob: b} do
       assert %{"attached" => 0} =
-               req(a, :post, "/v1/reports", %{profile_id: b.pid, reason: "spam_bot", context: "tonight"})
+               req(a, :post, "/v1/reports", %{
+                 profile_id: b.pid,
+                 reason: "spam_bot",
+                 context: "tonight"
+               })
                |> json_response(201)
 
       assert [["tonight"]] = Thirstr.Repo.query!("SELECT context FROM reports").rows
