@@ -67,6 +67,9 @@ async function http(method: string, path: string, body?: unknown, headers: Recor
   return text ? JSON.parse(text) : undefined;
 }
 
+/** 422 `to_device_id: unknown device` (server/lib/thirstr/chat.ex). */
+const staleDevice = (e: unknown) => e instanceof HttpError && e.status === 422 && e.body.includes('to_device_id');
+
 export class Bot {
   auth: Auth | null = null;
   device = '';
@@ -400,35 +403,44 @@ export class Bot {
 
   /** Seals and sends one payload to a 1:1 peer or a group (`ctx`); retries the same ciphertext. */
   send(peer: string, p: Payload, ctx?: string) {
-    return locked(async () => {
-      const id = hex(rand(12));
-      const fk = rand(32);
-      const g = ctx ? await this.get<{ gid: string; title: string }>('grp:' + ctx) : null;
-      const extra = ctx ? { n: this.p.name, g: g?.title } : {};
-      const plain = utf8(JSON.stringify({ ...p, v: 1, id, at: Date.now(), fk: toB64(fk), ...extra }));
-      const tag = hmac(sha256, fk, plain);
-      const gid = ctx ? (g?.gid ?? (await this.get<string>('ingrp:' + ctx))) : await this.ensureGroup(peer);
-      if (!gid) throw new Error('no group');
-      const sealed = await mls.seal(gid, plain);
-      const to = sealed.members.filter((m) => !(m.p === this.me && m.d === this.device));
-      const body = {
-        client_id: id,
-        from_profile_id: this.me,
-        group_id: toB64(fromHex(gid)),
-        franking_tag: toB64(tag),
-        context: ctx,
-        envelopes: to.map((m) => ({ to_profile_id: m.p, to_device_id: m.d, kind: 'app', ciphertext: toB64(sealed.wire) })),
-      };
-      for (let i = 0; ; i++) {
-        try {
-          if (to.length) await this.api('POST', '/mls/messages', body);
-          return id;
-        } catch (e) {
-          if (i >= 4 || (e instanceof HttpError && e.status < 500 && e.status !== 429)) throw e;
-          await sleep(1000 * 2 ** i);
+    return locked(() => this.sealAndPost(peer, p, ctx, false));
+  }
+
+  private async sealAndPost(peer: string, p: Payload, ctx: string | undefined, rebuilt: boolean): Promise<string> {
+    const id = hex(rand(12));
+    const fk = rand(32);
+    const g = ctx ? await this.get<{ gid: string; title: string }>('grp:' + ctx) : null;
+    const extra = ctx ? { n: this.p.name, g: g?.title } : {};
+    const plain = utf8(JSON.stringify({ ...p, v: 1, id, at: Date.now(), fk: toB64(fk), ...extra }));
+    const tag = hmac(sha256, fk, plain);
+    const gid = ctx ? (g?.gid ?? (await this.get<string>('ingrp:' + ctx))) : await this.ensureGroup(peer);
+    if (!gid) throw new Error('no group');
+    const sealed = await mls.seal(gid, plain);
+    const to = sealed.members.filter((m) => !(m.p === this.me && m.d === this.device));
+    const body = {
+      client_id: id,
+      from_profile_id: this.me,
+      group_id: toB64(fromHex(gid)),
+      franking_tag: toB64(tag),
+      context: ctx,
+      envelopes: to.map((m) => ({ to_profile_id: m.p, to_device_id: m.d, kind: 'app', ciphertext: toB64(sealed.wire) })),
+    };
+    for (let i = 0; ; i++) {
+      try {
+        if (to.length) await this.api('POST', '/mls/messages', body);
+        return id;
+      } catch (e) {
+        // #208 (as the app, #206 R-07.20): a device in the 1:1 group is gone (the person
+        // reinstalled or signed out). Drop that group once and send on a new / other one.
+        if (!ctx && !rebuilt && staleDevice(e)) {
+          this.say('stale device, rebuilding chat with', peer);
+          await this.dropGroup(peer, gid);
+          return this.sealAndPost(peer, p, ctx, true);
         }
+        if (i >= 4 || (e instanceof HttpError && e.status < 500 && e.status !== 429)) throw e;
+        await sleep(1000 * 2 ** i);
       }
-    });
+    }
   }
 
   // ---------------------------------------------------------------- receive

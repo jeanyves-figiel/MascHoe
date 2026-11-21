@@ -8,7 +8,9 @@ type Msg = { id: number; to_profile_id: string; from_profile_id: string; group_i
 
 export function start(key: string) {
   // token → user. Bots get "bot-<handle>", the test peer uses "peer".
-  const users: Record<string, { profile: string; device: string; name: string }> = { peer: { profile: 'PEER', device: 'D-PEER', name: 'Peer' } };
+  const users: Record<string, { profile: string; device: string; name: string }> = {};
+  // devices that exist server-side; a new peer run replaces the earlier peer device (a reinstall)
+  const devices = new Set<string>();
   const kps: Record<string, Kp[]> = {};
   const queues: Record<string, Msg[]> = {};
   const blobs: Record<string, Buffer> = {};
@@ -46,11 +48,19 @@ export function start(key: string) {
       // resume keeps the device (same D-<profile> here either way), new token each time
       const token = `bot-${h}-${seq++}`;
       users[token] = { profile, device: 'D-' + profile, name: body.name };
+      devices.add('D-' + profile);
       return send(200, { access_token: token, refresh_token: 'r', expires_in: 900, profile_id: profile });
     }
     // refresh tokens are never valid here: a bot whose access token is gone must resume
     if (route === 'POST /v1/auth/refresh') return send(401, {});
-    const u = users[(req.headers.authorization ?? '').replace('Bearer ', '')];
+    const tok = (req.headers.authorization ?? '').replace('Bearer ', '');
+    // test peer: "peer-<run>" signs in as a new device of PEER, earlier peer devices are deleted
+    if (tok.startsWith('peer-') && !users[tok]) {
+      for (const t of Object.keys(users)) if (users[t].profile === 'PEER') (devices.delete(users[t].device), delete users[t]);
+      users[tok] = { profile: 'PEER', device: 'D-' + tok, name: 'Peer' };
+      devices.add('D-' + tok);
+    }
+    const u = users[tok];
     if (!u) return send(401, {});
     calls.push({ route, who: u.profile, body });
     let m: RegExpMatchArray | null;
@@ -76,6 +86,7 @@ export function start(key: string) {
         return send(200, { key_packages: [{ id: k.id, device_id: k.device, key_package: k.kp }] });
       }
       case route === 'POST /v1/mls/messages': {
+        if (body.envelopes.some((e: { to_device_id: string }) => !devices.has(e.to_device_id))) return send(422, { error: { code: 'validation', fields: { to_device_id: ['unknown device'] } } });
         for (const e of body.envelopes) {
           (queues[e.to_device_id] ??= []).push({ id: seq++, to_profile_id: e.to_profile_id, from_profile_id: body.from_profile_id, group_id: body.group_id, kind: e.kind, ciphertext: e.ciphertext, at: new Date().toISOString() });
         }
@@ -142,7 +153,7 @@ export function start(key: string) {
       const a = server.address() as { port: number };
       url = `http://127.0.0.1:${a.port}`;
       // drop a bot's access tokens, as if they expired and the refresh token was lost
-      const expire = (profile: string) => Object.keys(users).forEach((t) => users[t].profile === profile && t !== 'peer' && delete users[t]);
+      const expire = (profile: string) => Object.keys(users).forEach((t) => users[t].profile === profile && delete users[t]);
       resolve({ url, close: () => server.close(), calls, parties, blobs, expire });
     }),
   );
