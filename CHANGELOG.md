@@ -6,6 +6,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Fixed
+- **Test bots keep their device** (staging, #208): a bot whose refresh token is lost or rejected resumes its existing device (`resume: true` on `POST /v1/testbot/session`) instead of replacing it, so chats with it no longer break with 422 unknown device; refreshes are single-flight.
 - **Messages and photos "Not sent" after the other person's phone changed** (#206, F-07 R-07.20): when someone reinstalls, signs out or a test bot restarts, their old device disappears but your chat still pointed at it, so the server refused every message (text or photo) and it showed "Not sent. Tap to retry." The app now notices this, sets up the chat again with their current devices and sends the message once more. Messages that already failed send when you tap them.
 - **Duplicate migration version** (server, #200): test bot handles migration renamed to `20261121160001` (clashed with precise distance `20261121150001`, broke `mix test` on main).
 
