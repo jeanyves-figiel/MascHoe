@@ -295,6 +295,11 @@ defmodule ThirstrWeb.Router do
       get "/me/devices", AccountDataController, :devices
       delete "/me/devices/:id", AccountDataController, :remove_device
       post "/devices/link", AccountDataController, :link_start
+      # #25 device attestation (iOS App Attest)
+      get "/devices/attest", AccountDataController, :attest_status
+      post "/devices/attest/challenge", AccountDataController, :attest_challenge
+      post "/devices/attest", AccountDataController, :attest
+      post "/devices/assert", AccountDataController, :assert
       get "/devices/link/:code", AccountDataController, :link_status
       post "/devices/link/:code/confirm", AccountDataController, :link_confirm
       get "/me/profiles/:id/linked-accounts", AccountDataController, :linked

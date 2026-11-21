@@ -28,11 +28,20 @@ Method: STRIDE per asset + attacker profiles. Owner: security lead. Review befor
 
 ## Key management
 - Account root key: generated on device, stored in Secure Enclave/StrongBox; never leaves except as recovery phrase (user-held).
-- Device keys: per device, attested at registration.
+- Device keys: per device, attested at registration (see Device attestation).
 - MLS: OpenMLS, ciphersuite `MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519`; key packages rotated; forward secrecy + post-compromise security via commits ≥ weekly.
 - Media: per-file AES-256-GCM key in MLS message; album keys rotated on revoke.
 - Server secrets: Vault/sealed secrets; pepper for hashes in HSM-backed KMS (EU).
 - TLS 1.3 only, HSTS, certificate pinning in app (backup pins).
+
+## Device attestation (#25)
+- **iOS App Attest** (`@expo/app-integrity`, entitlement `com.apple.developer.devicecheck.appattest-environment = production`). After sign-in, on app start and on return to foreground, at most once per 24 h (retry after 6 h on failure), foreground only:
+  1. `POST /devices/attest/challenge` → 32 random bytes, base64url, single use, 5 min, bound to the device.
+  2. First time on this install: Secure Enclave key (`generateKey`) → `attestKey(keyId, challenge)` → `POST /devices/attest`. Server (`Thirstr.AppAttest`) checks: CBOR `fmt = apple-appattest`; x5c chain to the **Apple App Attestation Root CA** (`server/priv/certs`, SHA-256 1CB9823B…C932) incl. validity; nonce extension `1.2.840.113635.100.8.2` = SHA-256(authData ‖ SHA-256(challenge)); key id = SHA-256(public key) = credential id; RP id hash = SHA-256(`<TeamID>.app.thirstr`); counter 0; aaguid `appattest` (production) or `appattestdevelop` (refused when `DEPLOY_ENV` is prod). Stores the public key (never a private key), counter, `attestation_ok`, `attested_at`.
+  3. Later days: `generateAssertion(keyId, challenge)` → `POST /devices/assert`: ECDSA P-256 signature over SHA-256(authData ‖ SHA-256(challenge)) with the stored key, same RP id, counter strictly greater. Refreshes `attested_at`. A failed assertion makes the app create and attest a new key.
+- A device counts as **attested** when `attestation_ok` and `attested_at` < 7 days old (`DeviceAttest.attested?/1`).
+- **Beta: soft.** Nothing is blocked for unattested clients (Android has no build yet, web is a DEV tool). Enforcement (rate caps for unattested devices, F-15 signal `unattested`) follows once Play Integrity ships.
+- Android Play Integrity: with the Android build (needs a Google Cloud project number).
 
 ## Controls checklist (beta gate)
 - [ ] Dependency scanning + SBOM in CI; Renovate.

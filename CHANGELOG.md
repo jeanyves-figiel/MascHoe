@@ -5,6 +5,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Security
+- **App Attest on iPhone** (server + app, #25, security.md › Device attestation): each install creates a Secure Enclave key that Apple attests; the server checks Apple's certificate chain, the challenge, our app id and the key, and stores only the public key. Once a day (foreground only, two small requests) the app proves it is still the same genuine app on the same phone. New `GET /devices/attest`, `POST /devices/attest/challenge`, `POST /devices/attest`, `POST /devices/assert`. Soft in beta: nothing is blocked; groundwork for anti-bot limits (A3/A9).
+
 ### Fixed
 - **Safety check-in stuck after reinstall or wipe** (server + app, #127, F-13 R-13.21): when the phone lost its copy of a running check-in, the app showed none, a new one was refused ("A check-in is already running") and the held alert still fired to your trusted contacts at due + 15 min: a false alarm. Me › Safety now shows "A check-in is still running … Tap to end it", and starting one (sheet or meetup card) opens the "Check-in still running" screen instead of an error. **I'm OK** there (same PIN / Face ID / duress PIN rules) ends it on the server by account (`DELETE /v1/checkin`), deletes the held alert and tells the contacts this phone still knows. If ending fails you see an error, never "All good".
 
