@@ -1,7 +1,10 @@
 // F-19 G10 (#187): profiles seen while swiping through the grid. The neighbours of the open profile are
 // fetched ahead (data + first photo), so a swipe lands on a ready profile with no spinner. Memory only,
 // capped, gone after an app restart. Profiles that answer 404/403 are skipped by the swipe.
+// SR-16 (#156): profiles you opened are also kept 24 h in the encrypted device store, shown at once
+// (and offline) while the fresh copy loads. Wiped with the store on sign-out / panic wipe.
 import { Image } from 'react-native';
+import { kv } from '../chat/kv';
 import { api, ApiError } from '../api/client';
 import type { Mode, ProfileView } from '../api/types';
 
@@ -9,6 +12,11 @@ const MAX = 24;
 const cache = new Map<string, ProfileView>();
 const inflight = new Map<string, Promise<ProfileView | null>>();
 const dead = new Set<string>();
+
+const STORE = 'cache:profile:';
+const STORE_TTL = 24 * 3600_000;
+const STORE_MAX = 200;
+let writes = 0;
 
 export const profileKey = (id: string, mode: Mode, trip?: string) => `${id}|${mode}|${trip ?? ''}`;
 const url = (id: string, mode: Mode, trip?: string) => `/profiles/${id}?mode=${mode}${trip ? `&trip_id=${trip}` : ''}`;
@@ -22,6 +30,40 @@ export function putProfile(v: ProfileView, mode: Mode, trip?: string) {
   cache.delete(k);
   cache.set(k, v);
   while (cache.size > MAX) cache.delete(cache.keys().next().value as string);
+}
+
+/** Opened profile → encrypted store (SR-16). Every 20 writes, expired and surplus entries go. */
+export async function storeProfile(v: ProfileView, mode: Mode, trip?: string, now = Date.now()) {
+  try {
+    await kv.set(STORE + profileKey(v.id, mode, trip), { at: now, v });
+    if (++writes % 20 === 0) await pruneStored(now);
+  } catch {
+    // best effort
+  }
+}
+
+export async function storedProfile(id: string, mode: Mode, trip?: string, now = Date.now()): Promise<ProfileView | null> {
+  try {
+    const e = await kv.get<{ at: number; v: ProfileView }>(STORE + profileKey(id, mode, trip));
+    return e && now - e.at < STORE_TTL ? e.v : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function pruneStored(now = Date.now()) {
+  const keys = await kv.keys(STORE);
+  const all = await Promise.all(keys.map(async (k) => ({ k, at: (await kv.get<{ at: number }>(k))?.at ?? 0 })));
+  all.sort((a, b) => b.at - a.at);
+  for (const [i, e] of all.entries()) if (i >= STORE_MAX || now - e.at >= STORE_TTL) await kv.del(e.k);
+}
+
+async function dropStored(id: string) {
+  try {
+    for (const k of await kv.keys(STORE + id + '|')) await kv.del(k);
+  } catch {
+    // best effort
+  }
 }
 
 export const isDead = (id: string) => dead.has(id);
@@ -42,6 +84,7 @@ export function fetchProfile(id: string, mode: Mode, trip?: string): Promise<Pro
       (e) => {
         if (e instanceof ApiError && (e.status === 404 || e.status === 403)) {
           dead.add(id);
+          void dropStored(id);
           return null;
         }
         throw e;

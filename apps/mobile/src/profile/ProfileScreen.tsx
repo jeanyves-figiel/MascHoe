@@ -25,7 +25,7 @@ import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, w
 import { scheduleOnRN } from 'react-native-worklets';
 import { gx } from '../i18n/gestures';
 import { commits, photoZone, rubber, TAP_SLOP } from '../ui/gestureMath';
-import { cachedProfile, fetchProfile, markDead, putProfile, stepIndex, warmProfile } from './profileCache';
+import { cachedProfile, fetchProfile, markDead, putProfile, stepIndex, storedProfile, storeProfile, warmProfile } from './profileCache';
 import { feel } from '../ui/haptics';
 import { settle } from '../ui/motion';
 import { RingAvatar } from '../moments/Ring';
@@ -115,21 +115,23 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
   const own = preview ? (me.profiles ?? []).find((x) => x.id === id) : undefined;
   const previewView = useMemo(() => (own && preview ? previewOf(own, preview, local, me.verified, mode) : null), [own, preview, local, me.verified, mode]);
 
-  const load = useCallback(
-    () =>
-      preview
-        ? getLocal(id).then(setLocal)
-        : fetchProfile(id, mode, trip).then(
-            (v) => {
-              if (!v) return setGoneId(id);
-              setErr(null);
-              setRemote(v);
-              if (!trip) rememberTrip(v.id, v.trip);
-            },
-            (e) => setErr(e instanceof ApiError ? e.message : tx.common.error),
-          ),
-    [id, preview, mode, trip],
-  );
+  const load = useCallback(() => {
+    if (preview) return getLocal(id).then(setLocal);
+    // SR-16: a profile opened in the last 24 h shows at once (and offline) from the encrypted store.
+    const early = cachedProfile(id, mode, trip) ? Promise.resolve() : storedProfile(id, mode, trip).then((v) => v && setRemote((cur) => (cur?.id === id ? cur : v)));
+    return early.then(() =>
+      fetchProfile(id, mode, trip).then(
+        (v) => {
+          if (!v) return setGoneId(id);
+          setErr(null);
+          setRemote(v);
+          void storeProfile(v, mode, trip);
+          if (!trip) rememberTrip(v.id, v.trip);
+        },
+        (e) => setErr(e instanceof ApiError ? e.message : tx.common.error),
+      ),
+    );
+  }, [id, preview, mode, trip]);
 
   useEffect(() => {
     load();
@@ -336,7 +338,8 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
         <Button kind="secondary" title={tx.common.back} onPress={navigation.goBack} />
       </View>
     );
-  if (err) return <ErrorState text={err} retry={tx.common.retry} onRetry={load} />;
+  // SR-16: offline with a stored copy → keep showing it.
+  if (err && !cur) return <ErrorState text={err} retry={tx.common.retry} onRetry={load} />;
   const p = cur;
   if (!p) return <Loading />;
 
