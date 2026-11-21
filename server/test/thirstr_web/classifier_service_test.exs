@@ -49,6 +49,28 @@ defmodule ThirstrWeb.ClassifierServiceTest do
     assert {:ok_public, %{"main_ok" => false}} = NudeNetClassifier.classify("k", 2, "now")
   end
 
+  test "shirtless man on the main photo passes (female-breast confusion ignored)" do
+    stub(200, %{
+      detections: [
+        %{class: "BELLY_EXPOSED", score: 0.79},
+        %{class: "MALE_BREAST_EXPOSED", score: 0.702},
+        %{class: "FEMALE_BREAST_EXPOSED", score: 0.535},
+        %{class: "FACE_FEMALE", score: 0.508}
+      ]
+    })
+
+    assert {:ok_main, %{"main_ok" => true}} = NudeNetClassifier.classify("k", 0, "now")
+
+    stub(200, %{
+      detections: [
+        %{class: "FACE_FEMALE", score: 0.8},
+        %{class: "FEMALE_BREAST_EXPOSED", score: 0.8}
+      ]
+    })
+
+    assert {:rejected, :too_explicit, _} = NudeNetClassifier.classify("k", 0, "now")
+  end
+
   test "service down or error never auto-approves" do
     stub(422, %{error: "ValueError"})
     assert {:review, %{"error" => true}} = NudeNetClassifier.classify("k", 0, "now")
