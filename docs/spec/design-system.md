@@ -74,7 +74,8 @@ Generated to TS (RN theme) by Style Dictionary in CI. Hard-coded colours/sizes i
 - Touch targets ≥ 44×44 pt.
 
 ### Key component rules (Pop)
-- Bottom nav: floating `bg.inverse` pill (16 pt side inset, 18 pt from bottom, 64 pt high); active tab is a filled pill in the current mode colour with `fg.onColor`; inactive tabs #4A4570. Unread badge `mode.hookup` with count.
+- Bottom nav: floating `bg.inverse` pill (16 pt side inset, 8 pt above the home-indicator inset, 64 pt high); active tab is a filled pill in the current mode colour with `fg.onColor`; inactive tabs #4A4570. Unread badge `mode.hookup` with count.
+- Bottom nav on **every screen** (#137, owner 2026-11-21): one bar drawn over the whole app, pushed screens included (profile, chat, settings, forms). The tab under the current screen stays lit; tapping any tab closes pushed screens and opens that tab. Hidden only while the keyboard is up and on the selfie camera (Verify). A screen's own bottom bar (chat composer, profile action row, `StickyCta`) sits directly **above** the nav bar; code reserves the space with `useNavSpace().bottom` (nav 72 pt + home-indicator inset, 0 while typing).
 - Mode switch: segmented pill on `bg.raised`; each selected segment fills with its own mode colour.
 - Explore grid sheet (#100): `bg.base` fill, top radius lg (32), shadow elevation 2; handle 40×5 pill `line`, 28 pt touch row; title `type.title` + `type.meta` sub; tiles radius 18, 8 pt gap. Selected pin 58 px with mode-colour ring + white name chip (13/800 ink); selected tile 3 px mode-colour ring. Zoom chip: 30 pt pill, ink 86 %, `fg.secondary` 12/700. Quiet-state cards: `bg.raised`, radius 24, 44 pt round tinted icon, coral Post pill.
 - Location chip (header): `bg.raised` pill, `trust` pin icon + current level label.
@@ -87,7 +88,7 @@ Generated to TS (RN theme) by Style Dictionary in CI. Hard-coded colours/sizes i
 - Explore header (#104, live header, F-04 R-04.17): row 1 wordmark 26 pt · filter button (count badge) · own avatar (Now ring); row 2 place name 30 pt heavy + chevron, teal level chip, mode-colour live dot + "N around · M Now"; row 3 three mode tiles (74 pt, radius 20, icon + count + label, active = mode-colour fill + ink text). Soft radial mode-colour glow behind. Verify nudge lives in the grid sheet, not the header.
 - Photo tiles and tray cards: bottom scrim from transparent to ink 85–90 %; name + age 800, distance `fg.secondary`; Now badge top-left in the person's mode colour; online dot = lime with ink ring; tray card outlined in mode colour when Now.
 - Tab-root titles are 34/38 800 (Tonight, Chats, Me); captions above in `fg.secondary` 13.
-- Profile actions: white round 44 pt buttons over photos; sticky bottom row = 58 pt round favourite + 58 pt coral Message pill.
+- Profile actions: white round 44 pt buttons over photos; sticky bottom row above the nav bar = 58 pt round Tap (flame) + 58 pt round favourite (star) + coral Message pill; content fades out under it. Unverified Message → toast "Verify to send the first message" with Verify now (#124).
 - Rows: 58 pt min height, 10 pt coloured dot, value right in `fg.secondary` (teal for location), chevron `fg.muted`.
 - Text glyphs are never icons: use `src/ui/icons.tsx`.
 
@@ -97,7 +98,11 @@ Generated to TS (RN theme) by Style Dictionary in CI. Hard-coded colours/sizes i
 - Inside a card, chips use `line` fill and fields/segmented use `bg.overlay` so they never vanish into the card.
 - Fields: label as `SectionLabel`; input 56 pt, radius 18, `bg.raised` fill, 2 pt border that turns mode colour on focus.
 - Chips: 40 pt, no border, 15/700; selected = mode colour fill + ink text.
-- Banners: tinted fill (tone at 10 %), bold tone-coloured text, chevron when tappable. No emoji prefixes.
+- Banners: tinted fill (tone at 10 %), bold tone-coloured text, chevron when tappable. No emoji prefixes. Banners live **in the layout flow only**; never position one over content (its fill is see-through, #124).
+- Floating messages = **Toast**: solid `bg.inverse`, up to 3 lines, optional action pill (Undo, Verify now); sits 12 pt above the nav bar (and above a screen's own bottom bar), 5 s.
+- No overlap rule (#124): no text may sit under another element or another text at scroll end, on 320 / 375 / 393 pt wide phones, in en / fr / de. Segmented controls size each segment to its label and share the rest; names shorten with … but age, counts and badges stay visible.
+- Keyboard (#134): bottom bars drop the home-indicator inset while the keyboard is up (no gap above the keys); every scroll view with or near inputs closes the keyboard on drag; sheets ride up with the keyboard (`KeyboardAvoidingView`); long forms keep the focused field visible.
+- Native pop-ups from a sheet (#124): close the sheet first, then open the system share sheet / picker once it is gone (`afterSheet`), or iOS freezes the screen after Cancel.
 - Hero card (`Hero`): Party, Activity, Club (mode colour) and Venue (teal). Radius 28, ink status pill, 30 pt title, meta line, up to 3 stat tiles.
 - Primary action: one pill in `StickyCta` (bottom fade) on forms (Edit profile, Host a party, Post activity, New club, Report). Save is white; destructive submit is `danger` fill.
 - Single choice of 2–4 options = `Segmented` (audience, intent, join policy, visibility); longer single choice = radio rows (Report reasons).

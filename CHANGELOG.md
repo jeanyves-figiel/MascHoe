@@ -20,6 +20,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Valkey outage no longer blocks chat** (server, SR-11 #151): rate limits fall back to a per-machine counter and push wakes still go out.
 
 ### Added
+- **Spec brought up to date with 2026-11-21 release** (docs): nav bar on every screen (#137), keyboard rules (#134), no-overlap / toast / banner rules and share-from-sheet rule (#124) in design-system.md and screens.md; selfie check details (#131, R-03.1a) in F-03.
 - **Load test kit** (infra, SR-12 #152): k6 scenarios for grid paging, chat send → pull → ack and realtime sockets with the SLO thresholds (`infra/load/`), load accounts from `Thirstr.LoadTest.users/1` (only on `DEPLOY_ENV=load` or DEV), sizing method and run log (`docs/runbooks/capacity.md`). A real load environment is not created yet (needs owner OK: cost).
 
 ### Fixed
