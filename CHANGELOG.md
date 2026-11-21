@@ -2,8 +2,12 @@
 
 All notable changes to this project are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+When a build brings something people can see or use, also add a 2–4 line note to `apps/mobile/src/whatsnew/notes.ts` (shown once in the app's What's new sheet, F-17 R-17.15).
 
 ## [Unreleased]
+
+### Added
+- **What's new sheet after updates** (app, #238, F-17 R-17.15, S-78/S-79, [mockup option A](https://claude.ai/artifact/MfUBpaiRKoVvKb79m7A6U1)): after an update with a new release note, a short sheet slides up once over Explore with 2–4 lines (icon in the feature colour, title, one line); tap a line to open that screen, Got it or swipe down to close. It waits while another sheet, the keyboard or a stack screen is open. Fresh installs and fix-only builds show nothing. Settings › About › **What's new** lists the last 10 notes (also in Settings search). Notes ship inside the app in en / fr / de (`src/whatsnew/notes.ts`, curated from this file); the only stored value is the last seen note id on the phone; nothing is sent. CI checks note ids, line count, lengths and languages. First notes: Moments, Chats redone, I'm in from Tonight, full data archive; and gestures, travel plans, closer distances.
 
 ### Fixed
 - **Safety check-in stuck after reinstall or wipe** (server + app, #127, F-13 R-13.21): when the phone lost its copy of a running check-in, the app showed none, a new one was refused ("A check-in is already running") and the held alert still fired to your trusted contacts at due + 15 min: a false alarm. Me › Safety now shows "A check-in is still running … Tap to end it", and starting one (sheet or meetup card) opens the "Check-in still running" screen instead of an error. **I'm OK** there (same PIN / Face ID / duress PIN rules) ends it on the server by account (`DELETE /v1/checkin`), deletes the held alert and tells the contacts this phone still knows. If ending fails you see an error, never "All good".
