@@ -60,7 +60,7 @@ Show what you look like **right now**, tonight, at the gym, getting ready, witho
 - R-21.28 Seen state is kept on the device (SQLCipher `moments.seen`, ids expire with the Moment) and posted in batches (`POST /moments/views`, max every 10 s) for the viewer counts.
 
 ## API (api.md › Moments)
-- `POST /moments` (multipart: image, thumb, caption, audience `everyone|chats|favorites`, intents[], ttl `3600|21600|86400`) → 201 `{id, status: "checking"|"live"|"rejected", expires_at}`.
+- `POST /moments/uploads` → presigned PUTs for the photo and its 480 px copy; then `POST /moments/:id/publish` (caption, audience `everyone|chats|favorites` + `audience_ids` for lists, intents[], ttl `3600|21600|86400`) → `{id, status: "live"|"review"|"rejected", expires_at}`.
 - `GET /moments/:account_id` → live Moments the caller may see `[{id, url (signed, 5 min), thumb_url, caption, caption_style, created_at, expires_at, spicy: bool}]`; 404 when none / not allowed (no difference between the two).
 - `POST /moments/views` `{ids[]}`; `POST /moments/:id/tap`.
 - `GET /moments/mine` → own live Moments with `seen_count`, `tap_count`, `viewers[]` (per D-21b), `screenshots[]`.
@@ -73,6 +73,9 @@ Show what you look like **right now**, tonight, at the gym, getting ready, witho
 
 ## Design
 New token `moment` (gradient coral #FF6B5B → violet #A78BFA → lime #B8F04A, 135°) used only for unseen rings and the composer Share glow. Seen ring `line`. Progress bars white 90 % / 30 %. Motion: ring → viewer open is a shared-element zoom from the tapped avatar (`motion.slow`), close reverses it; Reduce Motion → cross-fade.
+
+## Built in #212 (first version) vs follow-up #221
+Built: everything above except the items below. Follow-up **#221**: Blur brush and Blur faces (R-21.2; composer has crop + caption for now), reply quoting the Moment inside the E2EE chat (R-21.11; reply opens the chat for now), human review queue for `review` Moments (R-21.24; they stay hidden until they expire), iOS screen-recording blur (R-21.18), live ring updates over the socket (rings refresh on focus / pull), rings on map pins, chat header, inbox and Tonight cards (R-21.9; built: grid tiles, Moments row, profile photo, Me), entries (b) and (c) of R-21.1 (built: Moments row ＋, Me › Moments), Low Data Mode small copies (R-21.27).
 
 ## Later (not v1)
 Videos (needs #138 metadata stripping), music, polls, close-friends lists beyond Favorites, Moments in parties / venue pages.

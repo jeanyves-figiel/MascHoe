@@ -32,6 +32,9 @@ import { NowSheet } from '../me/NowSheet';
 import { FiltersSheet } from './FiltersSheet';
 import { devicePosition, lastKnown, LatLng, locateDevice, onDevicePosition, syncLocation } from './location';
 import { LocationSheet } from './LocationSheet';
+import { useFocusEffect } from '@react-navigation/native';
+import { MomentsRow } from '../moments/MomentsRow';
+import * as Moments from '../moments/api';
 
 const FILTER_KEY = (m: string) => 'thirstr.filters.' + m;
 // #113: one filter set for the merged map; chips and place layers saved on the device.
@@ -62,6 +65,16 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
   const [fitM, setFitM] = useState<number | null>(null);
   const [plans, setPlans] = useState(0);
   const [showNow, setShowNow] = useState(false);
+  // F-21 R-21.10 (#212): own live Moments for the "＋ You" bubble, refreshed on focus.
+  const [myLive, setMyLive] = useState(0);
+  useFocusEffect(
+    useCallback(() => {
+      if (!me.verified) return;
+      Moments.mine()
+        .then((l) => setMyLive(Moments.alive(l).length))
+        .catch(() => undefined);
+    }, [me.verified]),
+  );
   const list = useRef<FlatList<Card>>(null);
   const [filters, setFilters] = useState<Filters>(defaultFilters);
   const [items, setItems] = useState<Card[] | null>(null);
@@ -603,8 +616,26 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
             columnWrapperStyle={{ gap: space.s }}
             contentContainerStyle={{ gap: space.s, paddingHorizontal: space.l, paddingBottom: listPad }}
             ListHeaderComponent={
-              head || (!holdSeen && items.length > 0) ? (
+              head || (!holdSeen && items.length > 0) || items.length > 0 ? (
                 <View>
+                  {/* F-21 D-21a B: Moments row on top of the grid (hidden in peek by the sheet height). */}
+                  {snap !== 'peek' && !look ? (
+                    <MomentsRow
+                      items={items}
+                      myId={own?.id ?? 'me'}
+                      myPhoto={own?.photos.find((x) => x.slot === 0)?.thumb_url ?? own?.photos.find((x) => x.slot === 0)?.url ?? null}
+                      myLive={myLive}
+                      onAdd={() => navigation.navigate(me.verified ? 'MomentNew' : 'Verify')}
+                      onMine={() => navigation.navigate('Moments', { queue: [{ id: own?.id ?? 'me', name: own?.display_name ?? '', age: own?.age ?? 0, photo: null }], index: 0, mode: intents[0], self: true })}
+                      onOpen={(people, i) =>
+                        navigation.navigate('Moments', {
+                          queue: people.map((c) => ({ id: c.id, name: c.display_name, age: c.age, photo: c.photo, where: distanceLabel(c.distance) })),
+                          index: i,
+                          mode: intents.find((m) => (people[i].intents ?? ['hookup']).includes(m)) ?? intents[0],
+                        })
+                      }
+                    />
+                  ) : null}
                   {head}
                   {!holdSeen && items.length > 0 ? (
                     <Text testID="hold-hint" style={{ ...type.meta, fontFamily: type.headline.fontFamily, color: color.trust, marginBottom: space.s }}>

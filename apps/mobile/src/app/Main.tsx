@@ -25,6 +25,8 @@ import { SettingsScreen } from '../me/SettingsScreen';
 import { AccountSettings, ChatSettings, DeleteAccount, NotificationSettings, PrivacySettings, SafetySettings } from '../me/settings/screens';
 import { TapsScreen } from '../me/TapsScreen';
 import { TripsScreen } from '../travel/TripsScreen';
+import { MomentViewerScreen } from '../moments/MomentViewer';
+import { MomentNewScreen } from '../moments/MomentNew';
 import { ProfileScreen } from '../profile/ProfileScreen';
 import { VerifyScreen } from '../screens/Verify';
 import { PartyNewScreen } from '../scene/PartyNewScreen';
@@ -66,7 +68,8 @@ const TAB_ICON: Record<string, (c: string) => React.ReactNode> = {
 
 const TABS = ['Explore', 'Tonight', 'Chats', 'Me'] as const;
 // #137: screens where the nav bar stays hidden (full-screen camera).
-const NO_BAR = new Set(['Verify']);
+// F-21 (#212): Moments viewer and composer are full screen too.
+const NO_BAR = new Set(['Verify', 'Moments', 'MomentNew']);
 
 // Pop bottom nav (App v2): white floating pill, icons; active tab grows, shows its label and fills with the mode colour.
 // #137: one bar for the whole app, drawn over every screen (pushed screens too); hidden while the keyboard is up.
@@ -368,6 +371,8 @@ export function Main() {
           <Stack.Screen name="Blocked" component={HiddenBlockedScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="Taps" component={TapsScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="Trips" component={TripsScreen as React.ComponentType} options={sub} />
+          <Stack.Screen name="Moments" component={MomentViewerScreen as React.ComponentType} options={{ presentation: 'fullScreenModal', animation: 'fade', gestureEnabled: false }} />
+          <Stack.Screen name="MomentNew" component={MomentNewScreen as React.ComponentType} options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
           <Stack.Screen name="Verify" component={VerifyRoute as React.ComponentType} />
           <Stack.Screen name="Chat" component={ChatScreen as React.ComponentType} options={edgeOnly} />
           <Stack.Screen name="Albums" component={AlbumsScreen as React.ComponentType} options={sub} />

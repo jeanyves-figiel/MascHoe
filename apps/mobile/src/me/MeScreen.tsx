@@ -18,6 +18,9 @@ import type { Notice } from '../trust/NoticesScreen';
 import { afterSheet, Banner, Button, ErrorText, Icon, Photo, Sheet, VerifiedTick } from '../ui';
 import { loadTrips, Plane } from '../travel/travel';
 import { tr } from '../i18n/travel';
+import { mx } from '../i18n/moments';
+import * as Moments from '../moments/api';
+import { RingAvatar } from '../moments/Ring';
 import { NowSheet } from './NowSheet';
 import { prefs, setPrefs } from './prefs';
 import { Qr } from './Qr';
@@ -50,6 +53,7 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
   const [albums, setAlbums] = useState(0);
   const [trusted, setTrusted] = useState(0);
   const [trips, setTrips] = useState(0);
+  const [moments, setMoments] = useState(0);
 
   useEffect(() => {
     api<{ notices: Notice[] }>('GET', '/me/notices').then((r) => setNotices(r.notices), () => {});
@@ -61,7 +65,8 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
     useCallback(() => {
       contacts().then((c) => setTrusted(c.filter((x) => x.accepted).length), () => {});
       loadTrips().then((r) => setTrips(r.trips.length), () => {});
-    }, []),
+      if (me.verified) Moments.mine().then((l) => setMoments(Moments.alive(l).length), () => {});
+    }, [me.verified]),
   );
 
   const run = async (fn: () => Promise<unknown>) => {
@@ -215,6 +220,27 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
               </View>
               <Text style={rowValue}>{tr.tripsRow(trips)}</Text>
               <Icon.Next />
+            </Row>
+            {/* F-21 R-21.14 (#212): Moments, live count; tap = own viewer, or post the first one */}
+            <Row
+              testID="me-moments"
+              onPress={() =>
+                moments > 0
+                  ? navigation.navigate('Moments', { queue: [{ id: p?.id ?? 'me', name: p?.display_name ?? '', age: p?.age ?? 0, photo: null }], index: 0, mode: 'hookup', self: true })
+                  : navigation.navigate(me.verified ? 'MomentNew' : 'Verify')
+              }
+              label={mx.meRow}
+            >
+              <RingAvatar size={36} unseen={moments > 0}>
+                <Photo uri={p?.photos.find((x) => x.slot === 0)?.thumb_url ?? p?.photos.find((x) => x.slot === 0)?.url} id={p?.id ?? 'me'} label="" style={{ width: '100%', height: '100%' }} />
+              </RingAvatar>
+              <View style={{ flex: 1 }}>
+                <Text style={rowTitle}>{mx.meRow}</Text>
+                <Text style={rowSub}>{mx.live(moments)}</Text>
+              </View>
+              <Pressable accessibilityRole="button" accessibilityLabel={mx.addA11y} onPress={() => navigation.navigate(me.verified ? 'MomentNew' : 'Verify')} hitSlop={8} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: color.hookup, alignItems: 'center', justifyContent: 'center' }}>
+                <Icon.Plus size={18} c={color.onAccent} />
+              </Pressable>
             </Row>
           </View>
         </View>

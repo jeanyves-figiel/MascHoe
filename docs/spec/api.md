@@ -207,6 +207,18 @@ Contact side (no account; `rid` from the link fragment; 60 req/min per IP):
 Public page `GET /p/{slug}` (HTML, no scripts) — I-02.
 | POST · DELETE | /profiles/{id}/vouch | vouch / withdraw. Verified, account ≥ 30 d (403, AC-18.1), ≥ 10 messages each way with that profile, ≤ 5 per 30 d. Profile view adds `vouches` (weighted, anonymous), `vouched`, `can_vouch` |
 
+### Moments (F-21, #212)
+| POST | /moments/uploads | {content_type} → 201 {moment_id, put_url, thumb_put_url} (presigned PUTs, 5 min; verified only, 403 `not_verified`; 409 at 10 live) |
+| POST | /moments/{id}/publish | {audience: everyone\|chats\|favorites, audience_ids: [profile ids] (chats / favorites, resolved on the phone, ≤ 2 000), ttl_s: 3600\|21600\|86400, intents: [hookup\|friends\|sport], caption ≤ 80, caption_style: clean\|pill\|pop} → {id, status: live\|review\|rejected, expires_at, …}. Rejected → files deleted. 429 after 20 / 24 h (3 for accounts < 24 h). Hidden or Safe Mode posters: `everyone` → 422 |
+| GET | /moments/mine | → {moments: [{id, url, thumb_url, caption, caption_style, audience, audience_count, intents, status, main_ok, created_at, expires_at, seen_count, tap_count, quiet_count, screenshots, viewers: [{profile_id, display_name, age, at, tapped, screenshot, photo}]}]} (viewers empty when I watch quietly) |
+| GET | /profiles/{id}/moments?mode= | → {moments: [{id, url, thumb_url, caption, caption_style, created_at, expires_at, spicy, seen}]}; 404 when none or not allowed (same answer). URLs signed for 5 min |
+| POST | /moments/views | {ids ≤ 100} → {recorded} |
+| POST | /moments/{id}/tap | Tap with the Moment → {mutual} |
+| POST | /moments/{id}/screenshot | → 204 (poster notified, `moment.screenshot`) |
+| DELETE | /moments/{id} | → 204 |
+| PUT · DELETE | /moments/mutes/{profile_id} | mute / unmute his Moments → 204 |
+Explore cards (`grid`, `tray`, `map` pins and avatars) and `GET /profiles/{id}` gain `moments: {live, unseen, thumb?} \| null`. `PATCH /me/settings` gains `moments_quiet`.
+
 ## Realtime (Phoenix Channels, WSS)
 Connect: `wss://<api host>/socket/websocket?token=<access token>&vsn=2.0.0`, then join `user:me` (beta: one private topic per account; the server maps it).
 
