@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { privateStore as AsyncStorage } from '../app/privateStore';
 import * as ExpoLocation from 'expo-location';
 import { getLocales } from 'expo-localization';
 import React, { useCallback, useEffect, useState } from 'react';
