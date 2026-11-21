@@ -36,7 +36,7 @@ export const fr: Partialize<AppStrings> = {
     fitNear: 'Ajusté aux plus proches',
     fitFar: 'Dézoomé pour trouver du monde',
   },
-  distance: { m: (m: number) => (m < 1000 ? `${m} m` : `${(m / 1000).toFixed(1).replace('.', ',')} km`), city: (c: string | null) => (c ? `À ${c}` : 'Ville proche') },
+  distance: { m: (m: number) => (m < 1000 ? `${m} m` : m < 10_000 ? `${(m / 1000).toFixed(1).replace('.', ',')} km` : `${Math.round(m / 1000)} km`), city: (c: string | null) => (c ? `À ${c}` : 'Ville proche') },
   now: { now: 'Dispo', hosting: 'Je reçois', can_travel: 'Je me déplace', door_open: 'Porte ouverte' },
   filters: { title: 'Filtres', reset: 'Réinitialiser', apply: 'Voir les résultats', age: 'Âge', distance: 'Distance max', verifiedOnly: 'Vérifiés seulement', onlineNow: 'En ligne', hasNow: 'Avec un statut Dispo', hideCreators: 'Masquer les créateurs', newMembers: 'Nouveaux membres seulement', verifiedHint: 'Les filtres de position et d’accueil se débloquent après vérification.', any: 'Peu importe' },
   location: {
@@ -61,6 +61,7 @@ export const fr: Partialize<AppStrings> = {
     safeModeExact: 'Le mode sécurisé est actif. Partager une position exacte peut te mettre en danger ici.',
     shareAnyway: 'Partager quand même',
     preview: { hidden: 'Rien. Tu es invisible.', city: (c: string) => `« À ${c} »`, area: 'Une fourchette de distance et ta photo quelque part dans une zone d’environ 200 m', exact: 'Ton épingle sur la carte, à quelques mètres près, avec la distance' },
+    closer: { label: 'Montrer une distance plus précise', on: 'Les mecs voient « ~150 m » : une zone de ~50 m. Jamais ta position exacte.', off: 'Les mecs voient « ~400 m » : une zone de ~200 m.' },
     permission: 'La localisation est désactivée. On utilise ta ville.',
     stopPin: 'Retirer l’épingle',
     expires: (t: string) => `Épingle jusqu’à ${t}`,

@@ -45,7 +45,7 @@ Outside `/v1`: `GET /.well-known/apple-app-site-association` → `{webcredential
 | GET | /cities?q= | → {cities:[{id, name, country, cell_r5}]} (S-04b picker, F-20 trip city). ≥ 2 letters, prefix match on `search_key` (lowercase, accents removed, so "zur" finds Zürich), biggest cities first, max 10 |
 | POST | /me/profiles/{id}/photos/{photo_id}/check | → {photo:{id, slot, status, reject_reason, url}, account: Me} (inline classifier result, R-02.7) |
 
-`PUT /me/location` (F-05) accepts `{level: area|exact, cell_r9}` or `{level: city, city_id | cell_r5}`; `hidden` requires verification. Onboarding step order: `basics → location → photo → verify → done`.
+`PUT /me/location` (F-05) accepts `{level: area|exact, cell_r9, precise?, cell_r10?}` (#197: `precise: true` needs `cell_r10` whose r9 parent is `cell_r9`, else 422; refused in Safe Mode with 422 `safe_mode`) or `{level: city, city_id | cell_r5}`; `hidden` requires verification. Onboarding step order: `basics → location → photo → verify → done`.
 
 ### Verification (F-03)
 | POST | /verification/challenge | → {nonce, steps: 3 of turn_left\|turn_right\|smile\|look_up (blink dropped, #131), expires_in: 300, key: {n: b64url, e, bits: 3072, hash: "SHA-384"}}. 403 during the 24 h cooldown (R-03.10) |
@@ -86,7 +86,7 @@ Common query: `mode=hookup|friends|sport`, `age_min`, `age_max`, `distance_max` 
 | GET | /places | ?bbox=w,s,e,n&kinds=clubs,saunas,parties,gyms (#113, R-04.20). → {places:[{id, type: venue\|event\|party, kind: club\|bar\|sauna\|gym\|official\|hosted, name, lat, lng, distance, here?, starts_at?, ends_at?, venue_name?, url?, source}]}. Venues and events at public coordinates; hosted parties at the r8 centroid (AC-10.1) and only those `GET /parties` would show. Safe Mode → []. bbox ≤ 0.5°×0.5° (bigger → []), max 150 nearest the bbox centre |
 | GET | /explore/tray | → {items:[Card]} up to 20 active (pin, Now, online) |
 
-Card: `{id, display_name, age, verified, photo, online, distance, now, exact, pin_expires_at, further, creator, intent, position, new, lat?, lng?, visitor?, trip?}`; `visitor: true` + `trip: {city, country, first_day, last_day, here, from}` for travellers (F-20 R-20.13, `distance` null unless `here`); `distance` is `{kind: exact, m}` (pin and owner allows exact), `{kind: area, bucket}` (lt200 … 10k_plus; ≥ 1 km for unverified viewers) or `{kind: city, city}`.
+Card: `{id, display_name, age, verified, photo, online, distance, now, exact, pin_expires_at, further, creator, intent, position, new, lat?, lng?, visitor?, trip?}`; `visitor: true` + `trip: {city, country, first_day, last_day, here, from}` for travellers (F-20 R-20.13, `distance` null unless `here`); `distance` is `{kind: exact, m}` (pin and owner allows exact), `{kind: area, m, approx: true, floor: bool, precise: bool, bucket}` (#197: `m` rounded per R-04.6, `floor` = show "< m"; `m` omitted under the spoof brake or `show_distance = range`; `bucket` lt200 … 10k_plus kept for old builds; ≥ 1 km for unverified viewers) or `{kind: city, city}`.
 
 ### Travel (F-20, #188)
 | Method | Path | Body → Response |

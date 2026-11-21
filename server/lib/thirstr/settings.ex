@@ -21,8 +21,10 @@ defmodule Thirstr.Settings do
     "show_in_venues" => true,
     # F-20 R-17.14 (#188): travellers looking around from afar can see me
     "show_to_remote" => true,
-    # exact | range | none
-    "show_distance" => "range",
+    # exact (a rounded number, #197) | range (buckets only) | none
+    "show_distance" => "exact",
+    # #197 R-05.13 "Show closer distance" (Area at ~50 m), asked in onboarding
+    "precise_distance" => false,
     # R-17.5 symmetry
     "online_visible" => true,
     "read_receipts" => true,
@@ -73,6 +75,9 @@ defmodule Thirstr.Settings do
 
   defp validate(k, v) when k in ~w(hide_from_age_min hide_from_age_max),
     do: if(is_nil(v) or (is_integer(v) and v in 18..99), do: :ok, else: {:error, "18–99"})
+
+  defp validate("precise_distance", v),
+    do: if(is_boolean(v), do: :ok, else: {:error, "true or false"})
 
   defp validate("push", v) when is_map(v),
     do: if(Enum.all?(v, fn {_, b} -> is_boolean(b) end), do: :ok, else: {:error, "booleans"})

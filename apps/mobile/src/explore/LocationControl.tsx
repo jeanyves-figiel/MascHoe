@@ -6,7 +6,7 @@ import { tx } from '../i18n/app';
 import { v3 } from '../i18n/v3';
 import { HiddenPanel } from '../me/HiddenPanel';
 import { color, font, radius, space, type } from '../theme/tokens';
-import { Banner, Button, Chip, Chips, ErrorText, Field, Icon } from '../ui';
+import { Banner, Button, Chip, Chips, ErrorText, Field, Icon, Toggle } from '../ui';
 import { type Level, position, quickLevel } from './level';
 
 type City = { id: number; name: string; country: string };
@@ -34,6 +34,7 @@ export function LocationControl({ onLocked, testPrefix = 'me' }: { onLocked?: ()
   const [cities, setCities] = useState<City[] | null>(null);
   const [cityQ, setCityQ] = useState('');
   const shown: Level = level === 'exact' || pendingExact ? 'exact' : level;
+  const safeOn = me.safe_mode === 'on' || !!me.safe_mode_active;
 
   const run = async (fn: () => Promise<Me | null>) => {
     setBusy(true);
@@ -58,7 +59,7 @@ export function LocationControl({ onLocked, testPrefix = 'me' }: { onLocked?: ()
     setPendingExact(false);
     if (l === level) return;
     run(async () => {
-      const r = await quickLevel(l, l === 'hidden' ? { until: null, return_level: level === 'city' ? 'city' : 'area' } : undefined);
+      const r = await quickLevel(l, l === 'hidden' ? { until: null, return_level: level === 'city' ? 'city' : 'area' } : undefined, l === 'area' ? !!me.location?.precise : undefined);
       if (r) return r;
       // No position: City falls back to a city search, the others need permission.
       if (l === 'city') setCities([]);
@@ -107,6 +108,25 @@ export function LocationControl({ onLocked, testPrefix = 'me' }: { onLocked?: ()
       </View>
       {!me.verified ? <Text style={{ ...type.meta, color: color.fgMuted }}>{v3.me.verifyLocked}</Text> : null}
       {shown === 'hidden' ? <HiddenPanel me={me} setMe={setMe} /> : null}
+      {shown === 'area' && !safeOn ? (
+        // #197 R-05.13: closer distance (~50 m) on Area, applies on tap.
+        <View testID={`${testPrefix}-closer-panel`} style={{ borderWidth: 1.5, borderColor: color.trust, borderRadius: radius.sm + 6, paddingHorizontal: space.m, paddingVertical: space.s, backgroundColor: color.bgBase }}>
+          <Toggle
+            label={tx.location.closer.label}
+            sub={me.location?.precise ? tx.location.closer.on : tx.location.closer.off}
+            value={!!me.location?.precise}
+            disabled={busy}
+            tone={color.trust}
+            onChange={(v) =>
+              run(async () => {
+                const r = await quickLevel('area', undefined, v);
+                if (!r) setErr(tx.location.permission);
+                return r;
+              })
+            }
+          />
+        </View>
+      ) : null}
       {shown === 'exact' ? <ExactPanel testPrefix={testPrefix} level={level} onStop={() => setPendingExact(false)} onShared={() => setPendingExact(false)} /> : null}
       {cities ? (
         <View style={{ gap: space.s }}>

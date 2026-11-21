@@ -152,12 +152,12 @@ defmodule Thirstr.Social do
 
   defp distance_to(viewer, t, vp, remote?) do
     with %{} = vp <- vp,
-         %{rows: [[level, lat, lng, r5]]} <-
+         %{rows: [[level, lat, lng, r5, dres]]} <-
            Repo.query!(
              """
-             SELECT lc.level, (h3_cell_to_lat_lng(d))[1], (h3_cell_to_lat_lng(d))[0], lc.cell_r5::h3index::text
+             SELECT lc.level, (h3_cell_to_lat_lng(d))[1], (h3_cell_to_lat_lng(d))[0], lc.cell_r5::h3index::text, lc.display_res
              FROM location_cells lc,
-             LATERAL (SELECT (CASE lc.display_res WHEN 9 THEN lc.cell_r9 WHEN 8 THEN lc.cell_r8
+             LATERAL (SELECT (CASE lc.display_res WHEN 10 THEN lc.cell_r10 WHEN 9 THEN lc.cell_r9 WHEN 8 THEN lc.cell_r8
                        WHEN 7 THEN lc.cell_r7 ELSE lc.cell_r5 END)::h3index d) x
              WHERE lc.profile_id = $1
              """,
@@ -173,9 +173,10 @@ defmodule Thirstr.Social do
           level: level,
           pin: pin,
           dist_m: dist,
-          cell_r5: r5
+          cell_r5: r5,
+          display_res: dres
         },
-        %{verified: Account.verified?(viewer)}
+        %{verified: Account.verified?(viewer), brake: Location.spoof_brake?(viewer)}
       )
     else
       _ -> nil

@@ -103,7 +103,7 @@ const NEAR = new Set(['lt200', '200_500', '500_1k', '1_2k']);
 export function isNear(d: Card['distance']): boolean {
   if (!d) return false;
   if (d.kind === 'exact') return d.m < 2000;
-  if (d.kind === 'area') return NEAR.has(d.bucket);
+  if (d.kind === 'area') return typeof d.m === 'number' ? d.m < 2000 : NEAR.has(d.bucket);
   return false;
 }
 

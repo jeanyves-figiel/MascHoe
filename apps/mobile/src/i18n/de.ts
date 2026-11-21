@@ -36,7 +36,7 @@ export const de: Partialize<AppStrings> = {
     fitNear: 'Auf die Nächsten angepasst',
     fitFar: 'Herausgezoomt, um Leute zu finden',
   },
-  distance: { m: (m: number) => (m < 1000 ? `${m} m` : `${(m / 1000).toFixed(1).replace('.', ',')} km`), city: (c: string | null) => (c ? `In ${c}` : 'Stadt in der Nähe') },
+  distance: { m: (m: number) => (m < 1000 ? `${m} m` : m < 10_000 ? `${(m / 1000).toFixed(1).replace('.', ',')} km` : `${Math.round(m / 1000)} km`), city: (c: string | null) => (c ? `In ${c}` : 'Stadt in der Nähe') },
   now: { now: 'Jetzt', hosting: 'Bei mir', can_travel: 'Kann kommen', door_open: 'Tür offen' },
   filters: { title: 'Filter', reset: 'Zurücksetzen', apply: 'Ergebnisse zeigen', age: 'Alter', distance: 'Max. Entfernung', verifiedOnly: 'Nur Verifizierte', onlineNow: 'Jetzt online', hasNow: 'Mit Jetzt-Status', hideCreators: 'Creator ausblenden', newMembers: 'Nur neue Mitglieder', verifiedHint: 'Positions- und Gastgeber-Filter gibt es nach der Verifizierung.', any: 'Egal' },
   location: {
@@ -61,6 +61,7 @@ export const de: Partialize<AppStrings> = {
     safeModeExact: 'Der sichere Modus ist an. Ein genauer Standort kann dich hier gefährden.',
     shareAnyway: 'Trotzdem teilen',
     preview: { hidden: 'Nichts. Du bist unsichtbar.', city: (c: string) => `„In ${c}“`, area: 'Eine Entfernungsspanne und dein Foto irgendwo in einer Zone von ca. 200 m', exact: 'Deine Stecknadel auf der Karte, ein paar Meter daneben, mit Entfernung' },
+    closer: { label: 'Genauere Entfernung zeigen', on: 'Typen sehen „~150 m“: eine ~50-m-Zone. Nie dein genauer Standort.', off: 'Typen sehen „~400 m“: eine ~200-m-Zone.' },
     permission: 'Standortzugriff ist aus. Wir nutzen deine Stadt.',
     stopPin: 'Stecknadel jetzt entfernen',
     expires: (t: string) => `Stecknadel bis ${t}`,
