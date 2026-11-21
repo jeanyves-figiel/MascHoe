@@ -20,7 +20,9 @@ import { toast } from '../ui/Toast';
 import { color, radius, space, type } from '../theme/tokens';
 import { Banner, EmptyState, ErrorState, Icon, Loading, useAccent } from '../ui';
 import { ProfileTile } from './Card';
-import { activeFilterCount, defaultFilters, Filters, filterMode, restoreFilters, loadGrid, loadMap, loadPlaces, loadSummary, loadTray } from './explore';
+import { activeFilterCount, defaultFilters, Filters, filterMode, restoreFilters, loadGrid, loadMap, loadPlaces, loadSummary, loadTray, loadVisitors } from './explore';
+import { setLookAround, useLookAround } from '../travel/travel';
+import { tr } from '../i18n/travel';
 import { LiveHeader, VerifyRow } from './LiveHeader';
 import { ExploreMap } from './ExploreMap';
 import { GridSheet, Snap, snapHeight } from './GridSheet';
@@ -90,6 +92,17 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
   const [locTick, setLocTick] = useState(0);
   const [device, setDevice] = useState<LatLng | null>(devicePosition());
   const [recenter, setRecenter] = useState(0);
+  // F-20 R-20.14: Look around a trip city (view point = its centre on the server).
+  const look = useLookAround();
+  const x = useMemo(() => ({ trip: look?.id ?? null }), [look?.id]);
+  const [visiting, setVisiting] = useState<{ count: number; center: { lat: number; lng: number } | null; items: Card[] } | null>(null);
+  const [homePlace, setHomePlace] = useState<string | null>(null);
+  // Recentre when a trip city is picked (state-from-props, no effect).
+  const [seenLook, setSeenLook] = useState(look);
+  if (seenLook !== look) {
+    setSeenLook(look);
+    if (look) setRecenter((n) => n + 1);
+  }
 
   useEffect(() => onDevicePosition(setDevice), []);
 
@@ -150,15 +163,24 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
 
   // R-04.17: header counts; failure keeps the "·" placeholder, never a made-up number.
   const reloadSummary = useCallback(() => {
-    loadSummary(intents, filters)
-      .then(setSummary)
+    loadSummary(intents, filters, x)
+      .then((sm) => {
+        if (!x.trip) setHomePlace(sm.place);
+        setSummary(sm);
+      })
       .catch(() => setSummary(null));
-  }, [intents, filters]);
+  }, [intents, filters, x]);
 
   const reload = useCallback(
     () =>
-      Promise.all([loadGrid(intents, filters), loadTray(intents, filters), bbox.current ? loadMap(intents, filters, bbox.current) : Promise.resolve(null)]).then(
-        ([g, t, m]) => {
+      Promise.all([
+        loadGrid(intents, filters, null, x),
+        loadTray(intents, filters, x),
+        bbox.current ? loadMap(intents, filters, bbox.current, x) : Promise.resolve(null),
+        loadVisitors(intents, filters, x).catch(() => null),
+      ]).then(
+        ([g, t, m, vis]) => {
+          setVisiting(vis);
           setErr(null);
           setItems(g.items);
           setNext(g.next);
@@ -169,7 +191,7 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
         },
         (e) => setErr(e instanceof ApiError ? e.message : tx.common.error),
       ),
-    [intents, filters],
+    [intents, filters, x],
   );
 
   useEffect(() => {
@@ -194,18 +216,18 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
   const onRegion = useCallback(
     (b: [number, number, number, number]) => {
       bbox.current = b;
-      loadMap(intents, filters, b)
+      loadMap(intents, filters, b, x)
         .then(setMapData)
         .catch(() => {});
       reloadPlaces();
     },
-    [intents, filters, reloadPlaces],
+    [intents, filters, reloadPlaces, x],
   );
   const shownPlaces = places.filter((p) => kinds.includes(placeKind(p)));
 
   async function more() {
     if (!next) return;
-    const g = await loadGrid(intents, filters, next);
+    const g = await loadGrid(intents, filters, next, x);
     setItems((cur) => [...(cur ?? []), ...g.items]);
     setNext(g.next);
   }
@@ -216,10 +238,12 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
       navigation.navigate('Profile', {
         id: c.id,
         mode: intents.find((m) => (c.intents ?? ['hookup']).includes(m)) ?? intents[0],
+        // F-20: profile seen from the trip city (its trip card shows there)
+        trip: look?.id,
         // F-19 G10: grid order, so the profile can swipe to the next / previous person.
         ids: nearIds(items, c.id),
       }),
-    [navigation, intents, items],
+    [navigation, intents, items, look?.id],
   );
   // F-19 G8: pinch the grid for 2, 3 or 4 per row (also in Filters › Grid size).
   const cols = useCols();
@@ -295,6 +319,7 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
     return null;
   })();
   const center: { lat: number; lng: number; zoom?: number } | null = (() => {
+    if (look) return { lat: look.city.lat, lng: look.city.lng, zoom: 12 };
     if (dot) return dot;
     const r5 = me.location?.cell_r5;
     if (r5) {
@@ -303,6 +328,20 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
     }
     return null;
   })();
+
+  // F-20 R-20.11: map bubble (faces for verified viewers only); tap → first visitor tile.
+  const visitingPin = useMemo(
+    () =>
+      visiting && visiting.count > 0 && visiting.center
+        ? { ...visiting.center, count: visiting.count, faces: me.verified ? visiting.items.slice(0, 3).map((c) => c.photo) : [] }
+        : null,
+    [visiting, me.verified],
+  );
+  const onVisiting = useCallback(() => {
+    changeSnap('half');
+    const i = items ? items.findIndex((c) => c.visitor) : -1;
+    if (i >= 0) list.current?.scrollToIndex({ index: Math.floor(i / 3), animated: true, viewPosition: 0.2 });
+  }, [items, changeSnap]);
 
   // R-04.15: zoom to fit the nearest people above the sheet.
   const sheetPx = box ? snapHeight(snap, box.h, TAB_SPACE) : 0;
@@ -316,6 +355,8 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
   }, [quiet, intents]);
 
   async function locateMe() {
+    // R-20.14: Locate me returns home and ends Look around.
+    if (look) setLookAround(null);
     const p = await locateDevice().catch(() => null);
     if (!p && !center) return setShowLocation(true);
     setRecenter((n) => n + 1);
@@ -351,6 +392,12 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
       onLocation={() => setShowLocation(true)}
       onNow={() => (me.verified ? setShowNow(true) : navigation.navigate('Verify'))}
       banner={banner}
+      trip={look}
+      home={homePlace}
+      onBack={() => {
+        setLookAround(null);
+        setRecenter((n) => n + 1);
+      }}
     />
   );
 
@@ -445,6 +492,15 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
     ) : items && !me.verified ? (
       <VerifyRow onPress={() => navigation.navigate('Verify')} />
     ) : null;
+  // R-20.17: Look around into a Safe Mode country: locals there are protected.
+  const head = look?.safe_mode_country ? (
+    <View>
+      <Banner tone="trust" text={tr.protected} />
+      {listHead}
+    </View>
+  ) : (
+    listHead
+  );
 
   const sheetTitle = tray.length > 0 ? tx.explore.activeNow(tray.length) : quiet ? tx.explore.quietTitle : tx.explore.nearby;
   const listPad = box ? TAB_SPACE + space.xxl + (box.h - sheetPx) : 120;
@@ -481,6 +537,8 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
             selected={selected}
             places={shownPlaces}
             selectedPlace={place?.id ?? null}
+            visiting={visitingPin}
+            onVisiting={onVisiting}
             onPlace={(p) => {
               setSelected(null);
               setPlace((cur) => (cur?.id === p.id ? null : p));
@@ -493,7 +551,7 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
           snap={snap}
           onSnap={changeSnap}
           title={sheetTitle}
-          right={items.length ? tx.explore.nearestFirst : undefined}
+          right={items.length ? (look ? tr.fromCentre : tx.explore.nearestFirst) : undefined}
           above={
             place ? (
               <View style={{ flex: 1 }}>
@@ -545,9 +603,9 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
             columnWrapperStyle={{ gap: space.s }}
             contentContainerStyle={{ gap: space.s, paddingHorizontal: space.l, paddingBottom: listPad }}
             ListHeaderComponent={
-              listHead || (!holdSeen && items.length > 0) ? (
+              head || (!holdSeen && items.length > 0) ? (
                 <View>
-                  {listHead}
+                  {head}
                   {!holdSeen && items.length > 0 ? (
                     <Text testID="hold-hint" style={{ ...type.meta, fontFamily: type.headline.fontFamily, color: color.trust, marginBottom: space.s }}>
                       {mod.holdHint}

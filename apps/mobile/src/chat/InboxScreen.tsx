@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { knownTrip, useTripsVersion } from '../travel/peerTrips';
+import { a11yLabel, shortLabel, TravelLabel } from '../travel/travel';
 import { Pressable, ScrollView, SectionList, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '../api/client';
@@ -37,6 +39,7 @@ const FILL: Record<Tab, string> = { all: color.hookup, unread: color.hookup, fav
 export function InboxScreen({ navigation }: { navigation: Nav }) {
   useTopics('convs');
   P.usePeople();
+  useTripsVersion();
   const tapsTick = useTopics('taps');
   const insets = useSafeAreaInsets();
   const [taps, setTaps] = useState<number | null>(null);
@@ -313,6 +316,8 @@ export function InboxScreen({ navigation }: { navigation: Nav }) {
                   {c.last}
                 </Text>
                 {!c.ctx ? <NoteLine peer={c.peer} /> : null}
+                {/* F-20 R-20.8: known on this phone (profile or chat opened) */}
+                {!c.ctx && knownTrip(c.peer) ? <TravelLabel small text={shortLabel(knownTrip(c.peer)!)} a11y={a11yLabel(knownTrip(c.peer)!)} /> : null}
               </View>
               <View style={{ alignItems: 'flex-end', gap: 4 }}>
                 <Text style={{ ...type.meta, fontSize: 12, color: color.fgMuted }}>{ago(c.lastAt)}</Text>

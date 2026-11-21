@@ -12,6 +12,7 @@ import { toast } from '../../ui/Toast';
 import { LocationSheet } from '../../explore/LocationSheet';
 import { langName, targetLang, translateAvailable } from '../../chat/translate';
 import { tx } from '../../i18n/app';
+import { tr } from '../../i18n/travel';
 import { trx } from '../../i18n/translate';
 import { v3 } from '../../i18n/v3';
 import { biometrics, biometricsAvailable, getLock } from '../../safety/lock';
@@ -57,6 +58,7 @@ export function PrivacySettings() {
       <Group label={S.whoSees}>
         <SwitchRow title={S.hideUnverified} sub={S.hideUnverifiedSub} value={st.hide_from_unverified} onChange={(v) => put({ hide_from_unverified: v })} />
         <SwitchRow title={S.hideNew} sub={S.hideNewSub} value={st.hide_from_new} onChange={(v) => put({ hide_from_new: v })} />
+        <SwitchRow title={tr.showToRemote} sub={tr.showToRemoteSub} value={st.show_to_remote !== false} onChange={(v) => put({ show_to_remote: v })} />
         <SwitchRow
           title={S.hideHidden}
           sub={S.hideHiddenSub}

@@ -34,8 +34,16 @@ Principle: store the minimum; anything audience-restricted is E2EE or coarse-fla
 ### refresh_tokens
 | id · account_id · device_id · token_hash bytea (HMAC) · expires_at · used_at (rotation) |
 
-### cities (public reference data for S-04b / Welcome)
-| id · name · country · lat · lng · cell_r5 |
+### cities (public reference data for S-04b / Welcome / F-20 trips)
+| id · name · country · lat · lng · cell_r5 · population · search_key (lowercase, accents removed; prefix index) |
+Loaded by migration from `server/priv/cities/cities.tsv`: GeoNames cities ≥ 15 000 inhabitants (CC BY 4.0, ~23 700 rows) + a short list of smaller travel spots; rows already present (same `search_key` + country) are kept.
+
+### trips (F-20, #188)
+| id uuid · account_id · city_id → cities · first_day date · last_day date · show_days smallint null (null browse only, 0 / 3 / 7 / 14) · say_from bool · created_at · updated_at |
+Indexes: (account_id), (city_id, last_day). Deleted by `ExpirySweep` (every 15 min) at 12:00 UTC the day after `last_day`; deleted with the account. Never exposed as a list to others.
+
+### trip_creates (F-20 rate limit)
+| account_id · at | rows older than 30 d swept by `ExpirySweep` |
 
 ### devices
 | id uuid · account_id · platform enum(ios, android, web) · attestation_ok bool · push_token_enc bytea (encrypted at rest) · mls_client_id bytea · last_seen_day date |

@@ -1,3 +1,6 @@
+import { a11yLabel, daysUntil, rangeLabel, shortLabel, TravelLabel } from '../travel/travel';
+import { usePeerTrip } from '../travel/peerTrips';
+import { tr } from '../i18n/travel';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Dimensions, FlatList, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -163,6 +166,8 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
   }, []);
   const conv = cid ? E.getConv(cid) : undefined;
   const running = useCheckin();
+  // F-20 R-20.8: Visiting label + one-time note (fetched, kept in memory 10 min).
+  const peerTrip = usePeerTrip(conv && !conv.ctx && !conv.gone ? conv.peer : null);
 
   useEffect(() => {
     if (!cid) return;
@@ -308,6 +313,7 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
   // Group chats (party / activity / club): no single peer, sender names from the E2EE payload.
   const group = !!conv.ctx;
   const fav = !group && P.isFav(conv.peer);
+  const tripNote = peerTrip && !peerTrip.here && daysUntil(peerTrip.first_day) > 0 ? tr.chatNote(conv.name, peerTrip.city, rangeLabel(peerTrip.first_day, peerTrip.last_day)) : null;
   const friend = group ? null : P.friendOf(conv.peer);
   const askFriend = () => {
     if (!me.verified) {
@@ -574,6 +580,8 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
               ) : null}
             </View>
             {!group ? <VcBadge peer={conv.peer} /> : null}
+            {/* F-20 R-20.8 */}
+            {peerTrip ? <TravelLabel small text={shortLabel(peerTrip)} a11y={a11yLabel(peerTrip)} /> : null}
             {offline ? (
               <View testID="chat-offline" style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: color.fgMuted }} />
@@ -611,6 +619,11 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
       </View>
       )}
       {!group && find === null ? <NoteStrip peer={conv.peer} onPress={() => setNoteOpen(true)} /> : null}
+      {tripNote && find === null ? (
+        <View testID="trip-note" style={{ alignSelf: 'center', maxWidth: '92%', marginTop: space.s, paddingHorizontal: space.m, paddingVertical: 7, borderRadius: 14, backgroundColor: color.bgRaised }}>
+          <Text style={{ ...type.meta, fontSize: 12, color: color.fgSecondary, textAlign: 'center' }}>{tripNote}</Text>
+        </View>
+      ) : null}
 
       <FlatList
         ref={listRef}
