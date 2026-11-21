@@ -57,4 +57,5 @@ Never restore over the running prod volume. Restore into a new machine + volume,
 ## Drill log
 | Date | Env | Target | Result | Time to usable DB |
 |---|---|---|---|---|
+| 2026-11-21 | prod | — (rollout) | ✔ backups on at 09:30 UTC (`pg16-h3-8994cda`), first full 09:31 (40 MB → 6.7 MB), API health checks passing; DB restart ~10 s | — |
 | 2026-11-21 | staging | 09:07:47 UTC (between two marker rows) | ✔ row before target present, row after absent, `venues` count matches (28 686); full backup 40 MB → 6.8 MB in repo | ~1 min per restore (2.6 min incl. one retry, see Gotchas) |

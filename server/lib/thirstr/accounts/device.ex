@@ -11,6 +11,9 @@ defmodule Thirstr.Accounts.Device do
     field :platform, :string
     field :attestation_ok, :boolean, default: false
     field :last_seen_day, :date
+    # SR-04: soft revoke + resume by the same install (see Accounts.start_session/3)
+    field :revoked_at, :utc_datetime_usec
+    field :resume_hash, :binary
     timestamps()
   end
 

@@ -99,18 +99,18 @@ Rule for every cache: inside the encrypted store or an AES-GCM file whose key is
 ## Prioritized backlog
 | P | ID | Issue | Effort |
 |---|---|---|---|
-| P0 | SR-01 Postgres backups, PITR, restore drill | #141 | ✔ staging 2026-11-21 (drill passed), prod next ([runbook](../runbooks/db-backups.md)) |
-| P0 | SR-07 Metrics + alerts | #147 | M |
-| P0 | SR-02 Push retries, Android-safe, FCM | #142 | S (+M for FCM) |
-| P0 | SR-03 Graceful deploys | #143 | S |
-| P0 | SR-04 Keep queue on device revocation | #144 | S |
-| P0 | SR-05 Chat photos kept on phone (encrypted) | #145 | M |
-| P1 | SR-14 Sensitive data out of AsyncStorage; verify SQLCipher | #154 | S |
-| P1 | SR-08 k-anonymity job writes only changes | #148 | S |
-| P1 | SR-15 Phone chat store indexes + paging | #155 | M |
-| P1 | SR-10 Thumbnails + photo cache | #150 | M |
+| P0 | SR-01 Postgres backups, PITR, restore drill | #141 | ✔ staging + prod 2026-11-21 (drill passed on staging, [runbook](../runbooks/db-backups.md)) |
+| P0 | SR-07 Metrics + alerts | #147 | ✔ 2026-11-21 |
+| P0 | SR-02 Push retries, Android-safe, FCM | #142 | ✔ 2026-11-21 |
+| P0 | SR-03 Graceful deploys | #143 | ✔ 2026-11-21 |
+| P0 | SR-04 Keep queue on device revocation | #144 | ✔ 2026-11-21 |
+| P0 | SR-05 Chat photos kept on phone (encrypted) | #145 | ✔ 2026-11-21 |
+| P1 | SR-14 Sensitive data out of AsyncStorage; verify SQLCipher | #154 | ✔ 2026-11-21 |
+| P1 | SR-08 k-anonymity job writes only changes | #148 | ✔ 2026-11-21 |
+| P1 | SR-15 Phone chat store indexes + paging | #155 | ◐ indexed reads done; tables + paging open |
+| P1 | SR-10 Thumbnails + photo cache | #150 | ◐ stable URLs done; thumbnails open |
 | P1 | SR-09 Explore caching + no N+1 H3 | #149 | M |
-| P1 | SR-11 Valkey failure fallback | #151 | S |
+| P1 | SR-11 Valkey failure fallback | #151 | ✔ 2026-11-21 |
 | P1 | SR-12 k6 load test + machine sizing | #152 | M |
 | P1 | SR-06 History transfer + encrypted backup | #146 | L (spec first) |
 | P2 | SR-13 Ciphertext over socket | #153 | M |

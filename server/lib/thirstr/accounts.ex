@@ -123,25 +123,95 @@ defmodule Thirstr.Accounts do
 
   # ---------------------------------------------------------------- sessions
 
-  @doc "Registers a device (R-01.8 max 5) and issues tokens."
-  def start_session(%Account{} = a, platform) when is_binary(platform) do
+  @resume_days 7
+
+  @doc """
+  Registers a device (R-01.8 max 5) and issues tokens.
+
+  SR-04 (#144): `resume` = %{"device_id" => id, "secret" => s} from the install's Keychain.
+  After a full sign-in, a device of this account revoked less than 7 d ago with a matching
+  secret is resumed instead of replaced, so the chat messages queued for it are not lost.
+  """
+  def start_session(%Account{} = a, platform, resume \\ nil) when is_binary(platform) do
     platform = if platform in Device.platforms(), do: platform, else: "web"
+
+    case resumable(a, resume) do
+      %Device{} = d ->
+        secret = Ids.random_token()
+
+        {1, _} =
+          Repo.update_all(from(x in Device, where: x.id == ^d.id),
+            set: [
+              revoked_at: nil,
+              resume_hash: Ids.hash("device", secret),
+              last_seen_day: Date.utc_today()
+            ]
+          )
+
+        {:ok, issue_tokens(a, d) |> Map.merge(%{device_id: d.id, device_secret: secret})}
+
+      nil ->
+        new_device(a, platform)
+    end
+  end
+
+  defp new_device(a, platform) do
     max = auth_cfg(:max_devices)
 
-    count = Repo.aggregate(from(d in Device, where: d.account_id == ^a.id), :count)
+    count =
+      Repo.aggregate(
+        from(d in Device, where: d.account_id == ^a.id and is_nil(d.revoked_at)),
+        :count
+      )
 
     if count >= max do
       {:error, :too_many_devices}
     else
+      secret = Ids.random_token()
+
       device =
         Repo.insert!(%Device{
           account_id: a.id,
           platform: platform,
-          last_seen_day: Date.utc_today()
+          last_seen_day: Date.utc_today(),
+          resume_hash: Ids.hash("device", secret)
         })
 
-      {:ok, issue_tokens(a, device)}
+      {:ok, issue_tokens(a, device) |> Map.merge(%{device_id: device.id, device_secret: secret})}
     end
+  end
+
+  defp resumable(%Account{id: aid}, %{"device_id" => id, "secret" => secret})
+       when is_binary(id) and is_binary(secret) do
+    with {:ok, id} <- Ecto.UUID.cast(id),
+         %Device{revoked_at: %DateTime{} = at, resume_hash: h} = d when is_binary(h) <-
+           Repo.get_by(Device, id: id, account_id: aid),
+         true <- DateTime.diff(DateTime.utc_now(), at, :day) < @resume_days,
+         true <- Plug.Crypto.secure_compare(h, Ids.hash("device", secret)) do
+      d
+    else
+      _ -> nil
+    end
+  end
+
+  defp resumable(_, _), do: nil
+
+  @doc "SR-04: revoke without deleting: tokens gone, queued messages kept for a resume (7 d)."
+  def revoke_device(device_id) do
+    Repo.delete_all(from(r in RefreshToken, where: r.device_id == ^device_id))
+
+    Repo.update_all(from(d in Device, where: d.id == ^device_id and is_nil(d.revoked_at)),
+      set: [revoked_at: DateTime.utc_now()]
+    )
+
+    :ok
+  end
+
+  @doc "Retention: revoked devices not resumed within 7 d are deleted (with their queue)."
+  def purge_revoked_devices do
+    cutoff = DateTime.add(DateTime.utc_now(), -@resume_days * 86_400, :second)
+    {n, _} = Repo.delete_all(from(d in Device, where: d.revoked_at < ^cutoff))
+    n
   end
 
   @refresh_race_s 60
@@ -160,7 +230,7 @@ defmodule Thirstr.Accounts do
         if DateTime.diff(now, used) < @refresh_race_s do
           {:error, :refresh_race}
         else
-          Repo.delete(rt.device)
+          revoke_device(rt.device_id)
           {:error, :unauthorized}
         end
 
@@ -210,7 +280,8 @@ defmodule Thirstr.Accounts do
              max_age: auth_cfg(:access_ttl_s)
            ),
          %Account{} = a <- Repo.get(Account, account_id),
-         true <- Repo.exists?(from(d in Device, where: d.id == ^device_id)) do
+         true <-
+           Repo.exists?(from(d in Device, where: d.id == ^device_id and is_nil(d.revoked_at))) do
       {:ok, a, device_id}
     else
       _ -> {:error, :unauthorized}

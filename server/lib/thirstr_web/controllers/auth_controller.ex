@@ -27,7 +27,7 @@ defmodule ThirstrWeb.AuthController do
   defp register_passkey(conn, nil, params, {cred_id, cose, count}) do
     with {:ok, a} <- Accounts.create_account(%{}, age_confirmed: params["age_confirmed"] == true),
          {:ok, _} <- Accounts.add_passkey(a, cred_id, cose, count),
-         {:ok, session} <- Accounts.start_session(a, params["platform"] || "web") do
+         {:ok, session} <- Accounts.start_session(a, params["platform"] || "web", resume(conn)) do
       conn |> put_status(201) |> json(MeJSON.session(session))
     end
   end
@@ -37,7 +37,7 @@ defmodule ThirstrWeb.AuthController do
   def passkey_login(conn, params) do
     with {:ok, a} <- Passkeys.verify_authentication(params),
          :ok <- usable(a),
-         {:ok, session} <- Accounts.start_session(a, params["platform"] || "web") do
+         {:ok, session} <- Accounts.start_session(a, params["platform"] || "web", resume(conn)) do
       json(conn, MeJSON.session(session))
     end
   end
@@ -52,7 +52,7 @@ defmodule ThirstrWeb.AuthController do
              age_confirmed: params["age_confirmed"] == true
            ),
          :ok <- usable(a),
-         {:ok, session} <- Accounts.start_session(a, params["platform"] || "web") do
+         {:ok, session} <- Accounts.start_session(a, params["platform"] || "web", resume(conn)) do
       conn
       |> put_status(if(kind == :created, do: 201, else: 200))
       |> json(MeJSON.session(session))
@@ -72,7 +72,7 @@ defmodule ThirstrWeb.AuthController do
     with :ok <- not_flagged(conn),
          {:ok, a, kind} <- EmailLink.verify(params["token"]),
          :ok <- usable(a),
-         {:ok, session} <- Accounts.start_session(a, params["platform"] || "web") do
+         {:ok, session} <- Accounts.start_session(a, params["platform"] || "web", resume(conn)) do
       conn
       |> put_status(if(kind == :created, do: 201, else: 200))
       |> json(MeJSON.session(session))
@@ -104,5 +104,15 @@ defmodule ThirstrWeb.AuthController do
     if Accounts.underage_flagged?(Plugs.Auth.install_key(conn)),
       do: {:error, :underage_blocked},
       else: :ok
+  end
+
+  # SR-04: the install's previous device, sent by the app on every sign-in.
+  defp resume(conn) do
+    with [id] <- get_req_header(conn, "x-thirstr-device"),
+         [secret] <- get_req_header(conn, "x-thirstr-device-secret") do
+      %{"device_id" => id, "secret" => secret}
+    else
+      _ -> nil
+    end
   end
 end
