@@ -17,7 +17,9 @@ const profile = {
   photos: [{ id: 'a', slot: 0, status: 'approved', url: 'https://x/a.jpg', main_ok: true }],
 } as unknown as Parameters<typeof PhotoEditor>[0]['profile'];
 
-beforeEach(() => mockLaunch.mockReset());
+beforeEach(() => {
+  mockLaunch.mockReset();
+});
 
 test('each of the 4 empty slots opens the picker', async () => {
   mockLaunch.mockResolvedValue({ canceled: true, assets: null });
