@@ -5,6 +5,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- **Places import from GitHub Actions** (#113, F-12 R-12.9): new manual workflow "Places import" (staging or production) queues the OpenStreetMap venue import on the server (same job as admin › Places › Import now), waits for it and shows added / updated / removed and the venue count in the run summary.
+
 ### Fixed
 - **Text no longer overlaps or hides behind other elements** (app, #124): on a profile, "Verify to send the first message" was a see-through banner floating over the Private note; it is now a solid toast above the action bar with a **Verify now** button (also from Explore's quick Message). Profile content fades out under the action bar and always scrolls clear of it on every phone. Tab-style switches (Chats All / Unread / Favorites / Friends and others) size each tab to its label so long French and German words fit on small phones. Screens checked with an automated overlap scan on 320, 375 and 393 pt wide phones in en / fr / de.
 - **Screen froze after cancelling Share** (iPhone, #124): Share profile (profile ⋯), Send link (Me › QR) and inviting a trusted contact opened the system share sheet on top of a closing menu; after Cancel the invisible menu kept every touch. The menu now closes first and the share sheet opens once it is gone.
