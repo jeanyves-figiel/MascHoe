@@ -84,3 +84,34 @@ test('gesture strings exist in en, fr, de', () => {
   expect(Object.keys(gxFr).sort()).toEqual(keys);
   expect(Object.keys(gxDe).sort()).toEqual(keys);
 });
+
+describe('map marker taps (#187 follow-up)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { once } = require('../src/explore/mapShared') as typeof import('../src/explore/mapShared');
+  test('runs once when the marker and its Pressable both fire', () => {
+    const fn = jest.fn();
+    expect(once('a', fn, 1000)).toBe(true);
+    expect(once('a', fn, 1100)).toBe(false);
+    expect(once('b', fn, 1150)).toBe(true);
+    expect(once('b', fn, 2000)).toBe(true);
+    expect(fn).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe('swipe between profiles (G10)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { stepIndex } = require('../src/profile/profileCache') as typeof import('../src/profile/profileCache');
+  const ids = ['a', 'b', 'c', 'd'];
+  test('next and previous in grid order', () => {
+    expect(stepIndex(ids, 1, 1, () => false)).toBe(2);
+    expect(stepIndex(ids, 1, -1, () => false)).toBe(0);
+  });
+  test('skips profiles that are not available', () => {
+    expect(stepIndex(ids, 0, 1, (x) => x === 'b' || x === 'c')).toBe(3);
+  });
+  test('none at the ends', () => {
+    expect(stepIndex(ids, 3, 1, () => false)).toBe(-1);
+    expect(stepIndex(ids, 0, -1, () => false)).toBe(-1);
+    expect(stepIndex(ids, 2, 1, (x) => x === 'd')).toBe(-1);
+  });
+});

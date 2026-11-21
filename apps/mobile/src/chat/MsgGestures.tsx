@@ -10,7 +10,7 @@ import { scheduleOnRN } from 'react-native-worklets';
 import { gx } from '../i18n/gestures';
 import { color, type } from '../theme/tokens';
 import { Icon } from '../ui';
-import { clamp, rubber } from '../ui/gestureMath';
+import { clamp, rubber, TAP_SLOP } from '../ui/gestureMath';
 import { feel } from '../ui/haptics';
 import { settle } from '../ui/motion';
 
@@ -98,6 +98,7 @@ export function MsgRow({ mine, at, g, onReply, onHeart, onHold, onHoldEnd, a11yM
   const twice = useTapGesture({
     enabled: !!onHeart,
     numberOfTaps: 2,
+    maxDistance: TAP_SLOP,
     maxDelay: 250,
     onActivate: () => {
       'worklet';

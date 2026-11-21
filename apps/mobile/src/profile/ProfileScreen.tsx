@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Dimensions, Image, Linking, Pressable, ScrollView, Share, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, ApiError } from '../api/client';
@@ -21,10 +21,11 @@ import { LENSES, lensFields, lensPhoto } from './lens';
 import { SafetySheet, SheetRow } from '../trust/SafetySheet';
 import { setToastLift, toast } from '../ui/Toast';
 import { GestureDetector, useCompetingGestures, useExclusiveGestures, usePanGesture, usePinchGesture, useTapGesture } from 'react-native-gesture-handler';
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import { gx } from '../i18n/gestures';
-import { commits, nextIndex, photoZone, rubber } from '../ui/gestureMath';
+import { commits, photoZone, rubber, TAP_SLOP } from '../ui/gestureMath';
+import { cachedProfile, fetchProfile, markDead, putProfile, stepIndex, warmProfile } from './profileCache';
 import { feel } from '../ui/haptics';
 import { settle } from '../ui/motion';
 import { RingAvatar } from '../moments/Ring';
@@ -85,9 +86,19 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
     return () => setToastLift(0);
   }, [p0self]);
   People.usePeople();
-  const [remote, setP] = useState<ProfileView | null>(null);
+  const trip = route.params.trip;
+  const [remote, setRemote] = useState<ProfileView | null>(null);
+  const setP = useCallback(
+    (v: ProfileView) => {
+      putProfile(v, mode, trip);
+      setRemote(v);
+    },
+    [mode, trip],
+  );
   const [err, setErr] = useState<string | null>(null);
-  const [gone, setGone] = useState(false);
+  // Per profile: G10 swaps the profile in place, so "not available" belongs to one id only.
+  const [goneId, setGoneId] = useState<string | null>(null);
+  const gone = goneId === id;
   const [menu, setMenu] = useState(false);
   const [busy, setBusy] = useState(false);
   const width = Math.min(Dimensions.get('window').width, 560);
@@ -108,18 +119,16 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
     () =>
       preview
         ? getLocal(id).then(setLocal)
-        : api<ProfileView>('GET', `/profiles/${id}?mode=${mode}${route.params.trip ? `&trip_id=${route.params.trip}` : ''}`).then(
+        : fetchProfile(id, mode, trip).then(
             (v) => {
+              if (!v) return setGoneId(id);
               setErr(null);
-              setP(v);
-              if (!route.params.trip) rememberTrip(v.id, v.trip);
+              setRemote(v);
+              if (!trip) rememberTrip(v.id, v.trip);
             },
-            (e) => {
-              if (e instanceof ApiError && (e.status === 404 || e.status === 403)) setGone(true);
-              else setErr(e instanceof ApiError ? e.message : tx.common.error);
-            },
+            (e) => setErr(e instanceof ApiError ? e.message : tx.common.error),
           ),
-    [id, preview, mode, route.params.trip],
+    [id, preview, mode, trip],
   );
 
   useEffect(() => {
@@ -139,12 +148,29 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
   };
 
   // ---------------------------------------------------------------- F-19 G9–G12 gestures
-  const cur = previewView ?? (remote?.id === id ? remote : null);
+  // A profile fetched ahead (G10) shows at once; the fresh copy replaces it when it arrives.
+  const cur = previewView ?? (remote?.id === id ? remote : preview ? null : (cachedProfile(id, mode, trip) ?? null));
   const pics = useMemo(() => cur?.photos ?? [], [cur]);
   const reduce = useReducedMotion();
   const ids = useMemo(() => route.params.ids ?? [], [route.params.ids]);
   const at = ids.indexOf(id);
-  const canGo = (d: -1 | 1) => at >= 0 && nextIndex(at, ids.length, d) !== at;
+  // Neighbours fetched ahead; bumping `warm` re-renders once they (or a "not available") arrive.
+  const [warm, setWarm] = useState(0);
+  const prevK = at >= 0 ? stepIndex(ids, at, -1) : -1;
+  const nextK = at >= 0 ? stepIndex(ids, at, 1) : -1;
+  const canGo = (d: -1 | 1) => (d === 1 ? nextK : prevK) >= 0;
+  const prevP = prevK >= 0 && !preview ? cachedProfile(ids[prevK], mode, trip) : undefined;
+  const nextP = nextK >= 0 && !preview ? cachedProfile(ids[nextK], mode, trip) : undefined;
+  useEffect(() => {
+    if (preview || at < 0) return;
+    let live = true;
+    // Both neighbours, and one more ahead in each direction, so a quick second swipe is ready too.
+    const want = [prevK, nextK, prevK >= 0 ? stepIndex(ids, prevK, -1) : -1, nextK >= 0 ? stepIndex(ids, nextK, 1) : -1].filter((k) => k >= 0);
+    for (const k of want) warmProfile(ids[k], mode, trip).then(() => live && setWarm((w) => w + 1));
+    return () => {
+      live = false;
+    };
+  }, [ids, at, prevK, nextK, mode, trip, preview]);
   useEffect(() => {
     // Next photo ready before it is asked for.
     const nx = pics[page + 1];
@@ -159,13 +185,25 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
     setPage(k);
   };
   // G10: next / previous profile in grid order, swapped in place.
+  const lastDir = useRef<-1 | 1>(1);
   const goProfile = (d: -1 | 1) => {
-    if (at < 0) return;
-    const k = nextIndex(at, ids.length, d);
-    if (k === at) return;
+    const k = d === 1 ? nextK : prevK;
+    if (k < 0) {
+      swipeX.set(settle(0, reduce));
+      return;
+    }
+    lastDir.current = d;
     feel('tick');
     navigation.setParams?.({ id: ids[k] });
   };
+  // Swiped onto someone no longer available: skip him in the same direction instead of a dead end.
+  useEffect(() => {
+    if (!gone || at < 0 || ids.length < 2) return;
+    markDead(id);
+    const k = stepIndex(ids, at, lastDir.current);
+    const back = k >= 0 ? k : stepIndex(ids, at, lastDir.current === 1 ? -1 : 1);
+    if (back >= 0) navigation.setParams?.({ id: ids[back] });
+  }, [gone, at, ids, id, navigation]);
   // G11: double-tap sends a Tap once; never takes it back.
   const tapNow = () => {
     if (!cur || cur.self || preview || cur.tapped) return;
@@ -178,6 +216,26 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
 
   const W = width;
   const swipeX = useSharedValue(0);
+  const prevOK = useSharedValue(false);
+  const nextOK = useSharedValue(false);
+  useEffect(() => {
+    prevOK.set(prevK >= 0);
+    nextOK.set(nextK >= 0);
+  }, [prevK, nextK, prevOK, nextOK]);
+  const scroller = useRef<React.ComponentRef<typeof ScrollView>>(null);
+  // New profile in place: back to the centre and to the top, before the frame is drawn, so it lands
+  // exactly where its preview card was.
+  useLayoutEffect(() => {
+    swipeX.set(0);
+    scroller.current?.scrollTo({ y: 0, animated: false });
+  }, [id, swipeX]);
+  // ‹ › and a committed swipe share one slide.
+  const slide = (d: -1 | 1) => {
+    if (!canGo(d)) return;
+    swipeX.set(withTiming(-d * W, { duration: reduce ? 150 : 240, easing: Easing.out(Easing.cubic) }, (done) => {
+      if (done) scheduleOnRN(goProfile, d);
+    }));
+  };
   const closeY = useSharedValue(0);
   const burst = useSharedValue(0);
   const bx = useSharedValue(0);
@@ -186,31 +244,35 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
   const n = ids.length;
   const profileSwipe = usePanGesture({
     enabled: n > 1 && !preview,
-    activeOffsetX: [-16, 16],
-    failOffsetY: [-12, 12],
+    // Horizontal intent wins early; a clearly vertical drag is left to the scroll (R-19.4).
+    activeOffsetX: [-10, 10],
+    failOffsetY: [-22, 22],
     hitSlop: { left: -24 },
     onUpdate: (e) => {
       'worklet';
+      // 1:1 with the finger; the neighbour's card follows right behind (rubber band when there is none).
       const t = e.translationX;
-      const edge = (t > 0 && at <= 0) || (t < 0 && at >= n - 1);
-      swipeX.set(edge ? rubber(t, 40) : t * 0.6);
+      const blocked = (t > 0 && !prevOK.get()) || (t < 0 && !nextOK.get());
+      swipeX.set(blocked ? rubber(t, 40) : t);
     },
     onDeactivate: (e) => {
       'worklet';
       const t = swipeX.get();
       const d = t < 0 ? 1 : -1;
-      const edge = (d === 1 && at >= n - 1) || (d === -1 && at <= 0);
-      if (!edge && commits(e.translationX, e.velocityX, W, 0.3)) {
-        swipeX.set(withTiming(-d * W * 0.6, { duration: 140 }, (done) => {
-          if (!done) return;
-          swipeX.set(d * W * 0.4);
-          scheduleOnRN(goProfile, d);
-          swipeX.set(settle(0, reduce));
+      const ok = d === 1 ? nextOK.get() : prevOK.get();
+      if (ok && commits(t, e.velocityX, W, 0.25)) {
+        // Finish at the finger's speed (min 120 ms, max 260 ms) so a fling never slows down.
+        const left = W - Math.abs(t);
+        const v = Math.max(1, Math.abs(e.velocityX));
+        const ms = reduce ? 150 : Math.min(260, Math.max(120, (left / v) * 1000));
+        swipeX.set(withTiming(-d * W, { duration: ms, easing: Easing.out(Easing.quad) }, (done) => {
+          if (done) scheduleOnRN(goProfile, d);
         }));
-      } else swipeX.set(settle(0, reduce));
+      } else swipeX.set(settle(0, reduce, e.velocityX));
     },
   });
   const single = useTapGesture({
+    maxDistance: TAP_SLOP,
     onActivate: (e) => {
       'worklet';
       scheduleOnRN(flip, photoZone(e.x, W));
@@ -218,6 +280,7 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
   });
   const double = useTapGesture({
     numberOfTaps: 2,
+    maxDistance: TAP_SLOP,
     maxDelay: 250,
     onActivate: (e) => {
       'worklet';
@@ -261,10 +324,11 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
     transform: [{ translateY: closeY.get() * 0.8 }, { scale: 1 - Math.min(0.12, closeY.get() / 1600) }],
     borderRadius: closeY.get() > 0 ? 28 : 0,
   }));
-  const bodyStyle = useAnimatedStyle(() => ({ transform: [{ translateX: swipeX.get() }], opacity: 1 - Math.min(0.5, Math.abs(swipeX.get()) / W) }));
+  const bodyStyle = useAnimatedStyle(() => ({ transform: [{ translateX: swipeX.get() }] }));
   const zoomStyle = useAnimatedStyle(() => ({ transform: [{ scale: zoom.get() }] }));
   const burstStyle = useAnimatedStyle(() => ({ opacity: burst.get(), left: bx.get() - 44, top: by.get() - 44, transform: [{ scale: 0.4 + burst.get() * 0.8 }, { translateY: (1 - burst.get()) * 10 }] }));
 
+  if (gone && at >= 0 && ids.length > 1 && (prevK >= 0 || nextK >= 0)) return <Loading />;
   if (gone)
     return (
       <View style={{ flex: 1, backgroundColor: color.bgBase, justifyContent: 'center', alignItems: 'center', gap: space.l }}>
@@ -297,7 +361,11 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
     <GestureDetector gesture={profileSwipe}>
     <Animated.View style={[{ flex: 1, backgroundColor: color.bgBase, overflow: 'hidden' }, screenStyle]}>
       <Animated.View style={[{ flex: 1 }, bodyStyle]}>
+      {/* G10: the neighbours sit just off screen and move with the swipe. */}
+      {prevK >= 0 ? <PeekCard p={prevP} width={width} side={-1} /> : null}
+      {nextK >= 0 ? <PeekCard p={nextP} width={width} side={1} /> : null}
       <ScrollView
+        ref={scroller}
         // #124: clear the floating action bar (58) + its inset + breathing room, on every phone.
         contentContainerStyle={{ paddingBottom: p.self ? navBottom + space.xxl : navBottom + space.s + 58 + space.xxl }}
         scrollEventThrottle={32}
@@ -436,10 +504,10 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
       {n > 1 && !preview ? (
         // G10 visible alternative: previous / next profile in grid order.
         <View style={{ position: 'absolute', top: insets.top + 16, right: space.l + (p.self ? 0 : 44 + space.s), flexDirection: 'row', height: 44, borderRadius: 22, backgroundColor: color.bgInverse, overflow: 'hidden' }}>
-          <Pressable testID="profile-prev" accessibilityRole="button" accessibilityLabel={gx.prevProfile} accessibilityState={{ disabled: !canGo(-1) }} onPress={() => goProfile(-1)} style={{ width: 40, alignItems: 'center', justifyContent: 'center', opacity: canGo(-1) ? 1 : 0.3 }}>
+          <Pressable testID="profile-prev" accessibilityRole="button" accessibilityLabel={gx.prevProfile} accessibilityState={{ disabled: !canGo(-1) }} onPress={() => slide(-1)} style={{ width: 40, alignItems: 'center', justifyContent: 'center', opacity: canGo(-1) ? 1 : 0.3 }}>
             <Icon.Back c={color.onAccent} size={20} />
           </Pressable>
-          <Pressable testID="profile-next" accessibilityRole="button" accessibilityLabel={gx.nextProfile} accessibilityState={{ disabled: !canGo(1) }} onPress={() => goProfile(1)} style={{ width: 40, alignItems: 'center', justifyContent: 'center', opacity: canGo(1) ? 1 : 0.3 }}>
+          <Pressable testID="profile-next" accessibilityRole="button" accessibilityLabel={gx.nextProfile} accessibilityState={{ disabled: !canGo(1) }} onPress={() => slide(1)} style={{ width: 40, alignItems: 'center', justifyContent: 'center', opacity: canGo(1) ? 1 : 0.3 }}>
             <Icon.Chevron c={color.onAccent} size={20} d="M9 6l6 6-6 6" />
           </Pressable>
         </View>
@@ -524,6 +592,30 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
       <PhotoViewer items={viewer ? p.photos : null} index={page} src={(u: string) => u} onClose={() => setViewer(false)} />
     </Animated.View>
     </GestureDetector>
+  );
+}
+
+/** G10: what the neighbour looks like at the top of his profile (photo, name), shown while swiping. */
+function PeekCard({ p, width, side }: { p: ProfileView | undefined; width: number; side: -1 | 1 }) {
+  return (
+    <View pointerEvents="none" importantForAccessibility="no-hide-descendants" accessibilityElementsHidden style={{ position: 'absolute', top: 0, bottom: 0, width, left: side * width, backgroundColor: color.bgBase }}>
+      {p ? (
+        <>
+          <View>
+            <Photo uri={p.photos[0] ?? null} id={p.id + 0} label="" style={{ width, height: width * 1.33 }} />
+            <Scrim height={160} max={1} steps={12} />
+          </View>
+          <View style={{ marginTop: -64, paddingHorizontal: space.xl, maxWidth: 560, width: '100%', alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: space.s }}>
+            <Text numberOfLines={1} style={{ ...type.display, fontSize: 34, lineHeight: 38, color: color.fgPrimary, flexShrink: 1 }}>
+              {p.display_name}, {p.age}
+            </Text>
+            {p.verified ? <VerifiedTick size={24} /> : null}
+          </View>
+        </>
+      ) : (
+        <View style={{ width, height: width * 1.33, backgroundColor: color.bgRaised }} />
+      )}
+    </View>
   );
 }
 

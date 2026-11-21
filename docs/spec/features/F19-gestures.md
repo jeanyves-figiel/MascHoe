@@ -18,6 +18,7 @@ Beta: G1–G18 below. Jean-Yves picked all 18 on the mockup (2026-11-21). Out of
 - R-19.7 **Undo.** Any gesture that moves or hides content (archive, close profile with unsent note) shows a 4 s toast with Undo.
 - R-19.8 **Haptics** (G17). Four tokens only, in `ui/haptics.ts`: `tick` (selection, threshold, sheet stop), `tap` (action done), `success` (Tap sent, reply sent from gesture), `warning` (Block, Report, SOS). Off when Settings → Haptics is off (iOS also mutes them in Low Power Mode). Never on scroll or per frame.
 - R-19.9 **Web build.** Gestures that need touch (G1, G2, G5, G8–G13) are no-ops on web; the visible alternative is used.
+- R-19.10 **Taps never block swipes.** Every tap / double-tap gesture fails once the finger moves 10 pt (`TAP_SLOP`), so a pan or swipe on the same element starts at once. Map markers open on one tap via the marker's own press (iOS annotation tap), deduplicated with the inner button.
 
 ## Gestures
 
@@ -33,7 +34,7 @@ Beta: G1–G18 below. Jean-Yves picked all 18 on the mockup (2026-11-21). Out of
 | G7 | Explore grid sheet | Drag handle / sheet | Follows finger; 3 stops; fling (> 800 pt/s) goes to next stop; rubber band above top; `tick` at each stop | Tap handle cycles stops |
 | G8 | Explore grid | Pinch (> 1.25 out, < 0.8 in) | 2 ↔ 3 ↔ 4 columns, remembered per device, `tick` | Filters → Grid size |
 | G9 | Profile photo | Tap left 35 % / anywhere else | Previous / next photo (replaces the sideways photo swipe); bars on top show position; next photo prefetched | Tap a bar |
-| G10 | Profile (from grid) | Swipe left / right (outside left 24 pt) | Next / previous profile in grid order; at the end, bounce | ‹ › in header |
+| G10 | Profile (from grid) | Swipe left / right (outside left 24 pt) | Pager: the profile follows the finger 1:1 and the neighbour's card (first photo, name, age, tick) slides in beside it; commit at 25 % or fling, finishing at the finger's speed (120–260 ms). Neighbours ±2 fetched ahead (data + first photo, memory cache of 24), so the new profile shows at once, scrolled to the top. Unavailable profiles are skipped. At the end, rubber band | ‹ › in header (same slide) |
 | G11 | Profile photo | Double-tap | Sends Tap once; coral burst at the finger; `success`; toast "Tap sent". Already tapped: nothing | Tap button |
 | G12 | Profile photo, page at scroll top | Pull down (30 % of 400 pt or fling) | Page follows the finger (rounded, slightly smaller), then closes | Back button |
 | G13 | Full-screen photo viewer (profile: pinch out on the photo or ⤢; album and chat: tap the photo) | Pinch / double-tap / swipe / swipe down | Zoom 1–4×, double-tap toggles 1× / 2.5× at the finger, swipe next / prev (3 photos mounted), swipe down closes. Chat photos and view-once: one photo, no paging, no save | ✕, ‹ › |

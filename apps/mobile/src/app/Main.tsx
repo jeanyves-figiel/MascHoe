@@ -359,7 +359,7 @@ export function Main() {
         <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: color.bgBase }, fullScreenGestureEnabled: true }}>
           <Stack.Screen name="Tabs" component={Tabs} />
           <Stack.Screen name="Profile" component={ProfileScreen as React.ComponentType} options={edgeOnly} />
-          <Stack.Screen name="EditProfile" component={EditProfileScreen as React.ComponentType} options={sub} />
+          <Stack.Screen name="EditProfile" component={EditProfileScreen as React.ComponentType} options={(x) => ({ ...sub(x), ...edgeOnly })} />
           <Stack.Screen name="Settings" component={SettingsScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="PrivacySettings" component={PrivacySettings} options={sub} />
           <Stack.Screen name="ChatSettings" component={ChatSettings} options={sub} />
