@@ -35,10 +35,12 @@ jest.mock('../src/api/client', () => {
   class ApiError extends Error {
     status: number;
     code: string;
-    constructor(st: number, cd: string) {
+    fields?: Record<string, string[]>;
+    constructor(st: number, cd: string, _m?: string, f?: Record<string, string[]>) {
       super(cd);
       this.status = st;
       this.code = cd;
+      this.fields = f;
     }
   }
   class TimeoutError extends Error {}
@@ -78,6 +80,8 @@ class Srv {
   posts: { client_id?: string; envelopes: Env[] }[] = [];
   offline = false;
   dropResponses = 0;
+  /** #206: the next app send to a 1:1 group is refused, as if a member device was deleted. */
+  staleOnce = false;
   failAck = false;
   expired: { group_id: string; count: number }[] = [];
   private seq = 1;
@@ -103,6 +107,10 @@ class Srv {
     }
     if (key === 'POST /mls/messages') {
       this.posts.push(body);
+      if (this.staleOnce && (body.envelopes as Env[]).some((e) => e.kind === 'app')) {
+        this.staleOnce = false;
+        throw new ApiError(422, 'validation', 'Check the highlighted fields', { to_device_id: ['unknown device'] });
+      }
       if (body.client_id && this.keys.has(body.client_id)) return this.keys.get(body.client_id);
       for (const e of body.envelopes as Env[]) this.enqueue(body.from_profile_id, body.group_id, e);
       const res = { delivered: [...new Set((body.envelopes as Env[]).map((e) => e.to_profile_id))], undelivered: [] };
@@ -255,6 +263,23 @@ describe('R-07.17 outbox', () => {
     const got = await bob.pull();
     expect(got.map((p) => p.text)).toEqual(['m1', 'm2', 'm3', 'm4', 'm5']);
     expect((await again.E.messages(cid)).map((m) => m.status)).toEqual(['sent', 'sent', 'sent', 'sent', 'sent']);
+  }, 60000);
+});
+
+describe('#206 stale device in a 1:1 group', () => {
+  it('rebuilds the group with current devices and sends, instead of "Not sent"', async () => {
+    const { E, cid, bob } = await open1to1();
+    await E.send(cid, { t: 'text', text: 'hello' }); // creates group 1
+    await bob.pull();
+    await bob.publish(); // a fresh key package for the new group
+    srv.staleOnce = true;
+    await E.send(cid, { t: 'text', text: 'after reinstall' });
+    const mine = (await E.messages(cid)).find((m) => (m.p as { text?: string }).text === 'after reinstall');
+    expect(mine?.status).toBe('sent');
+    const welcomes = srv.posts.filter((p) => p.envelopes.some((e) => e.kind === 'welcome'));
+    expect(welcomes).toHaveLength(2);
+    const got = await bob.pull();
+    expect(texts(got.map((p) => ({ p: p as { t: string; text?: string } })))).toContain('after reinstall');
   }, 60000);
 });
 

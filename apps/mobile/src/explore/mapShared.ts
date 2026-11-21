@@ -176,3 +176,12 @@ export function placeKind(p: Place): PlaceKind {
   if (p.kind === 'sauna') return 'saunas';
   return 'clubs';
 }
+
+let last = { key: '', at: 0 };
+/** Runs `fn` once per tap on a map marker: on iOS both the marker's tap and its Pressable can fire. */
+export function once(key: string, fn: () => void, now: number = Date.now()): boolean {
+  if (last.key === key && now - last.at < 600) return false;
+  last = { key, at: now };
+  fn();
+  return true;
+}

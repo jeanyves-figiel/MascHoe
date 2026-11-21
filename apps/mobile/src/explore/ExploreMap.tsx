@@ -9,6 +9,7 @@ import { cellLabels, cellsGeoJSON, MapProps, pinLabel, START_ZOOM, STYLE_URL } f
 import { PlaceMarker } from './Places';
 import { VisitingBubble } from '../travel/VisitingBubble';
 import { tr } from '../i18n/travel';
+import { once } from './mapShared';
 
 // S-10 map (native, MapLibre). Avatars sit at server-chosen stable random points inside their
 // cell (R-05.3); exact pins are drawn only when the server returned them for this viewer.
@@ -64,16 +65,16 @@ export function ExploreMap({ center, me, data, accent, recenter, onRegion, onSel
       ) : null}
       {/* R-04.20: places under people */}
       {(places ?? []).map((p) => (
-        <Marker key={`pl-${p.id}`} id={`pl-${p.id}`} lngLat={[p.lng, p.lat]} anchor="center">
-          <Pressable accessibilityRole="button" accessibilityLabel={`${pl.kind[p.kind] ?? p.kind}: ${p.name}`} onPress={() => onPlace?.(p)}>
+        <Marker key={`pl-${p.id}`} id={`pl-${p.id}`} lngLat={[p.lng, p.lat]} anchor="center" onPress={() => once(`pl-${p.id}`, () => onPlace?.(p))}>
+          <Pressable accessibilityRole="button" accessibilityLabel={`${pl.kind[p.kind] ?? p.kind}: ${p.name}`} onPress={() => once(`pl-${p.id}`, () => onPlace?.(p))}>
             <PlaceMarker p={p} selected={selectedPlace === p.id} />
           </Pressable>
         </Marker>
       ))}
       {/* F-20 R-20.11: visitors are never pinned; one bubble at the city centre */}
       {visiting ? (
-        <Marker id="visiting" lngLat={[visiting.lng, visiting.lat]} anchor="center">
-          <Pressable testID="visiting-bubble" accessibilityRole="button" accessibilityLabel={tr.visitingBubble(visiting.count)} onPress={onVisiting}>
+        <Marker id="visiting" lngLat={[visiting.lng, visiting.lat]} anchor="center" onPress={() => once('visiting', () => onVisiting?.())}>
+          <Pressable testID="visiting-bubble" accessibilityRole="button" accessibilityLabel={tr.visitingBubble(visiting.count)} onPress={() => once('visiting', () => onVisiting?.())}>
             <VisitingBubble count={visiting.count} faces={visiting.faces} />
           </Pressable>
         </Marker>
@@ -82,12 +83,15 @@ export function ExploreMap({ center, me, data, accent, recenter, onRegion, onSel
         if (c.lat === undefined || c.lng === undefined) return null;
         const on = selected === c.id;
         return (
-          <Marker key={c.id} id={c.id} lngLat={[c.lng, c.lat]} anchor="center">
+          // iOS: the marker's own tap recognizer takes the first tap and cancels the Pressable's
+          // touch, so a pin needed two taps. The marker's onPress opens on one tap; the Pressable
+          // stays for hold and screen readers. `once` stops a double open when both fire.
+          <Marker key={c.id} id={c.id} lngLat={[c.lng, c.lat]} anchor="center" onPress={() => once(c.id, () => onSelect(c))}>
             <Pressable
               accessibilityRole="button"
               accessibilityState={{ selected: on }}
               accessibilityLabel={pinLabel(c, tx.modes, pl.and, distanceLabel(c.distance), pl.lookingFor)}
-              onPress={() => onSelect(c)}
+              onPress={() => once(c.id, () => onSelect(c))}
               onLongPress={onHold ? () => onHold(c) : undefined}
               delayLongPress={350}
               style={{ alignItems: 'center' }}

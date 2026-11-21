@@ -16,6 +16,9 @@ export function rubber(over: number, dim = 120): number {
   return s * ((a * dim * 0.55) / (dim + a * 0.55));
 }
 
+/** F-19: a tap fails once the finger moves this far, so swipes and pans win straight away. */
+export const TAP_SLOP = 10;
+
 export const clamp = (v: number, lo: number, hi: number) => {
   'worklet';
   return Math.min(hi, Math.max(lo, v));
