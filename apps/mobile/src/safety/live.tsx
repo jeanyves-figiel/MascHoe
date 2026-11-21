@@ -186,12 +186,18 @@ export function SafetyQuickScreen({ navigation }: { navigation: Nav }) {
   const [err, setErr] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const seen = useRef(false);
-  const close = () => navigation.goBack();
+  const gone = useRef(false);
+  // One way out only: OK here also clears the check-in, which the effect below sees too.
+  const close = useCallback(() => {
+    if (gone.current) return;
+    gone.current = true;
+    navigation.goBack();
+  }, [navigation]);
   // Ended elsewhere (OK on another device, alert fired): nothing left to show.
   useEffect(() => {
     if (a) seen.current = true;
-    else if (seen.current && !sent) navigation.goBack();
-  }, [a, sent, navigation]);
+    else if (seen.current && !sent) close();
+  }, [a, sent, close]);
 
   const ok = async () => {
     const lock = await getLock().catch(() => null);
@@ -281,17 +287,18 @@ export function SafetyQuickScreen({ navigation }: { navigation: Nav }) {
 export function ChatShield({ cid, navigation }: { cid: string; navigation: Nav }) {
   const a = useCheckin();
   const now = useNow();
+  // Running: same size as idle (the live bar above already shows the time left), filled teal.
   if (a)
     return (
       <Pressable
         testID="chat-shield-live"
         accessibilityRole="button"
         accessibilityLabel={dx.shieldLive(leftText(a.due, now))}
+        hitSlop={2}
         onPress={() => navigation.navigate('SafetyQuick')}
-        style={{ height: 36, paddingLeft: 8, paddingRight: 11, borderRadius: radius.pill, backgroundColor: color.trust, flexDirection: 'row', alignItems: 'center', gap: 5 }}
+        style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: color.trust, alignItems: 'center', justifyContent: 'center' }}
       >
-        <Icon.Shield size={18} c={color.onAccent} w={2.4} />
-        <Text style={{ ...type.caption, fontSize: 13, color: color.onAccent, fontVariant: ['tabular-nums'] }}>{leftText(a.due, now)}</Text>
+        <Icon.Shield size={19} c={color.onAccent} w={2.4} />
       </Pressable>
     );
   return (
@@ -299,9 +306,9 @@ export function ChatShield({ cid, navigation }: { cid: string; navigation: Nav }
       testID="chat-shield"
       accessibilityRole="button"
       accessibilityLabel={dx.shield}
-      hitSlop={4}
       onPress={() => navigation.navigate('CheckinStart', { cid })}
-      style={{ width: 36, height: 36, borderRadius: 18, borderWidth: 2, borderColor: color.trust, backgroundColor: `${color.trust}1F`, alignItems: 'center', justifyContent: 'center' }}
+      hitSlop={2}
+      style={{ width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderColor: color.trust, backgroundColor: `${color.trust}1F`, alignItems: 'center', justifyContent: 'center' }}
     >
       <Icon.Shield size={18} c={color.trust} w={2.3} />
     </Pressable>

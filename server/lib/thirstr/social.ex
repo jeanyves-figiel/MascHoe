@@ -117,6 +117,7 @@ defmodule Thirstr.Social do
          verified_since: t.verified_at && Calendar.strftime(t.verified_at, "%Y-%m"),
          member_since: Calendar.strftime(t.inserted_at, "%Y-%m"),
          now: now_of(t.id),
+         online: online?(viewer, t),
          distance: distance_to(viewer, t),
          tapped: tapped?(mine, t.id),
          tapped_me: tapped_me?(mine, t.id),
@@ -130,6 +131,18 @@ defmodule Thirstr.Social do
          self: t.account_id == viewer.id
        }}
     end
+  end
+
+  # F-07 R-07.33 (#115): same rule as Explore (R-17.5, symmetric): both sides show online status,
+  # last request within 5 min (auth plug writes `seen:<account>`).
+  @online_s 300
+  defp online?(viewer, t) do
+    t.account_id != viewer.id and Settings.get(viewer, "online_visible") != false and
+      (t.settings || %{})["online_visible"] != false and
+      case Valkey.command!(["GET", "seen:" <> t.account_id]) do
+        nil -> false
+        v -> System.system_time(:second) - String.to_integer(v) < @online_s
+      end
   end
 
   defp distance_to(viewer, t) do
@@ -324,15 +337,39 @@ defmodule Thirstr.Social do
   def blocks(%Account{} = a) do
     Repo.query!(
       """
-      SELECT p.id::text, p.display_name, b.created_at FROM blocks b
+      SELECT p.id::text, p.display_name, p.age, ph.storage_key, b.created_at FROM blocks b
       JOIN profiles p ON p.account_id = b.account_to AND p.kind = 'now'
+      LEFT JOIN photos ph ON ph.id = p.photo_ids[1]
       WHERE b.account_from = $1 ORDER BY b.created_at DESC
       """,
       [dump(a.id)]
     ).rows
-    |> Enum.map(fn [id, name, at] ->
-      %{profile_id: id, display_name: name, at: Thirstr.Explore.utc(at)}
-    end)
+    |> Enum.map(&listed/1)
+  end
+
+  @doc "GET /me/hidden (#111): profiles hidden from my Explore, newest first."
+  def hidden(%Account{} = a) do
+    Repo.query!(
+      """
+      SELECT p.id::text, p.display_name, p.age, ph.storage_key, h.created_at FROM profile_hides h
+      JOIN profiles p ON p.id = h.profile_id
+      JOIN accounts a2 ON a2.id = p.account_id AND a2.status = 'active'
+      LEFT JOIN photos ph ON ph.id = p.photo_ids[1]
+      WHERE h.account_id = $1 ORDER BY h.created_at DESC LIMIT 500
+      """,
+      [dump(a.id)]
+    ).rows
+    |> Enum.map(&listed/1)
+  end
+
+  defp listed([id, name, age, key, at]) do
+    %{
+      profile_id: id,
+      display_name: name,
+      age: age,
+      photo: key && Storage.presigned_get(key),
+      at: Thirstr.Explore.utc(at)
+    }
   end
 
   def hide(%Account{} = a, profile_id) do

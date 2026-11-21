@@ -82,5 +82,8 @@ export async function startForChat(o: { cid?: string; minutes: number; include: 
       .map((x) => ({ me: x.from === 'me', text: String((x.p as { text?: string }).text ?? '').slice(0, 500), at: new Date(x.at).toISOString() }));
   }
   // Chat id and name stay on the phone (labels for the bar and quick sheet); alerts carry them only when included.
-  return S.startCheckin({ minutes: o.minutes, name: o.name, who, msgs, live: o.live, cid: conv?.id, peer: conv?.name });
+  const a = await S.startCheckin({ minutes: o.minutes, name: o.name, who, msgs, live: o.live, cid: conv?.id, peer: conv?.name });
+  // A check-in for this chat already happened: don't prompt again for 12 h (R-13.18).
+  if (conv) await dismissCue(conv.id).catch(() => {});
+  return a;
 }

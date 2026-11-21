@@ -14,7 +14,6 @@ import { InboxScreen } from '../chat/InboxScreen';
 import { PushPrompt } from '../chat/PushPrompt';
 import { ExploreScreen } from '../explore/ExploreScreen';
 import { tx } from '../i18n/app';
-import { BlockedScreen } from '../me/BlockedScreen';
 import { DevicesScreen } from '../me/DevicesScreen';
 import { EditProfileScreen } from '../me/EditProfileScreen';
 import { MeScreen } from '../me/MeScreen';
@@ -40,6 +39,8 @@ import { active as activeCheckin, CATEGORY, extendCheckin, refreshCheckin } from
 import { SafetyScreen } from '../safety/SafetyScreen';
 import { NoticesScreen } from '../trust/NoticesScreen';
 import { ReportScreen } from '../trust/ReportScreen';
+import { ToastHost } from '../ui/Toast';
+import { HiddenBlockedScreen } from '../trust/HiddenBlockedScreen';
 import { VenueScreen } from '../scene/VenueScreens';
 import { color, modeColor, radius, space, type } from '../theme/tokens';
 import { BackButton, Icon, ModeContext } from '../ui';
@@ -238,7 +239,7 @@ export function Main() {
           <Stack.Screen name="AccountSettings" component={AccountSettings as React.ComponentType} options={sub} />
           <Stack.Screen name="DeleteAccount" component={DeleteAccount} options={sub} />
           <Stack.Screen name="LensPreview" component={LensPreviewScreen as React.ComponentType} options={sub} />
-          <Stack.Screen name="Blocked" component={BlockedScreen} options={sub} />
+          <Stack.Screen name="Blocked" component={HiddenBlockedScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="Taps" component={TapsScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="Verify" component={VerifyRoute as React.ComponentType} />
           <Stack.Screen name="Chat" component={ChatScreen as React.ComponentType} />
@@ -262,6 +263,7 @@ export function Main() {
           <Stack.Screen name="Devices" component={DevicesScreen} options={sub} />
         </Stack.Navigator>
         <PushPrompt />
+        <ToastHost />
         <SafeModeAuto navigate={(r) => nav.isReady() && nav.navigate(r)} />
       </NavigationContainer>
       </LiveFrame>

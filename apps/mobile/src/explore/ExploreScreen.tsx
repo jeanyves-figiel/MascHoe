@@ -1,14 +1,19 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { cellToLatLng } from 'h3-js';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import { FlatList, Platform, Pressable, RefreshControl, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, ApiError } from '../api/client';
 import type { Card, ExploreSummary, MapData } from '../api/types';
 import { useSession } from '../app/session';
-import { tx } from '../i18n/app';
+import { distanceLabel, tx } from '../i18n/app';
+import { mod } from '../i18n/mod';
+import { prefs } from '../me/prefs';
+import { SafetySheet, SheetRow } from '../trust/SafetySheet';
+import { toast } from '../ui/Toast';
 import { color, radius, space, type } from '../theme/tokens';
-import { Banner, EmptyState, ErrorState, Icon, Loading, Sheet, useAccent } from '../ui';
+import { Banner, EmptyState, ErrorState, Icon, Loading, Photo, useAccent, VerifiedTick } from '../ui';
 import { ProfileTile } from './Card';
 import { activeFilterCount, defaultFilters, Filters, restoreFilters, loadGrid, loadMap, loadSummary, loadTray } from './explore';
 import { LiveHeader, VerifyRow } from './LiveHeader';
@@ -22,6 +27,7 @@ import { LocationSheet } from './LocationSheet';
 
 const FILTER_KEY = (m: string) => 'thirstr.filters.' + m;
 const SNAP_KEY = 'thirstr.exploreSnap';
+const HOLD_KEY = 'thirstr.holdHintSeen';
 /** Floating tab bar (16 pt inset + 64 pt + 18 pt) the sheet content must clear. */
 const TAB_SPACE = 96;
 
@@ -51,6 +57,18 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
   const [showFilters, setShowFilters] = useState(false);
   const [showLocation, setShowLocation] = useState(false);
   const [quick, setQuick] = useState<Card | null>(null);
+  // #111 map peek card: the selected pin's card (first tap), with ⋯ for Hide / Block / Report.
+  const [peek, setPeek] = useState<Card | null>(null);
+  const [holdSeen, setHoldSeen] = useState(true);
+  useEffect(() => {
+    AsyncStorage.getItem(HOLD_KEY).then((v) => setHoldSeen(v === '1'), () => {});
+  }, []);
+  const hold = useCallback((c: Card) => {
+    if (Platform.OS !== 'web' && prefs().haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    setQuick(c);
+    setHoldSeen(true);
+    AsyncStorage.setItem(HOLD_KEY, '1');
+  }, []);
   const bbox = useRef<[number, number, number, number] | null>(null);
   const [locTick, setLocTick] = useState(0);
   const [device, setDevice] = useState<LatLng | null>(devicePosition());
@@ -139,6 +157,7 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
     (c: Card) => {
       if (selected === c.id) return open(c);
       setSelected(c.id);
+      setPeek(c);
       setSnap((cur) => (cur === 'peek' ? 'half' : cur));
     },
     [selected, open],
@@ -288,7 +307,7 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
   else
     body = (
       <View style={{ flex: 1 }}>
-        <ExploreMap center={camera} me={dot} data={mapData} accent={accent} recenter={recenter} onRegion={onRegion} onSelect={selectPin} onClear={() => setSelected(null)} selected={selected} />
+        <ExploreMap center={camera} me={dot} data={mapData} accent={accent} recenter={recenter} onRegion={onRegion} onSelect={selectPin} onClear={() => { setSelected(null); setPeek(null); }} selected={selected} />
         <GridSheet
           h={box.h}
           bottom={TAB_SPACE}
@@ -299,7 +318,9 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
           above={
             <>
               <View style={{ flex: 1, alignItems: 'flex-start' }}>
-                {fitM && snap !== 'full' ? (
+                {peek && snap !== 'full' ? (
+                  <PeekCard card={peek} onOpen={() => open(peek)} onMore={() => setQuick(peek)} />
+                ) : fitM && snap !== 'full' ? (
                   <View testID="fit-chip" style={{ height: 30, paddingHorizontal: space.m, borderRadius: radius.pill, backgroundColor: color.scrim, justifyContent: 'center' }}>
                     <Text style={{ ...type.caption, fontSize: 12, color: color.fgSecondary }}>{fitM >= 5000 ? tx.explore.fitFar : tx.explore.fitNear}</Text>
                   </View>
@@ -326,7 +347,18 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
             keyExtractor={(c) => c.id}
             columnWrapperStyle={{ gap: space.s }}
             contentContainerStyle={{ gap: space.s, paddingHorizontal: space.l, paddingBottom: listPad }}
-            ListHeaderComponent={listHead ?? undefined}
+            ListHeaderComponent={
+              listHead || (!holdSeen && items.length > 0) ? (
+                <View>
+                  {listHead}
+                  {!holdSeen && items.length > 0 ? (
+                    <Text testID="hold-hint" style={{ ...type.meta, fontFamily: type.headline.fontFamily, color: color.trust, marginBottom: space.s }}>
+                      {mod.holdHint}
+                    </Text>
+                  ) : null}
+                </View>
+              ) : undefined
+            }
             onEndReached={more}
             onEndReachedThreshold={0.5}
             onScrollToIndexFailed={(e) => list.current?.scrollToOffset({ offset: e.averageItemLength * e.index, animated: true })}
@@ -345,7 +377,7 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
             renderItem={({ item, index }) => (
               <View style={{ flex: 1 / 3 }}>
                 {index === furtherFrom && !quiet ? <Text style={{ ...type.caption, color: color.fgSecondary, marginBottom: 4 }}>{tx.explore.further}</Text> : null}
-                <ProfileTile card={item} selected={item.id === selected} onPress={() => open(item)} onLongPress={() => setQuick(item)} />
+                <ProfileTile card={item} selected={item.id === selected} onPress={() => open(item)} onLongPress={() => hold(item)} />
               </View>
             )}
           />
@@ -373,46 +405,76 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
       />
       <NowSheet visible={showNow} onClose={() => setShowNow(false)} />
       <LocationSheet visible={showLocation} onClose={() => setShowLocation(false)} />
-      <Sheet visible={!!quick} onClose={() => setQuick(null)} title={quick ? `${quick.display_name}, ${quick.age}` : ''} closeLabel={tx.common.close}>
-        {quick ? <QuickActions card={quick} onDone={() => setQuick(null)} onOpen={() => open(quick)} onChanged={reload} /> : null}
-      </Sheet>
+      <SafetySheet
+        visible={!!quick}
+        target={quick ? { id: quick.id, name: quick.display_name, age: quick.age, sub: distanceLabel(quick.distance) } : null}
+        onClose={() => setQuick(null)}
+        onReport={(t) => navigation.navigate('Report', { profileId: t.id, context: 'explore' })}
+        onGone={(_, t) => {
+          setItems((cur) => cur?.filter((c) => c.id !== t.id) ?? cur);
+          setMapData((m) => (m ? { ...m, pins: m.pins.filter((c) => c.id !== t.id), avatars: m.avatars.filter((c) => c.id !== t.id) } : m));
+          if (selected === t.id) {
+            setSelected(null);
+            setPeek(null);
+          }
+          reloadSummary();
+        }}
+        onRestored={() => {
+          reload();
+          reloadSummary();
+        }}
+        lead={
+          quick ? (
+            <>
+              <SheetRow testID="quick-open" title={mod.openProfile} onPress={() => { const c = quick; setQuick(null); open(c); }} />
+              <SheetRow
+                testID="quick-tap"
+                title={tx.explore.quick.tap}
+                onPress={() => {
+                  const c = quick;
+                  setQuick(null);
+                  api('POST', `/profiles/${c.id}/tap`).then(() => toast(mod.tapped(c.display_name)), (e) => toast(e instanceof ApiError ? e.message : tx.common.error));
+                }}
+              />
+              <SheetRow
+                last
+                testID="quick-message"
+                title={tx.explore.quick.message}
+                onPress={() => {
+                  const c = quick;
+                  setQuick(null);
+                  if (!me.verified) toast(tx.explore.unverifiedMessage);
+                  else open(c);
+                }}
+              />
+            </>
+          ) : null
+        }
+      />
     </View>
   );
 }
 
-// F-04 long-press quick actions: tap, message, hide, block.
-function QuickActions({ card, onDone, onOpen, onChanged }: { card: Card; onDone: () => void; onOpen: () => void; onChanged: () => void }) {
-  const { me } = useSession();
-  const [msg, setMsg] = useState<string | null>(null);
-  const act = async (fn: () => Promise<unknown>, close = true) => {
-    try {
-      await fn();
-      if (close) {
-        onDone();
-        onChanged();
-      }
-    } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : tx.common.error);
-    }
-  };
-  const row = (label: string, onPress: () => void, danger?: boolean) => (
-    <Pressable key={label} accessibilityRole="button" onPress={onPress} style={{ paddingVertical: space.m }}>
-      <Text style={{ ...type.headline, color: danger ? color.danger : color.fgPrimary }}>{label}</Text>
-    </Pressable>
-  );
+// #111 map peek card (R-04.14): first tap on a pin shows it above the sheet; tap opens, ⋯ = safety sheet.
+function PeekCard({ card, onOpen, onMore }: { card: Card; onOpen: () => void; onMore: () => void }) {
   return (
-    <View>
-      {row(tx.explore.quick.tap, () => act(() => api('POST', `/profiles/${card.id}/tap`)))}
-      {row(tx.explore.quick.message, () => {
-        if (!me.verified) setMsg(tx.explore.unverifiedMessage);
-        else {
-          onDone();
-          onOpen();
-        }
-      })}
-      {row(tx.explore.quick.hide, () => act(() => api('POST', `/profiles/${card.id}/hide`)))}
-      {row(tx.explore.quick.block, () => act(() => api('POST', `/profiles/${card.id}/block`)), true)}
-      {msg ? <Banner text={msg} tone="warn" /> : null}
+    <View testID="peek-card" style={{ alignSelf: 'stretch', marginRight: space.s, flexDirection: 'row', alignItems: 'center', gap: space.m, padding: space.s, borderRadius: radius.md, backgroundColor: color.bgRaised }}>
+      <Pressable accessibilityRole="button" accessibilityLabel={`${card.display_name}, ${card.age}`} onPress={onOpen} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.m }}>
+        <Photo uri={card.photo} id={card.id} label={card.display_name} style={{ width: 44, height: 44, borderRadius: radius.sm }} />
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Text numberOfLines={1} style={{ ...type.headline, color: color.fgPrimary, flexShrink: 1 }}>{`${card.display_name}, ${card.age}`}</Text>
+            {card.verified ? <VerifiedTick /> : null}
+          </View>
+          <Text numberOfLines={1} style={{ ...type.meta, color: color.fgSecondary }}>
+            {distanceLabel(card.distance)}
+            {card.online ? ` · ${mod.online}` : ''}
+          </Text>
+        </View>
+      </Pressable>
+      <Pressable testID="peek-more" accessibilityRole="button" accessibilityLabel={tx.profile.menu} onPress={onMore} hitSlop={8} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: color.bgOverlay, alignItems: 'center', justifyContent: 'center' }}>
+        <Icon.More size={18} />
+      </Pressable>
     </View>
   );
 }

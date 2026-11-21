@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { trx } from '../i18n/translate';
 import { TranslateMode } from '../me/prefs';
+import { Marked } from './find';
 import { color, font, radius, space, type } from '../theme/tokens';
 import { Icon } from '../ui';
 import { langName, plan, translateMessage, TrState } from './translate';
@@ -19,9 +20,13 @@ type Props = {
   reactions: string[];
   onLongPress: () => void;
   onTranslated: (from: string) => void;
+  /** R-07.39: search term to mark in the shown text. */
+  mark?: string | null;
+  /** R-07.39: current search match. */
+  ring?: boolean;
 };
 
-export function TranslatedText({ cid, id, text, mode, sender, senderColor, reactions, onLongPress, onTranslated }: Props) {
+export function TranslatedText({ cid, id, text, mode, sender, senderColor, reactions, onLongPress, onTranslated, mark, ring }: Props) {
   const [st, setSt] = useState<TrState>({ kind: 'none' });
   const [orig, setOrig] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -56,16 +61,20 @@ export function TranslatedText({ cid, id, text, mode, sender, senderColor, react
   return (
     <View style={{ alignItems: 'flex-start', gap: 4 }}>
       <Pressable
-        testID={`msg-${id}`}
+        testID={ring ? 'find-current' : `msg-${id}`}
         onLongPress={onLongPress}
         onPress={done ? () => setOrig((v) => !v) : undefined}
         accessibilityHint={done ? (orig ? trx.hideOriginal : trx.showOriginal) : undefined}
-        style={{ maxWidth: '80%', paddingHorizontal: space.m, paddingVertical: 10, borderRadius: 20, borderBottomLeftRadius: 6, backgroundColor: color.bgRaised, gap: 2 }}
+        style={{ maxWidth: '80%', paddingHorizontal: space.m, paddingVertical: 10, borderRadius: 20, borderBottomLeftRadius: 6, backgroundColor: color.bgRaised, gap: 2, borderWidth: ring ? 2 : 0, borderColor: color.personal }}
       >
         {sender ? <Text style={{ ...type.caption, color: senderColor }}>{sender}</Text> : null}
-        <Text testID={done ? `tr-${id}` : undefined} style={{ ...type.body, color: color.fgPrimary }} selectable>
-          {done ? done.text : text}
-        </Text>
+        {mark && !done ? (
+          <Marked style={{ ...type.body, color: color.fgPrimary }} text={text} q={mark} />
+        ) : (
+          <Text testID={done ? `tr-${id}` : undefined} style={{ ...type.body, color: color.fgPrimary }} selectable>
+            {done ? done.text : text}
+          </Text>
+        )}
         {done && orig ? (
           <>
             <View style={{ height: 1, backgroundColor: color.line, marginVertical: 6 }} />
