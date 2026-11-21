@@ -14,6 +14,7 @@ When a build brings something people can see or use, also add a 2–4 line note 
 - **App Attest on iPhone** (server + app, #25, security.md › Device attestation): each install creates a Secure Enclave key that Apple attests; the server checks Apple's certificate chain, the challenge, our app id and the key, and stores only the public key. Once a day (foreground only, two small requests) the app proves it is still the same genuine app on the same phone. New `GET /devices/attest`, `POST /devices/attest/challenge`, `POST /devices/attest`, `POST /devices/assert`. Soft in beta: nothing is blocked; groundwork for anti-bot limits (A3/A9).
 
 ### Fixed
+- **Sign-in emails via Amazon SES** (docs, #26): email runbook now uses Amazon SES in an EU region (same AWS account as the owner's other app) instead of Brevo.
 - **Shirtless main photos pass the classifier** (server, #26, F-15 R-15.10): NudeNet often also tags a man's bare chest as a female breast; that label now only counts when it beats the male-chest label on the same photo. Found by running the live staging classifier on real photos.
 - **Classifier deploy builds** (infra, #26): its Dockerfile now copies from the repository root, the build context `flyctl deploy` uses.
 - **Classifier reachable on Fly** (infra + server, #26): the service now listens dual-stack (it crashed binding `::` as IPv4), and the API resolves its private `.flycast` name over IPv6.

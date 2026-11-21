@@ -5,20 +5,20 @@ Only email Thirstr sends: magic sign-in links (F-01 R-01.3) and the "add sign-in
 | What | Value |
 | --- | --- |
 | DEV | Mailpit (`docker compose`, UI https://localhost:7443 › mail) |
-| Staging / prod | **Brevo** (France, free 300/day, DPA; owner's pick 2026-11-21) relay `smtp-relay.brevo.com:587`, STARTTLS, certificate + hostname verified |
+| Staging / prod | **Amazon SES**, EU region `eu-central-2` (Zurich) or `eu-central-1` (Frankfurt), same AWS account as the owner's other app (owner's pick 2026-11-21, replaces Brevo). SMTP `email-smtp.<region>.amazonaws.com:587`, STARTTLS, certificate + hostname verified. AWS DPA (GDPR) applies |
 | Sender | `MAIL_FROM` (default `hello@thirstr.fun`) |
 | Off switch | no `SMTP_HOST` → email sign-in is not delivered on that env (Apple, Google, passkeys still work) |
 
-## Brevo specifics
-- Account: owner's. Settings › Senders, domains › add `thirstr.fun` → Brevo shows a `brevo-code` TXT and two DKIM CNAMEs (`brevo1._domainkey`, `brevo2._domainkey`); add them in GoDaddy DNS and click Authenticate.
-- SPF include: `include:spf.brevo.com`.
-- Transactional › Settings: turn **off** open and click tracking.
-- SMTP & API › SMTP: login (`…@smtp-brevo.com`) and an SMTP key (one key per env, named `thirstr-staging` / `thirstr-prod`).
+## Amazon SES specifics
+- SES › Identities › Create identity › Domain `thirstr.fun`, Easy DKIM RSA 2048: add the 3 `…._domainkey` CNAMEs in GoDaddy DNS.
+- Custom MAIL FROM `bounce.thirstr.fun`: MX `10 feedback-smtp.<region>.amazonses.com` + TXT `v=spf1 include:amazonses.com ~all` (on `bounce`, so the apex SPF stays ImprovMX only).
+- Account must be out of the SES sandbox in that region (Account dashboard › Request production access) or it only sends to verified addresses.
+- Configuration set without open/click tracking (none by default).
+- SMTP settings › Create SMTP credentials (IAM user `thirstr-ses-smtp-<env>`, policy `ses:SendRawEmail` only, condition `ses:FromAddress = hello@thirstr.fun`).
 
 ## Setup (per env)
-1. Owner creates the provider account, signs its DPA, turns **off** open/click tracking.
-2. Authenticate `thirstr.fun` at the provider; add its DKIM records in GoDaddy DNS and its include to SPF:
-   `v=spf1 include:spf.improvmx.com include:<provider SPF> ~all` (one SPF record only). Add DMARC: `_dmarc` TXT `v=DMARC1; p=quarantine; rua=mailto:hello@thirstr.fun`.
+1. Owner's AWS account (GDPR DPA is part of the AWS service terms).
+2. Authenticate `thirstr.fun` (records above). Add DMARC: `_dmarc` TXT `v=DMARC1; p=quarantine; rua=mailto:hello@thirstr.fun`.
 3. Set secrets (never in git):
    ```sh
    fly secrets set -a thirstr-api-<env> SMTP_HOST=<relay> SMTP_PORT=587 SMTP_USER=<user> SMTP_PASSWORD=<key>
