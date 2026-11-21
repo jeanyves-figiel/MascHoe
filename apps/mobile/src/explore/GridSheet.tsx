@@ -9,14 +9,22 @@ import { settle } from '../ui/motion';
 import { tx } from '../i18n/app';
 import { color, radius, space, type } from '../theme/tokens';
 
-export type Snap = 'peek' | 'half' | 'full';
-export const SNAPS: Snap[] = ['peek', 'half', 'full'];
+// #250 option B: two stops. `peek` = strip (handle, title row, Moments row); `full` = up to the header.
+export type Snap = 'peek' | 'full';
+export const SNAPS: Snap[] = ['peek', 'full'];
+
+/** Strip height above the tab bar: handle 28 + title row 40 + Moments row 94 + 2. */
+export const STRIP = 164;
 
 /** Visible sheet height per snap (R-04.14). `h` = Explore body height, `bottom` = space taken by the floating tab bar. */
 export function snapHeight(snap: Snap, h: number, bottom: number): number {
   if (snap === 'full') return h;
-  if (snap === 'half') return Math.min(h, Math.round(h * 0.5) + 40);
-  return Math.min(h, bottom + 150);
+  return Math.min(h, bottom + STRIP);
+}
+
+/** Saved snap from before #250 (`half`) or junk → the strip. */
+export function restoreSnap(v: string | null): Snap {
+  return v === 'full' ? 'full' : 'peek';
 }
 
 /** Snap after a drag: a fling goes one step in its direction, otherwise the nearest snap. */
@@ -36,7 +44,7 @@ export function snapAfterDrag(visible: number, vy: number, h: number, bottom: nu
   return best;
 }
 
-const NEXT: Record<Snap, Snap> = { peek: 'half', half: 'full', full: 'peek' };
+const NEXT: Record<Snap, Snap> = { peek: 'full', full: 'peek' };
 
 type Props = {
   h: number;
@@ -137,7 +145,7 @@ export function GridSheet({ h, bottom, snap, onSnap, title, right, above, childr
           accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
           onAccessibilityAction={(e) => {
             const i = SNAPS.indexOf(snap);
-            onSnap(SNAPS[e.nativeEvent.actionName === 'increment' ? Math.min(2, i + 1) : Math.max(0, i - 1)]);
+            onSnap(SNAPS[e.nativeEvent.actionName === 'increment' ? Math.min(SNAPS.length - 1, i + 1) : Math.max(0, i - 1)]);
           }}
           onPress={() => onSnap(NEXT[snap])}
           style={{ height: 28, alignItems: 'center', justifyContent: 'center' }}
