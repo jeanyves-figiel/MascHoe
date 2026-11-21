@@ -15,6 +15,7 @@ import { contacts } from '../safety/safety';
 import { color, font, modeColor, radius, space, touch, type } from '../theme/tokens';
 import type { Notice } from '../trust/NoticesScreen';
 import { Banner, Button, ErrorText, Icon, Photo, Sheet, VerifiedTick } from '../ui';
+import { HiddenPanel } from './HiddenPanel';
 import { NowSheet } from './NowSheet';
 import { prefs, setPrefs } from './prefs';
 import { Qr } from './Qr';
@@ -25,7 +26,7 @@ type Nav = { navigate: (s: string, p?: object) => void };
 const LENSES_SHIPPED = Date.parse('2026-11-19T00:00:00Z');
 const LEVELS: Level[] = ['hidden', 'city', 'area', 'exact'];
 
-// S-60 Me v3 (#102): profile card, "How you show up right now" (location, incognito, Now),
+// S-60 Me v3 (#102): profile card, "How you show up right now" (location incl. Hidden panel #114, Now),
 // "Show me in" lens tiles, Yours (albums, date check-in). Settings behind the gear.
 export function MeScreen({ navigation }: { navigation: Nav }) {
   const { me, setMe, refresh, setMode } = useSession();
@@ -97,7 +98,7 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
     if (l === level) return;
     setBusy(true);
     setErr(null);
-    quickLevel(l)
+    quickLevel(l, l === 'hidden' ? { until: null, return_level: level === 'city' ? 'city' : 'area' } : undefined)
       .then((r) => (r ? setMe(r) : setLocSheet(l)))
       .catch((e) => setErr(e instanceof ApiError ? e.message : tx.common.error))
       .finally(() => setBusy(false));
@@ -131,7 +132,7 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
   const main = p?.photos.find((x) => x.slot === 0);
   const photoCount = p?.photos.filter((x) => x.url && x.status !== 'rejected').length ?? 0;
   const accent = modeColor.hookup;
-  const others = me.incognito ? v3.me.othersSee.incognito : v3.me.othersSee[level];
+  const others = v3.me.othersSee[level];
 
   return (
     <View style={{ flex: 1, backgroundColor: color.bgBase }}>
@@ -221,23 +222,8 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
                 })}
               </View>
               {!me.verified ? <Text style={{ ...type.meta, color: color.fgMuted }}>{v3.me.verifyLocked}</Text> : null}
+              {level === 'hidden' ? <HiddenPanel me={me} setMe={setMe} /> : null}
             </View>
-            <Row>
-              <IconTile tone={color.trust}>
-                <Icon.EyeOff size={18} c={color.trust} />
-              </IconTile>
-              <View style={{ flex: 1 }}>
-                <Text style={rowTitle}>{tx.me.incognito}</Text>
-                <Text style={rowSub}>{me.verified ? v3.me.incognitoSub : tx.common.verifyToDo}</Text>
-              </View>
-              <Toggle
-                testID="me-incognito"
-                label={tx.me.incognito}
-                value={!!me.incognito}
-                disabled={!me.verified || busy}
-                onChange={(v) => run(async () => setMe(await api('PATCH', '/me/visibility', { incognito: v })))}
-              />
-            </Row>
             <Row testID="me-now" onPress={() => setNow(true)} label={tx.me.now}>
               <IconTile tone={color.hookup}>
                 <Icon.Bolt size={18} c={color.hookup} />
@@ -348,23 +334,6 @@ function Row({ children, onPress, testID, label, first }: { children: React.Reac
   return (
     <Pressable testID={testID} accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [style, pressed && { backgroundColor: color.bgOverlay }]}>
       {children}
-    </Pressable>
-  );
-}
-
-// Switch matching ui/Toggle colours, without its row chrome.
-function Toggle({ value, onChange, disabled, label, testID }: { value: boolean; onChange: (v: boolean) => void; disabled?: boolean; label: string; testID?: string }) {
-  return (
-    <Pressable
-      testID={testID}
-      accessibilityRole="switch"
-      accessibilityLabel={label}
-      accessibilityState={{ checked: value, disabled }}
-      disabled={disabled}
-      onPress={() => onChange(!value)}
-      style={{ width: 51, height: 31, borderRadius: 16, padding: 3, backgroundColor: value ? color.trust : color.line, opacity: disabled ? 0.45 : 1, alignItems: value ? 'flex-end' : 'flex-start' }}
-    >
-      <View style={{ width: 25, height: 25, borderRadius: 13, backgroundColor: color.bgInverse }} />
     </Pressable>
   );
 }

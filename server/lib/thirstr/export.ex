@@ -12,7 +12,7 @@ defmodule Thirstr.Export do
 
   @sections [
     account:
-      "SELECT id, status, safe_mode, birthdate, onboarding_step, verified_at, verification_epoch, incognito, settings, inserted_at AS created_at FROM accounts WHERE id = $1",
+      "SELECT id, status, safe_mode, birthdate, onboarding_step, verified_at, verification_epoch, hidden, hidden_until, settings, inserted_at AS created_at FROM accounts WHERE id = $1",
     profiles:
       "SELECT id, kind, display_name, age, gender, gender_other, here_for, fields, visibility_map, inserted_at AS created_at, updated_at FROM profiles WHERE account_id = $1",
     location:

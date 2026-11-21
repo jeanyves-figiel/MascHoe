@@ -49,7 +49,7 @@ export function PrivacySettings() {
   return (
     <Page title={S.privacy} err={err}>
       <Group>
-        <Row testID="privacy-location" title={tx.me.location} sub={S.locationRow} value={me.incognito ? tx.location.incognito : tx.location.levels[level]?.[0]} valueTone={color.trust} onPress={() => setLoc(true)} />
+        <Row testID="privacy-location" title={tx.me.location} sub={S.locationRow} value={tx.location.levels[level]?.[0]} valueTone={color.trust} onPress={() => setLoc(true)} />
       </Group>
       <Group label={S.whoSees}>
         <SwitchRow title={S.hideUnverified} sub={S.hideUnverifiedSub} value={st.hide_from_unverified} onChange={(v) => put({ hide_from_unverified: v })} />

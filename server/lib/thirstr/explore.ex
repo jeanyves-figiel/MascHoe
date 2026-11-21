@@ -3,8 +3,8 @@ defmodule Thirstr.Explore do
   F-04 Explore: grid, map, tray. Spec: docs/spec/features/F04-explore.md, F05-location.md.
 
   Privacy rules enforced here (server-side, R-04.9):
-  - never return blocked (both ways), paused, quarantined, hidden or incognito accounts;
-  - `hide_from_hidden` when the viewer is Hidden or incognito (R-05.6);
+  - never return blocked (both ways), paused, quarantined, Hidden accounts;
+  - `hide_from_hidden` when the viewer is Hidden (R-05.6);
   - target settings: hide from unverified / new accounts / age range, show-in toggles;
   - Safe Mode targets visible only to verified accounts older than 7 days (F-14);
   - no raw coordinates except Exact pins whose audience includes the viewer (AC-04.2);
@@ -44,7 +44,7 @@ defmodule Thirstr.Explore do
       kind: kind,
       verified: Account.verified?(a),
       new: Account.new?(a),
-      hidden: a.hidden or a.incognito,
+      hidden: a.hidden,
       safe_mode: Account.safe_mode_on?(a),
       settings: Settings.get(a),
       point: Location.viewer_point(a),
@@ -317,7 +317,7 @@ defmodule Thirstr.Explore do
     WHERE $4::text = ANY(p.show_in)
       AND ($9 = 0 OR lc.cell_r5 IN (SELECT h3_grid_disk(vp.r5, $9)::bigint))
       AND a.id <> $3
-      AND a.status = 'active' AND NOT a.incognito AND NOT a.hidden
+      AND a.status = 'active' AND NOT a.hidden
       AND (cardinality(p.photo_ids) > 0 OR p.seeded)
       AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.account_from = $3 AND b.account_to = a.id)
                                                OR (b.account_from = a.id AND b.account_to = $3))

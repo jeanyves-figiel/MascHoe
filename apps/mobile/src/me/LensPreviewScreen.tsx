@@ -42,7 +42,7 @@ export function LensPreviewScreen({ navigation }: { navigation: Nav }) {
   const tone = modeColor[mode];
   const main = view.photos[0] ?? null;
   const level = me.location?.level ?? 'city';
-  const hidden = level === 'hidden' || !!me.incognito;
+  const hidden = level === 'hidden';
 
   const turnOn = async () => {
     setBusy(true);
