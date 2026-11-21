@@ -183,13 +183,15 @@ export async function start(account: Me) {
   registerPush().catch(() => {});
   pull();
   drain();
-  sweepTimer ??= setInterval(sweepExpired, 60_000);
+  // EN-18: no work while backgrounded; foreground runs a sweep anyway.
+  sweepTimer ??= setInterval(() => AppState.currentState === 'active' && sweepExpired(), 60_000);
   sweepExpired();
   // R-07.17: foreground (also after a push wake) pulls and drains the outbox.
   appSub ??= AppState.addEventListener('change', (s) => {
     if (s === 'active') {
       pull();
       drain();
+      sweepExpired();
     }
   });
 }

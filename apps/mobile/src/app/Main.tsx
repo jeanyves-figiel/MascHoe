@@ -165,8 +165,10 @@ function useCheckinWatch() {
       if (!a) return;
       if (new Date(a.due).getTime() <= Date.now() && nav.isReady() && nav.getCurrentRoute()?.name !== 'CheckinDue') nav.navigate('CheckinDue');
     };
-    const t1 = setInterval(check, 30_000);
-    const t2 = setInterval(() => refreshCheckin().catch(() => {}), 5 * 60_000);
+    // EN-18: timers do nothing while the app is in the background (battery).
+    const fg = () => AppState.currentState === 'active';
+    const t1 = setInterval(() => fg() && check(), 30_000);
+    const t2 = setInterval(() => fg() && refreshCheckin().catch(() => {}), 5 * 60_000);
     const s = AppState.addEventListener('change', (st) => st === 'active' && check());
     let rm: (() => void) | undefined;
     if (Platform.OS !== 'web')
