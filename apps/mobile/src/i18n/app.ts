@@ -765,7 +765,7 @@ const en = {
     languageSub: 'Uses your phone’s language. Change it in system settings.',
     privacy: 'Privacy policy',
     licenses: 'Open-source licences',
-    licensesBody: 'Thirstr is built with open-source software: React Native, Expo, MapLibre, ts-mls, noble cryptography, Phoenix, Elixir, PostgreSQL, H3 and others, under their MIT, Apache-2.0, BSD and ISC licences.',
+    licensesBody: 'Thirstr is built with open-source software: React Native, Expo, MapLibre, ts-mls, noble cryptography, Phoenix, Elixir, PostgreSQL, H3 and others, under their MIT, Apache-2.0, BSD and ISC licences. City from IP address: IP Geolocation by DB-IP (db-ip.com), CC BY 4.0, looked up on our own servers.',
     autoDelete: 'Delete received photos after viewing',
     verification: 'Verification',
     verified: (d: string) => `Verified since ${d}`,
