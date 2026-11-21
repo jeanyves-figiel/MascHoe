@@ -23,6 +23,7 @@ defmodule ThirstrWeb.SafetyController do
     with {:ok, r} <- Safety.start(me(conn), p), do: conn |> put_status(201) |> json(r)
   end
 
+  def cancel(conn, p), do: Safety.cancel(me(conn), p) |> done(conn)
   def refresh(conn, %{"token" => t} = p), do: Safety.refresh(me(conn), t, p) |> done(conn)
   def extend(conn, %{"token" => t} = p), do: Safety.extend(me(conn), t, p) |> done(conn)
   def ok(conn, %{"token" => t} = p), do: Safety.ok(me(conn), t, p) |> done(conn)
