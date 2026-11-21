@@ -375,6 +375,24 @@ export function useKeyboardShown() {
   return shown;
 }
 
+// #135 R-08.11: the chat media tray takes the keyboard's place, so the nav bar hides for it too.
+let panelOpen = false;
+const panelSubs = new Set<(v: boolean) => void>();
+export function setBottomPanel(v: boolean) {
+  panelOpen = v;
+  panelSubs.forEach((f) => f(v));
+}
+export function useBottomPanel() {
+  const [v, setV] = useState(panelOpen);
+  useEffect(() => {
+    panelSubs.add(setV);
+    return () => {
+      panelSubs.delete(setV);
+    };
+  }, []);
+  return v;
+}
+
 /** #137: the Pop nav bar floats on every screen (Main.tsx): 52 pt pill + 6 pt padding ×2 + 8 pt gap. */
 export const NAV_BAR = 72;
 /** Space a bottom-anchored element must leave for the nav bar (0 while the keyboard is up: the bar hides). */

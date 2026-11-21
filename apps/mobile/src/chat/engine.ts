@@ -8,6 +8,7 @@ import { accessToken, api, API_BASE, ApiError, Me } from '../api/client';
 import type { ProfileView } from '../api/types';
 import { fromB64, fromUtf8, hex, rand, toB64, utf8 } from './bytes';
 import { kv } from './kv';
+import * as Recent from './recent';
 import * as mls from './mls';
 import * as store from './store';
 import * as people from './people';
@@ -225,6 +226,8 @@ export function stop() {
 export async function wipe() {
   stop();
   convs = {};
+  // R-08.14: Sent recently files are outside the store; delete them before the index.
+  await Recent.clear().catch(() => {});
   await kv.wipe();
   store.reset();
   emit('convs');

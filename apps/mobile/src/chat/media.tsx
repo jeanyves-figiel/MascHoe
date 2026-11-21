@@ -10,6 +10,9 @@ import { color, radius, space, type } from '../theme/tokens';
 import { fromB64, rand, toB64 } from './bytes';
 import * as E from './engine';
 import { prefs } from '../me/prefs';
+import { kv } from './kv';
+import * as Recent from './recent';
+import * as Lib from './library';
 
 export type SendOpts = { once: boolean; expiry: '1h' | '24h' | '7d' | 'keep'; save: boolean };
 const EXPIRY_S = { '1h': 3600, '24h': 86400, '7d': 7 * 86400, keep: null } as const;
@@ -45,24 +48,80 @@ export async function decryptToUri(ref: { blob: string; key: string; iv: string;
   return uri;
 }
 
-/** Picks a photo, re-encodes it (drops EXIF/GPS, R-08.1), encrypts, uploads and sends it. */
-export async function pickAndSendMedia(conv: E.Conv, opts: SendOpts = { once: false, expiry: 'keep', save: false }) {
-  const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.85, exif: false, allowsEditing: false });
-  if (r.canceled || !r.assets[0]) return;
-  const a = r.assets[0];
-  const bytes = await readBytes(a.uri);
-  if (bytes.length > 20 * 1024 * 1024) throw new Error('too large');
+export type Source = { kind: 'recent'; r: Recent.Recent } | { kind: 'uri'; uri: string; w?: number; h?: number } | { kind: 'roll'; shot: Lib.Shot };
+
+/** Re-encodes a photo on the phone: JPEG 0.85, max 2560 px, no EXIF/GPS (R-08.1, R-08.13). */
+export async function reencode(uri: string, w?: number, h?: number) {
+  const { ImageManipulator, SaveFormat } = await import('expo-image-manipulator');
+  const ctx = ImageManipulator.manipulate(uri);
+  const long = Math.max(w ?? 0, h ?? 0);
+  if (long > 2560) ctx.resize((w ?? 0) >= (h ?? 0) ? { width: 2560 } : { height: 2560 });
+  const img = await ctx.renderAsync();
+  const out = await img.saveAsync({ format: SaveFormat.JPEG, compress: 0.85 });
+  return { bytes: await readBytes(out.uri), w: out.width, h: out.height, mime: 'image/jpeg' };
+}
+
+async function sendOne(conv: E.Conv, src: Source, opts: SendOpts) {
+  let photo: { bytes: Uint8Array; w?: number; h?: number; mime: string };
+  if (src.kind === 'recent') {
+    const b = await Recent.bytes(src.r);
+    if (!b) throw new Error('gone');
+    photo = { bytes: b, w: src.r.w, h: src.r.h, mime: src.r.mime };
+  } else if (src.kind === 'roll') {
+    photo = await reencode(await Lib.fileUri(src.shot), src.shot.w, src.shot.h);
+  } else {
+    photo = await reencode(src.uri, src.w, src.h);
+  }
+  if (photo.bytes.length > 20 * 1024 * 1024) throw new Error('too large');
   const exp = EXPIRY_S[opts.expiry];
-  const ref = await uploadEncrypted(bytes, { ttl_s: exp ?? undefined });
+  // Always a new key and a new blob, also when sending a Sent recently photo again (R-08.14).
+  const ref = await uploadEncrypted(photo.bytes, { ttl_s: exp ?? undefined });
   await E.send(conv.id, {
     t: 'media',
-    media: { ...ref, mime: a.mimeType ?? 'image/jpeg', w: a.width, h: a.height, once: opts.once || undefined, exp: exp ? Date.now() + exp * 1000 : undefined, save: opts.save || undefined },
+    media: { ...ref, mime: photo.mime, w: photo.w, h: photo.h, once: opts.once || undefined, exp: exp ? Date.now() + exp * 1000 : undefined, save: opts.save || undefined },
   });
+  if (src.kind === 'recent') await Recent.touch(src.r.id, conv.id).catch(() => {});
+  else await Recent.keep(photo.bytes, { mime: photo.mime, w: photo.w, h: photo.h }, conv.id).catch(() => {});
 }
+
+/** R-08.13: each item becomes its own media message, in order; returns how many failed. */
+export async function sendPhotos(conv: E.Conv, items: Source[], opts: SendOpts) {
+  let failed = 0;
+  for (const it of items) {
+    try {
+      await sendOne(conv, it, opts);
+    } catch {
+      failed++;
+    }
+  }
+  return failed;
+}
+
+/** System picker (no library access needed), up to `limit` photos. */
+export async function pickPhotos(limit = 10): Promise<Source[]> {
+  const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1, exif: false, allowsMultipleSelection: true, selectionLimit: limit, orderedSelection: true });
+  if (r.canceled) return [];
+  return r.assets.map((a) => ({ kind: 'uri', uri: a.uri, w: a.width, h: a.height }));
+}
+
+/** System camera, one photo. */
+export async function takePhoto(): Promise<Source | null> {
+  const p = await ImagePicker.requestCameraPermissionsAsync();
+  if (!p.granted) return null;
+  const r = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 1, exif: false });
+  if (r.canceled || !r.assets[0]) return null;
+  const a = r.assets[0];
+  return { kind: 'uri', uri: a.uri, w: a.width, h: a.height };
+}
+
+const OPTS_K = 'media.opts';
+export const DEFAULT_OPTS: SendOpts = { once: false, expiry: 'keep', save: false };
+export const loadOpts = async () => ({ ...DEFAULT_OPTS, ...((await kv.get<SendOpts>(OPTS_K)) ?? {}) });
+export const saveOpts = (o: SendOpts) => kv.set(OPTS_K, o);
 
 // R-07.10 / R-08.7: media from someone you haven't replied to follows Settings › explicit_from_strangers.
 // Until the on-device classifier ships, all such media is treated as possibly explicit.
-function strangerPolicy(conv: E.Conv, setting: string | undefined): 'show' | 'blur' | 'block' {
+export function strangerPolicy(conv: E.Conv, setting: string | undefined): 'show' | 'blur' | 'block' {
   if (conv.iWrote) return 'show';
   return setting === 'allow' ? 'show' : setting === 'block' ? 'block' : 'blur';
 }
