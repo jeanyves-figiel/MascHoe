@@ -48,7 +48,7 @@ export function NoticesScreen() {
   if (!list) return <Loading />;
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: color.bgBase }} contentContainerStyle={{ padding: space.l, gap: space.m, paddingBottom: 120 }}>
+    <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1, backgroundColor: color.bgBase }} contentContainerStyle={{ padding: space.l, gap: space.m, paddingBottom: 120 }}>
       <Text style={{ ...type.display, color: color.fgPrimary }}>{tx.notices.title}</Text>
       {list.length === 0 ? <Banner tone="trust" text={tx.notices.none} /> : null}
       {list.map((n) => (

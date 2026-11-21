@@ -55,6 +55,9 @@ defmodule Thirstr.Export do
       "SELECT id, accepted_at, created_at FROM safety_relays WHERE account_id = $1",
     devices:
       "SELECT id, platform, last_seen_day, inserted_at AS created_at FROM devices WHERE account_id = $1",
+    # R-01.7: whether a recovery phrase is on (the backup is ciphertext only we can't read)
+    recovery_phrase:
+      "SELECT inserted_at AS since, vault_updated_at AS backup_at, octet_length(vault) AS backup_bytes FROM account_recovery WHERE account_id = $1",
     # F-20 travel plans
     trips:
       "SELECT t.id, c.name AS city, c.country, t.first_day, t.last_day, t.show_days, t.say_from, t.created_at FROM trips t JOIN cities c ON c.id = t.city_id WHERE t.account_id = $1"

@@ -87,7 +87,7 @@ export function PartyScreen({ navigation, route }: { navigation: Nav; route: { p
   const pending = (p.requests ?? []).filter((r) => r.state === 'pending');
 
   return (
-    <ScrollView keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets
+    <ScrollView showsVerticalScrollIndicator={false} keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets
       refreshControl={refresh}
       style={{ flex: 1, backgroundColor: color.bgBase }}
       contentContainerStyle={{

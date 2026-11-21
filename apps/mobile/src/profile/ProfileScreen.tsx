@@ -367,7 +367,7 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
       {/* G10: the neighbours sit just off screen and move with the swipe. */}
       {prevK >= 0 ? <PeekCard p={prevP} width={width} side={-1} /> : null}
       {nextK >= 0 ? <PeekCard p={nextP} width={width} side={1} /> : null}
-      <ScrollView
+      <ScrollView showsVerticalScrollIndicator={false}
         ref={scroller}
         // #124: clear the floating action bar (58) + its inset + breathing room, on every phone.
         contentContainerStyle={{ paddingBottom: p.self ? navBottom + space.xxl : navBottom + space.s + 58 + space.xxl }}

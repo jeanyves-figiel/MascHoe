@@ -29,6 +29,12 @@ Errors: `{ "error": { "code": "rate_limited", "message": "...", "retry_after": 3
 | DELETE | /account | {confirm: "DELETE"} → 202; rows deleted immediately, objects purged by job ≤ 24 h |
 | POST | /account/pause · /account/resume | |
 | GET | /account/export | → 200 archive JSON to the device (beta-build-plan › B4d); 3/day |
+| POST | /auth/recovery/options | {} → {challenge_id, challenge}; TTL 120 s (R-01.7, #25) |
+| POST | /auth/recovery | {challenge_id, public_key, signature, platform} (Ed25519 over `"thirstr-recovery:" ‖ challenge`) → tokens; signs out every other device; 401 `recovery_invalid`; 5 per 10 min per IP |
+| GET | /me/recovery | → {on, since, backup_at} |
+| PUT | /me/recovery | {public_key} → {on: true, …}; replaces the old key and deletes the old backup; 409 `key_in_use` |
+| DELETE | /me/recovery | → 204; deletes key and sealed backup |
+| GET · PUT | /me/recovery/vault | → {vault, updated_at} · {vault (base64 AES-256-GCM, ≤ 1 MB)} → {on, since, backup_at}; 404 none, 409 `recovery_off`; PUT 30/day |
 | GET | /me/devices | → {devices: [{id, platform, last_seen_day, current}]} |
 | DELETE | /me/devices/{id} | → 204 (signs that device out) |
 | POST | /devices/link | → {code, expires_in: 120} |

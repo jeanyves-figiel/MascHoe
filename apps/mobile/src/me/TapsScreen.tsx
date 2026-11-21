@@ -34,7 +34,7 @@ export function TapsScreen({ navigation }: { navigation: Nav }) {
       {list.length === 0 ? (
         <EmptyState title={tx.me.noTaps} />
       ) : (
-        <FlatList
+        <FlatList showsVerticalScrollIndicator={false}
           refreshControl={refresh}
           data={list}
           keyExtractor={(t) => t.profile.id + t.at}

@@ -186,7 +186,7 @@ export function CheckinDueScreen({ navigation }: { navigation: Nav }) {
     );
 
   return (
-    <ScrollView keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets style={{ flex: 1, backgroundColor: color.bgBase }} contentContainerStyle={{ padding: space.l, gap: space.l, paddingBottom: 120 }}>
+    <ScrollView showsVerticalScrollIndicator={false} keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets style={{ flex: 1, backgroundColor: color.bgBase }} contentContainerStyle={{ padding: space.l, gap: space.l, paddingBottom: 120 }}>
       <Text style={{ ...type.display, color: color.fgPrimary }}>{act ? tx.safety.allGood : tx.safety.orphanTitle}</Text>
       <Text style={{ ...type.body, color: color.fgSecondary }}>{act ? tx.safety.allGoodBody : tx.safety.orphanBody(time(new Date(new Date(due).getTime() + 15 * 60_000).toISOString()))}</Text>
       <Text style={{ ...type.meta, color: color.trust }}>{tx.safety.active(time(due))}</Text>

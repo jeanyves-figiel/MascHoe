@@ -8,11 +8,12 @@ import { loginPasskey, passkeysAvailable, registerPasskey } from '../auth/passke
 import { o } from '../i18n/onboarding';
 import { t } from '../i18n/strings';
 import { BackButton, BigButton, Enter, k, StepShell } from '../onboarding/kit';
+import { rx } from '../i18n/recovery';
 import { color, font, radius, space } from '../theme/tokens';
 import { ErrorText, useKeyboardShown, Wordmark } from '../ui';
 
 // S-02 v2 (F-01 R-01.1, R-01.12, F-02 R-02.1b): Apple first, passkey, Google, email link; 18+ by consent line.
-export function CreateAccountScreen({ mode, onDone, onEmailSent, onUnderage, onBack }: { mode: 'signup' | 'login'; onDone: (me: Me) => void; onEmailSent: (email: string, adult: boolean) => void; onUnderage: () => void; onBack?: () => void }) {
+export function CreateAccountScreen({ mode, onDone, onEmailSent, onUnderage, onBack, onRecover }: { mode: 'signup' | 'login'; onDone: (me: Me) => void; onEmailSent: (email: string, adult: boolean) => void; onUnderage: () => void; onBack?: () => void; onRecover?: () => void }) {
   const insets = useSafeAreaInsets();
   const kb = useKeyboardShown();
   const [busy, setBusy] = useState<string | null>(null);
@@ -83,6 +84,7 @@ export function CreateAccountScreen({ mode, onDone, onEmailSent, onUnderage, onB
           <MethodButton testID="email-start" kind="text" icon={<MailGlyph />} title={o.signup.email} onPress={() => setShowEmail(true)} />
         )}
         <ErrorText text={err} />
+        {!signup && onRecover ? <BigButton kind="text" testID="recover-start" title={rx.lost} onPress={onRecover} /> : null}
         {signup ? (
           <Text style={c.consent}>
             {o.signup.consent[0]}

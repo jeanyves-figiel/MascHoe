@@ -68,7 +68,7 @@ export function VenueScreen({ navigation, route }: { navigation: Nav; route: { p
   if (here === undefined) return <Loading />;
 
   return (
-    <ScrollView
+    <ScrollView showsVerticalScrollIndicator={false}
       refreshControl={refresh}
       style={{ flex: 1, backgroundColor: color.bgBase }}
       contentContainerStyle={{

@@ -150,7 +150,7 @@ export function TonightScreen({ navigation }: { navigation: Nav }) {
         paddingTop: insets.top + space.s,
       }}
     >
-      <ScrollView
+      <ScrollView showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           padding: space.l,
           paddingTop: 0,

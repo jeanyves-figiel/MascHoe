@@ -5,6 +5,7 @@ import React from 'react';
 import { AppState, Linking, Platform, Pressable, Text, View } from 'react-native';
 import { SafeAreaProvider, useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '../api/client';
+import { kv } from '../chat/kv';
 import { AlbumEditScreen, AlbumsScreen, AlbumViewScreen } from '../chat/AlbumScreens';
 import { ChatScreen } from '../chat/ChatScreen';
 import { getConvs, on, unreadTotal } from '../chat/engine';
@@ -14,6 +15,8 @@ import { PushPrompt } from '../chat/PushPrompt';
 import { ExploreScreen } from '../explore/ExploreScreen';
 import { tx } from '../i18n/app';
 import { DevicesScreen } from '../me/DevicesScreen';
+import { RecoveryScreen } from '../me/RecoveryScreen';
+import { backupIfDue } from '../auth/recovery';
 import { ensureAttested } from '../auth/attest';
 import { EditProfileScreen } from '../me/EditProfileScreen';
 import { EditSectionScreen } from '../me/EditSectionScreen';
@@ -55,6 +58,7 @@ import { AddPlaceScreen } from '../scene/AddPlaceScreen';
 import { color, modeColor, radius, space, type } from '../theme/tokens';
 import { BackButton, Icon, ModeContext, useBottomPanel, useKeyboardShown } from '../ui';
 import { useSession } from './session';
+import { WhatsNewCard, WhatsNewScreen } from '../whatsnew/WhatsNew';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -201,12 +205,18 @@ function Tabs() {
   );
 }
 
-function VerifyRoute({ navigation }: { navigation: { goBack: () => void } }) {
+function VerifyRoute({ navigation }: { navigation: { goBack: () => void; replace: (r: string, p?: object) => void } }) {
   const { setMe } = useSession();
   return (
     <VerifyScreen
-      onDone={(m) => {
+      onDone={async (m) => {
         setMe(m);
+        // #25 R-01.7: offer the recovery phrase once, right after "You're verified".
+        if (m.verified && !(await kv.get('recovery:offered'))) {
+          await kv.set('recovery:offered', true);
+          const st = await api<{ on: boolean }>('GET', '/me/recovery').catch(() => ({ on: true }));
+          if (!st.on) return navigation.replace('Recovery', { offer: true });
+        }
         navigation.goBack();
       }}
     />
@@ -239,11 +249,12 @@ function useHiddenReturn() {
   }, [me, setMe]);
 }
 
-/** #25 App Attest: on start and when the app comes back (at most daily, see auth/attest). */
+/** #25 App Attest (start + foreground, at most daily) and sealed backup (start + background, at most hourly). */
 function useAttestation() {
   React.useEffect(() => {
     ensureAttested();
-    const s = AppState.addEventListener('change', (st) => st === 'active' && ensureAttested());
+    backupIfDue();
+    const s = AppState.addEventListener('change', (st) => (st === 'active' ? ensureAttested() : backupIfDue()));
     return () => s.remove();
   }, []);
 }
@@ -407,9 +418,17 @@ export function Main() {
           <Stack.Screen name="CheckinDue" component={CheckinDueScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="AppLock" component={AppLockScreen} options={sub} />
           <Stack.Screen name="Devices" component={DevicesScreen} options={sub} />
+          <Stack.Screen name="Recovery" component={RecoveryScreen as React.ComponentType} options={{ headerShown: false }} />
+          <Stack.Screen name="WhatsNew" component={WhatsNewScreen as React.ComponentType} options={sub} />
         </Stack.Navigator>
         {!kb && !panel && !(top && NO_BAR.has(top.name)) ? <PillBar active={active} onPick={pick} /> : null}
         <PushPrompt />
+        {/* F-17 R-17.15 (#238): small card under the Explore header, once per release note, only over a quiet Explore. */}
+        <WhatsNewCard
+          ready={!kb && !panel && top?.name === 'Tabs' && active === 'Explore'}
+          onOpen={(to) => nav.isReady() && (nav.navigate as (r: string, p?: object) => void)(to.route, to.params)}
+          onHistory={() => nav.isReady() && nav.navigate('WhatsNew')}
+        />
         <ToastHost />
         <SafeModeAuto navigate={(r) => nav.isReady() && nav.navigate(r)} />
       </NavigationContainer>

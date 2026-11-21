@@ -8,6 +8,7 @@ import { useSession } from '../app/session';
 import { tx } from '../i18n/app';
 import { trx } from '../i18n/translate';
 import { v3 } from '../i18n/v3';
+import { wn } from '../i18n/whatsnew';
 import { color, font, radius, space, type } from '../theme/tokens';
 import { ErrorText, Icon } from '../ui';
 import { type Prefs, prefs, setPrefs } from './prefs';
@@ -25,6 +26,7 @@ const INDEX: [string, string][] = [
   ...[S.notifications, ...Object.values(S.push), S.quiet].map((l) => [l, 'NotificationSettings'] as [string, string]),
   ...[S.safeMode, S.appLock, tx.prefs.verification, S.blocked, mod.list.row, S.notices].map((l) => [l, 'SafetySettings'] as [string, string]),
   ...[tx.signInEmail.row, tx.devices.title, tx.exportData.title, S.pause, S.logoutAll, S.delete].map((l) => [l, 'AccountSettings'] as [string, string]),
+  [wn.title, 'WhatsNew'],
 ];
 
 // S-61 Settings hub v3 (#102, F-17 R-17.10): 5 categories with live summaries, App + About inline.
@@ -66,7 +68,7 @@ export function SettingsScreen({ navigation }: { navigation: Nav }) {
   ];
 
   return (
-    <ScrollView keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets style={{ flex: 1, backgroundColor: color.bgBase }} contentContainerStyle={{ padding: space.l, paddingTop: space.s, gap: space.xxl, paddingBottom: 120, maxWidth: 560, width: '100%', alignSelf: 'center' }} keyboardShouldPersistTaps="handled">
+    <ScrollView showsVerticalScrollIndicator={false} keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets style={{ flex: 1, backgroundColor: color.bgBase }} contentContainerStyle={{ padding: space.l, paddingTop: space.s, gap: space.xxl, paddingBottom: 120, maxWidth: 560, width: '100%', alignSelf: 'center' }} keyboardShouldPersistTaps="handled">
       <Text accessibilityRole="header" style={{ ...type.display, fontSize: 34, lineHeight: 40, color: color.fgPrimary }}>
         {S.title}
       </Text>
@@ -109,6 +111,7 @@ export function SettingsScreen({ navigation }: { navigation: Nav }) {
           </Group>
 
           <Group label={S.about}>
+            <Row testID="settings-whats-new" title={wn.title} onPress={() => navigation.navigate('WhatsNew')} />
             <Row title={tx.prefs.privacy} onPress={() => Linking.openURL('https://thirstr.fun/privacy/')} />
             <Row title={tx.prefs.licenses} onPress={() => setLic(!lic)} />
             {lic ? <Text style={{ ...type.meta, color: color.fgSecondary, padding: space.l }}>{tx.prefs.licensesBody}</Text> : null}

@@ -37,6 +37,22 @@ public class ThirstrFaceModule: Module {
         }
       }
     }
+
+    // F-18 R-18.15 (#185): clip frames vs the peer's public photos, on this phone only.
+    AsyncFunction("matchClip") { (clipUri: String, photoUrls: [String], promise: Promise) in
+      guard let clip = URL(string: clipUri), clip.isFileURL else {
+        promise.reject("E_CLIP", "Clip must be a local file")
+        return
+      }
+      let photos = photoUrls.compactMap { URL(string: $0) }.filter { $0.isFileURL || $0.scheme == "https" }
+      DispatchQueue.global(qos: .userInitiated).async {
+        do {
+          promise.resolve(try FaceMatch.matchClip(clip: clip, photos: photos, frameCount: 3))
+        } catch {
+          promise.reject("E_MATCH", error.localizedDescription)
+        }
+      }
+    }
   }
 
   /// Face rectangles revision 3 (iOS 15+) gives continuous yaw and pitch; the landmarks request
