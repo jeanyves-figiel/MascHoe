@@ -10,6 +10,7 @@ import { IntentBar } from './IntentRing';
 export function ProfileTile({ card, onPress, onLongPress, tray, selected }: { card: Card; onPress: () => void; onLongPress?: () => void; tray?: boolean; selected?: boolean }) {
   const accent = useAccent();
   const hot = !!card.now || card.exact;
+  const precise = card.distance?.kind === 'area' && !!card.distance.precise;
   const label = `${card.display_name}, ${card.age}${card.verified ? ', verified' : ''}, ${distanceLabel(card.distance)}${card.now ? ', ' + tx.now[card.now.status] : ''}`;
   return (
     <Pressable
@@ -47,9 +48,13 @@ export function ProfileTile({ card, onPress, onLongPress, tray, selected }: { ca
           <Text style={{ ...type.headline, fontSize: tray ? 15 : 14, color: color.fgPrimary }}>{card.age}</Text>
           {card.verified ? <VerifiedTick size={13} /> : null}
         </View>
-        <Text numberOfLines={1} style={{ ...type.meta, fontSize: 11, color: color.fgSecondary }}>
-          {[distanceLabel(card.distance), card.now?.text].filter(Boolean).join(' · ')}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          {/* #197: teal dot = he shares a closer distance (~50 m) */}
+          {precise ? <View accessibilityLabel="Closer distance" style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: color.trust }} /> : null}
+          <Text numberOfLines={1} style={{ ...type.meta, fontSize: 11, color: precise ? color.trust : color.fgSecondary, flexShrink: 1, fontVariant: ['tabular-nums'] }}>
+            {[distanceLabel(card.distance), card.now?.text].filter(Boolean).join(' · ')}
+          </Text>
+        </View>
       </View>
       {/* R-04.19: his intents along the bottom edge */}
       {tray ? null : <IntentBar intents={card.intents} />}

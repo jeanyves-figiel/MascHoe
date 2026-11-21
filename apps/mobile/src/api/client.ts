@@ -36,6 +36,8 @@ export type Me = {
     level: 'hidden' | 'city' | 'area' | 'exact' | null;
     pin?: null | { lat: number; lng: number; audience: string; expires_at: string };
     hide_from_hidden?: boolean;
+    /** #197 R-05.13 "Show closer distance" choice (applies on Area). */
+    precise?: boolean;
     /** Own coarse cell, only for centring the own map (R-04.13). */
     cell_r5?: string | null;
   };

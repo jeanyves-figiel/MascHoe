@@ -9,6 +9,7 @@ defmodule Thirstr.Location do
   alias Thirstr.Accounts.Account
   alias Thirstr.Profiles.Profile
 
+  alias Thirstr.Settings
   alias Thirstr.Valkey
 
   @levels ~w(hidden city area exact)
@@ -46,12 +47,13 @@ defmodule Thirstr.Location do
         end
 
       level in ~w(area exact) ->
-        with {:ok, r9} <- cell(params["cell_r9"], 9) do
+        with {:ok, r9} <- cell(params["cell_r9"], 9),
+             {:ok, r10} <- precise_cell(a, r9, params) do
           velocity_check(a, r9)
-          set_viewer_cell(a, r9)
+          set_viewer_cell(a, r10 || r9)
           if level == "area", do: clear_pins(a)
           set_account(a, hidden: false, hidden_until: nil, hidden_return: nil)
-          upsert_all(a, level, r9, :r9, params)
+          upsert_all(a, level, r9, :r9, Map.put(params, "cell_r10", r10))
         end
 
       level == "city" ->
@@ -108,6 +110,46 @@ defmodule Thirstr.Location do
     end
   end
 
+  # #197 R-05.13: "Show closer distance" is an account setting (kept while on City / Hidden /
+  # Exact). `precise` in the body sets it; without it the stored choice applies. It needs the r10
+  # cell inside the sent r9 cell (an old build without cell_r10 just stays at Area). Off in
+  # Safe Mode (R-05.10): an explicit `precise: true` there is refused.
+  defp precise_cell(a, r9, params) do
+    explicit = params["precise"]
+
+    if is_boolean(explicit) and explicit != Settings.get(a, "precise_distance"),
+      do: Settings.update(a, %{"precise_distance" => explicit})
+
+    want =
+      if is_boolean(explicit), do: explicit, else: Settings.get(a, "precise_distance") == true
+
+    cond do
+      not want ->
+        {:ok, nil}
+
+      Account.safe_mode_on?(a) ->
+        if explicit == true,
+          do: {:error, {:safe_mode_blocked, "Closer distance is off in Safe Mode"}},
+          else: {:ok, nil}
+
+      is_nil(params["cell_r10"]) and explicit != true ->
+        {:ok, nil}
+
+      true ->
+        with {:ok, r10} <- cell(params["cell_r10"], 10) do
+          if cell_parent(r10, 9) == r9,
+            do: {:ok, r10},
+            else: {:error, {:validation, %{cell_r10: ["must be inside cell_r9"]}}}
+        end
+    end
+  end
+
+  defp cell_parent(hex, res),
+    do:
+      Repo.query!("SELECT h3_cell_to_parent($1::text::h3index, $2)::text", [hex, res]).rows
+      |> hd()
+      |> hd()
+
   defp set_account(a, changes),
     do: Repo.update_all(from(x in Account, where: x.id == ^a.id), set: changes)
 
@@ -128,16 +170,20 @@ defmodule Thirstr.Location do
   defp upsert_all(a, level, cell, :r9, params) do
     Repo.query!(
       """
-      INSERT INTO location_cells (profile_id, level, cell_r9, cell_r8, cell_r7, cell_r5, hide_from_hidden, updated_at)
-      SELECT p.id, $2, c::bigint, h3_cell_to_parent(c, 8)::bigint, h3_cell_to_parent(c, 7)::bigint,
+      INSERT INTO location_cells (profile_id, level, cell_r10, precise, cell_r9, cell_r8, cell_r7, cell_r5, hide_from_hidden, updated_at)
+      SELECT p.id, $2, $5::text::h3index::bigint, $5 IS NOT NULL, c::bigint, h3_cell_to_parent(c, 8)::bigint, h3_cell_to_parent(c, 7)::bigint,
              h3_cell_to_parent(c, 5)::bigint, COALESCE($4, (SELECT bool_or(hide_from_hidden) FROM location_cells x JOIN profiles y ON y.id = x.profile_id WHERE y.account_id = $1), false), now()
       FROM profiles p, (SELECT $3::text::h3index AS c) s
       WHERE p.account_id = $1
-      ON CONFLICT (profile_id) DO UPDATE SET level = EXCLUDED.level, cell_r9 = EXCLUDED.cell_r9,
+      ON CONFLICT (profile_id) DO UPDATE SET level = EXCLUDED.level, cell_r10 = EXCLUDED.cell_r10,
+        precise = EXCLUDED.precise, cell_r9 = EXCLUDED.cell_r9,
         cell_r8 = EXCLUDED.cell_r8, cell_r7 = EXCLUDED.cell_r7, cell_r5 = EXCLUDED.cell_r5,
+        -- #197: display at r10 only after the next k-anonymity pass confirms the crowd floor
+        display_res = CASE WHEN location_cells.display_res = 10 AND NOT EXCLUDED.precise THEN 9
+                           ELSE location_cells.display_res END,
         hide_from_hidden = EXCLUDED.hide_from_hidden, updated_at = now()
       """,
-      [dump(a.id), level, cell, bool_or_nil(params["hide_from_hidden"])]
+      [dump(a.id), level, cell, bool_or_nil(params["hide_from_hidden"]), params["cell_r10"]]
     )
 
     {:ok, level}
@@ -150,7 +196,7 @@ defmodule Thirstr.Location do
       SELECT p.id, 'city', NULL, NULL, NULL, $2::text::h3index::bigint,
              COALESCE($3, (SELECT bool_or(hide_from_hidden) FROM location_cells x JOIN profiles y ON y.id = x.profile_id WHERE y.account_id = $1), false), 5, now()
       FROM profiles p WHERE p.account_id = $1
-      ON CONFLICT (profile_id) DO UPDATE SET level = 'city', cell_r9 = NULL, cell_r8 = NULL, cell_r7 = NULL,
+      ON CONFLICT (profile_id) DO UPDATE SET level = 'city', cell_r10 = NULL, precise = false, cell_r9 = NULL, cell_r8 = NULL, cell_r7 = NULL,
         cell_r5 = EXCLUDED.cell_r5, hide_from_hidden = EXCLUDED.hide_from_hidden, display_res = 5, updated_at = now()
       """,
       [dump(a.id), cell, bool_or_nil(params["hide_from_hidden"])]
@@ -192,7 +238,53 @@ defmodule Thirstr.Location do
   # ------------------------------------------------------------- viewer cell (own queries)
 
   # The viewer's own cell for Explore queries. Hidden users have no indexed row (F-05).
-  defp set_viewer_cell(a, hex), do: Valkey.put_term("vcell:" <> a.id, hex, 24 * 3600)
+  defp set_viewer_cell(a, hex) do
+    Valkey.put_term("vcell:" <> a.id, hex, 24 * 3600)
+    note_viewer_cell(a, hex)
+  end
+
+  # #197 R-05.16 spoof brake: > 20 distinct r9 cells per hour → range buckets only for that hour.
+  @brake_cells 20
+  defp note_viewer_cell(a, hex) do
+    with [[r9]] when is_binary(r9) <-
+           Repo.query!(
+             "SELECT CASE WHEN h3_get_resolution(c) > 9 THEN h3_cell_to_parent(c, 9) ELSE c END::text FROM (SELECT $1::text::h3index c) s",
+             [hex]
+           ).rows do
+      key = "vcells:#{a.id}:#{div(System.system_time(:second), 3600)}"
+
+      case Valkey.command!([
+             "EVAL",
+             "redis.call('SADD', KEYS[1], ARGV[1]); redis.call('EXPIRE', KEYS[1], 3700); return redis.call('SCARD', KEYS[1])",
+             "1",
+             key,
+             r9
+           ]) do
+        n when is_integer(n) and n == @brake_cells + 1 ->
+          require Logger
+          Logger.warning("location.spoof_brake account=#{a.id}")
+
+        _ ->
+          :ok
+      end
+    end
+
+    :ok
+  rescue
+    _ -> :ok
+  end
+
+  @doc "#197 R-05.16: true when the viewer moved through more than 20 r9 cells this hour."
+  def spoof_brake?(%Account{} = a) do
+    key = "vcells:#{a.id}:#{div(System.system_time(:second), 3600)}"
+
+    case Valkey.command!(["SCARD", key]) do
+      n when is_integer(n) -> n > @brake_cells
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
 
   @doc "{lat, lng, res} the viewer queries from: exact pin, else the cell they last sent."
   def viewer_point(%Account{} = a) do
@@ -206,9 +298,20 @@ defmodule Thirstr.Location do
 
       %{lat: lat, lng: lng, res: res, exact: false, cell: hex}
     else
-      %{} = pin -> Map.merge(pin, %{exact: true})
+      # #197 R-05.15: distances are measured from the viewer's r10 cell centre, never his pin.
+      %{} = pin -> Map.merge(pin, %{exact: true}) |> Map.merge(snap(pin, 10))
       _ -> nil
     end
+  end
+
+  defp snap(%{lat: lat, lng: lng}, res) do
+    [[la, lo]] =
+      Repo.query!(
+        "SELECT (h3_cell_to_lat_lng(c))[1], (h3_cell_to_lat_lng(c))[0] FROM (SELECT h3_lat_lng_to_cell(point($2::float8, $1::float8), $3) c) s",
+        [lat * 1.0, lng * 1.0, res]
+      ).rows
+
+    %{lat: la, lng: lo}
   end
 
   def viewer_cell(%Account{} = a) do
@@ -405,17 +508,23 @@ defmodule Thirstr.Location do
 
   # ------------------------------------------------------------- R-05.2 k-anonymity
 
-  @doc "Every minute: display at r9 only with ≥ 5 visible profiles in the cell, else r8, else r7."
+  @doc """
+  Every minute: display at r9 only with ≥ 5 visible profiles in the cell, else r8, else r7.
+  #197 R-05.14: a precise profile shows at r10 when its r9 cell has ≥ 3 visible profiles.
+  """
+  @precise_floor 3
   def refresh_k_anonymity(k \\ 5) do
     Repo.query!(
       """
       WITH vis AS (
-        SELECT lc.profile_id, lc.cell_r9, lc.cell_r8, p.kind FROM location_cells lc
+        SELECT lc.profile_id, lc.cell_r9, lc.cell_r8, p.kind, lc.precise AND lc.cell_r10 IS NOT NULL AS precise
+        FROM location_cells lc
         JOIN profiles p ON p.id = lc.profile_id JOIN accounts a ON a.id = p.account_id
         WHERE lc.level <> 'city' AND a.status = 'active' AND NOT a.hidden
       ), c9 AS (SELECT kind, cell_r9, count(*) n FROM vis GROUP BY 1, 2),
          c8 AS (SELECT kind, cell_r8, count(*) n FROM vis GROUP BY 1, 2)
       UPDATE location_cells lc SET display_res = CASE
+          WHEN vis.precise AND c9.n >= $2 THEN 10
           WHEN c9.n >= $1 THEN 9 WHEN c8.n >= $1 THEN 8 ELSE 7 END
       FROM vis
       JOIN c9 ON c9.kind = vis.kind AND c9.cell_r9 = vis.cell_r9
@@ -423,9 +532,10 @@ defmodule Thirstr.Location do
       WHERE lc.profile_id = vis.profile_id
         -- SR-08: write only rows whose resolution changes (no full-table rewrite every minute)
         AND lc.display_res IS DISTINCT FROM
-            (CASE WHEN c9.n >= $1 THEN 9 WHEN c8.n >= $1 THEN 8 ELSE 7 END)
+            (CASE WHEN vis.precise AND c9.n >= $2 THEN 10
+                  WHEN c9.n >= $1 THEN 9 WHEN c8.n >= $1 THEN 8 ELSE 7 END)
       """,
-      [k]
+      [k, @precise_floor]
     )
 
     :ok

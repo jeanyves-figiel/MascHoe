@@ -70,7 +70,7 @@ Audience-restricted values (health, socials, limits, boundaries card) are **not*
 | id · profile_id · slot (0–4) · storage_key · thumb_key (480 px copy, set only when it passed the classifier on its own, SR-10) · status enum(pending, ok_main, ok_public, rejected) · reject_reason · review_state · classifier_score jsonb (`main_ok` = passes strict check; only these show in Friends/Sport) · created_at |
 
 ### location_cells (one row per visible profile, overwritten)
-| profile_id pk · level enum(city, area, exact) · cell_r9 · cell_r8 · cell_r7 · cell_r5 (bigint = `h3index::bigint`; City stores r5 only) · updated_at · hide_from_hidden bool · display_res smallint (9/8/7/5: k-anonymity, widened each minute when < 5 people share the cell) |
+| profile_id pk · level enum(city, area, exact) · cell_r10 null (#197, Precise only) · precise bool (#197) · cell_r9 · cell_r8 · cell_r7 · cell_r5 (bigint = `h3index::bigint`; City stores r5 only) · updated_at · hide_from_hidden bool · display_res smallint (10/9/8/7/5; 10 only when precise and ≥ 3 visible in the r9 cell; k-anonymity, widened each minute when < 5 people share the cell) |
 Exact coordinates are **not** here (Valkey).
 
 ### now_status

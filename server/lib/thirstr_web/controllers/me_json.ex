@@ -91,7 +91,9 @@ defmodule ThirstrWeb.MeJSON do
       level: level,
       cell_r5: cell_r5,
       pin: Location.own_pin_info(a),
-      hide_from_hidden: Location.hide_from_hidden?(a)
+      hide_from_hidden: Location.hide_from_hidden?(a),
+      # #197 R-05.13 "Show closer distance" choice (applies on Area)
+      precise: Thirstr.Settings.get(a, "precise_distance") == true
     }
   end
 end

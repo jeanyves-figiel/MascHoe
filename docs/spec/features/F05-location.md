@@ -5,7 +5,8 @@
 |---|---|---|---|
 | Hidden | nothing | cell r8 (own queries only, not indexed) | **verified only** |
 | City | "In Paris" | cell r5 | all |
-| Area (default) | bucket, avatar inside ~200 m zone | cells r9/r8/r7/r5 | all |
+| Area (default) | rounded distance ("~400 m"), avatar inside ~200 m zone | cells r9/r8/r7/r5 | all |
+| Area + Show closer distance (#197) | rounded distance ("~150 m"), avatar inside ~50 m zone | cells r10/r9/r8/r7/r5 | all (opt-in) |
 | Exact | pin ± jitter, metres | cells + lat/lng (RAM, TTL) | verified only |
 
 ## Rules
@@ -22,12 +23,19 @@
 - R-05.11 Per-chat exact share: E2EE message type `location.share` {lat, lng, ttl} rendered as map card, auto-hides at TTL. Never touches location tables.
 - R-05.12 Inactivity: no update for 24 h → cell deleted, profile drops from Explore until next open.
 
+- R-05.13 (#197) **Show closer distance** (Precise). Opt-in switch on Area, default off; asked as an explicit yes / no in onboarding (F-02 R-02.6) and shown under Area on S-60 / S-30. When on, the device also sends `cell_r10` (H3 r10, ~65 m edge); only cells leave the device (R-05.1). No timer: stays until switched off or the level changes. Leaving Area (City / Hidden / Exact) keeps the preference for the next return to Area. Off and disabled in Safe Mode (R-05.10).
+- R-05.14 (#197) Precise display: shown at r10 only while the owner's r9 cell has ≥ 3 visible profiles (crowd floor, evaluated with R-05.2), else at the Area resolution R-05.2 gives. Map avatar = deterministic random point inside the displayed r10 cell (seed as R-05.3).
+- R-05.15 (#197) Distances are computed server-side **cell centre to cell centre**: the viewer is snapped to the centre of his own query cell (r10 if he is Precise, else r9), never his GPS. Exact pins use the jittered pin (R-05.4). Distances are then rounded **down** to the step of the shown person's precision (F-04 R-04.6) so the number never says more than the cell.
+- R-05.16 (#197) Viewer spoof brake: besides R-05.8's 1 update / 30 s, a viewer whose query cell changes to more than 20 distinct r9 cells within 1 h gets range buckets only (R-04.6 legacy buckets) for the rest of that hour; logged as `location.spoof_brake`. R-05.9 velocity flags unchanged.
+
 ## Interactions (S-30 Location sheet)
-Radio list 4 levels (Hidden disabled "After you verify" for unverified) · Exact settings (TTL chips, audience chips) · "Others see" live preview · toggle "Hide me from hidden users" · Safe Mode note.
+Radio list 4 levels (Hidden disabled "After you verify" for unverified) · under Area: "Show closer distance" switch (R-05.13) · Exact settings (TTL chips, audience chips) · "Others see" live preview · toggle "Hide me from hidden users" · Safe Mode note.
 
 ## Acceptance criteria
 - AC-05.1 Trilateration test harness (spoofed viewer, 100 vantage points) cannot locate an Area user better than their displayed cell.
 - AC-05.2 Exact pin absent from Valkey and API after TTL + 5 s.
 - AC-05.3 Valkey config has persistence disabled in all envs.
+- AC-05.1a (#197) Same harness against a Precise user: best estimate is no better than his r10 cell; with the spoof brake active it is no better than his r9 cell.
+- AC-05.1b (#197) Precise user alone in his r9 cell (< 3 visible) is displayed at r9 or coarser.
 - AC-05.4 Unverified account cannot set Hidden or Exact (403 not_verified).
 - AC-05.4a (#114) Hidden with `until` in the past, > 48 h ahead, or `return_level` not city/area → 422; Hidden with `until`/`return_level` reflected in `GET /me`; switching to City/Area/Exact clears them.
