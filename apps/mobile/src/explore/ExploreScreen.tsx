@@ -1,15 +1,14 @@
 import { privateStore as AsyncStorage } from '../app/privateStore';
 import { cellToLatLng } from 'h3-js';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import * as Haptics from 'expo-haptics';
-import { FlatList, Platform, Pressable, RefreshControl, Text, View, AppState } from 'react-native';
+import { FlatList, Pressable, RefreshControl, Text, View, AppState } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, ApiError } from '../api/client';
 import type { Card, ExploreSummary, MapData, Mode, Place } from '../api/types';
 import { useSession } from '../app/session';
 import { distanceLabel, tx } from '../i18n/app';
 import { mod } from '../i18n/mod';
-import { prefs } from '../me/prefs';
+import { feel } from '../ui/haptics';
 import { SafetySheet, SheetRow } from '../trust/SafetySheet';
 import { toast } from '../ui/Toast';
 import { color, radius, space, type } from '../theme/tokens';
@@ -76,7 +75,7 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
     );
   }, []);
   const hold = useCallback((c: Card) => {
-    if (Platform.OS !== 'web' && prefs().haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    feel('tap');
     setQuick(c);
     setHoldSeen(true);
     AsyncStorage.setItem(HOLD_KEY, '1');

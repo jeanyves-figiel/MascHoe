@@ -7,6 +7,7 @@ import {
 } from '@expo-google-fonts/bricolage-grotesque';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { initialWindowMetrics, SafeAreaProvider, type Metrics } from 'react-native-safe-area-context';
 import { ActivityIndicator, Dimensions, Platform, View } from 'react-native';
 import { api, ApiError, clearSession, hasSession, Me } from './src/api/client';
@@ -132,11 +133,14 @@ export default function App() {
   }
 
   return (
+    // F-19 (#187): one gesture root for the whole app (UI-thread gestures).
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaProvider initialMetrics={startMetrics}>
       <View style={{ flex: 1, backgroundColor: color.bgBase }}>
         <StatusBar style="light" />
         <StartupGuard>{fontsReady ? body : <ActivityIndicator style={{ flex: 1 }} color={color.hookup} />}</StartupGuard>
       </View>
     </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

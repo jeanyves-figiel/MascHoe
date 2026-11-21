@@ -5,6 +5,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- **Gestures spec** (docs, #187): F-19 Gestures & haptics: 18 gestures (swipe to reply, double-tap ❤️, reaction bar, inbox row swipes, pull to refresh everywhere, grid sheet on the UI thread, pinch grid size, photo tap zones, swipe between profiles, double-tap to Tap, pull down to close, full-screen photo viewer, swipe back anywhere, swipe-down sheets, tab long-press, haptics tokens, screen reader actions). Each has a visible button too.
+
 ### Fixed
 - **Grid and lists load small photos** (server + app, SR-10 #150): the app now uploads a 480 px copy (~30–60 KB) next to each public photo; Explore, Tonight, parties, activities, chats lists and block/hide lists show it instead of the full photo (1–2 MB), about 95 % less data per grid page. The copy is checked by the photo classifier on its own and is only used if it passes; otherwise the full photo is shown. Deleted together with the photo.
 - **Explore scrolls faster, lighter on the database** (server, SR-09 #149): scrolling the grid used to re-run the full nearby search (up to 1 500 profiles) for every page; later pages now read only their own 60 profiles in the order of the first page (kept 2 min; blocks and hides still apply). Distances for Tonight, parties, activities and venues are computed in memory instead of one database query per item.

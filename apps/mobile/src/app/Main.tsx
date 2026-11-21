@@ -1,7 +1,6 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNavigationContainerRef, DarkTheme, NavigationContainer, StackActions, type NavigationState } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import * as Haptics from 'expo-haptics';
 import React from 'react';
 import { AppState, Linking, Platform, Pressable, Text, View } from 'react-native';
 import { SafeAreaProvider, useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -34,7 +33,8 @@ import { AppLockScreen } from '../safety/AppLockScreen';
 import { CheckinDueScreen, CheckinStartScreen } from '../safety/CheckinScreens';
 import { LockGate } from '../safety/LockGate';
 import { SafeModeAuto } from '../safety/SafeModeAuto';
-import { loadPrefs, prefs } from '../me/prefs';
+import { loadPrefs } from '../me/prefs';
+import { feel } from '../ui/haptics';
 import { dx } from '../i18n/date';
 import { LiveBar, SafetyQuickScreen, useCheckin } from '../safety/live';
 import { active as activeCheckin, CATEGORY, extendCheckin, refreshCheckin } from '../safety/safety';
@@ -89,7 +89,7 @@ function PillBar({ active, onPick }: { active: string; onPick: (name: string) =>
             accessibilityState={{ selected: on }}
             accessibilityLabel={labels[r.name]}
             onPress={() => {
-              if (Platform.OS !== 'web' && prefs().haptics) Haptics.selectionAsync().catch(() => {});
+              feel('tick');
               onPick(r.name);
             }}
             style={{ flex: on ? 1.6 : 1, height: 52, borderRadius: radius.pill, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? modeColor[mode] : 'transparent' }}
