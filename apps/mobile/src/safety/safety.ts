@@ -1,7 +1,7 @@
 // F-13 trusted contacts + meet check-in + panic (F13-safety.md › Beta implementation).
 // Contacts (label, relay id, rid, key) are device-only; the server relays AES-GCM envelopes.
 import { Platform } from 'react-native';
-import { api, ApiError } from '../api/client';
+import { api } from '../api/client';
 import { fromB64, fromB64url, fromUtf8, rand, toB64, toB64url, utf8 } from '../chat/bytes';
 import { kv } from '../chat/kv';
 import { currentPosition } from '../explore/location';
@@ -136,14 +136,7 @@ export async function startCheckin(o: { minutes: number; name: string; who?: Who
   const loc = await here();
   const notices = await envs(list, { k: 'notice', from: o.name, due });
   const alerts = await envs(list, { k: 'alert', from: o.name, due, loc, who: o.who, msgs: o.msgs });
-  const body = { due_at: due, notices, alerts };
-  const r = await api<{ token: string; due_at: string }>('POST', '/checkin', body).catch(async (e) => {
-    // #127: the server still runs a check-in this phone has no copy of (reinstall, wipe): its token
-    // is gone, so it could only end in a false alarm. End it (held alerts dropped) and start this one.
-    if (!(e instanceof ApiError && e.code === 'checkin_active') || (await active())) throw e;
-    await api('DELETE', '/checkin/current');
-    return api<{ token: string; due_at: string }>('POST', '/checkin', body);
-  });
+  const r = await api<{ token: string; due_at: string }>('POST', '/checkin', { due_at: due, notices, alerts });
   const a = await scheduleDue({ token: r.token, due: r.due_at, ext: 0, name: o.name, who: o.who, msgs: o.msgs, live: o.live, cid: o.cid, peer: o.peer, started: new Date().toISOString() });
   return save(a);
 }
@@ -212,6 +205,23 @@ export async function syncActive(): Promise<Active | null> {
     return null;
   }
   return a;
+}
+
+/** #127, R-13.21: the server runs a check-in this phone has no copy of (reinstall, wipe). */
+export type Orphan = { due: string; ext: number };
+
+export async function orphanCheckin(): Promise<Orphan | null> {
+  if (await active()) return null;
+  const r = await api<{ checkin: null | { due_at: string; extensions: number } }>('GET', '/checkin').catch(() => undefined);
+  return r?.checkin ? { due: r.checkin.due_at, ext: r.checkin.extensions } : null;
+}
+
+/** I'm OK for an orphan: ends it by account (no token); `ok` to the contacts this phone still knows. */
+export async function endOrphan(fallbackName: string) {
+  const oks = await envs(await accepted(), { k: 'ok', from: await myName(fallbackName) });
+  await api('DELETE', '/checkin', { oks }).catch((e) => {
+    if ((e as { status?: number }).status !== 404) throw e;
+  });
 }
 
 /** R-13.8: local emergency number from the device region (default 112). */

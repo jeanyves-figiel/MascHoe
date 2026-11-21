@@ -2,7 +2,6 @@ import { describe, expect, it, jest } from '@jest/globals';
 
 const mockStore = new Map<string, unknown>();
 const mockCalls: string[] = [];
-let mockOrphan = false;
 jest.mock('../src/chat/kv', () => ({
   kv: {
     get: async (k: string) => mockStore.get(k) ?? null,
@@ -13,28 +12,14 @@ jest.mock('../src/chat/kv', () => ({
   },
 }));
 jest.mock('../src/explore/location', () => ({ currentPosition: async () => null }));
-jest.mock('../src/api/client', () => {
-  class ApiError extends Error {
-    status: number;
-    code: string;
-    constructor(mockStatus: number, mockCode: string) {
-      super(mockCode);
-      this.status = mockStatus;
-      this.code = mockCode;
-    }
-  }
-  return {
-    ApiError,
-    api: async (method: string, path: string) => {
-      mockCalls.push(`${method} ${path}`);
-      if (path === '/trusted') return { contacts: [{ id: 'r1', accepted: true, push: true }] };
-      if (path === '/checkin/current' && method === 'DELETE') mockOrphan = false;
-      if (path === '/checkin' && method === 'POST' && mockOrphan) throw new ApiError(409, 'checkin_active');
-      if (path === '/checkin' && method === 'POST') return { token: 't1', due_at: new Date(Date.now() + 7200_000).toISOString() };
-      return {};
-    },
-  };
-});
+jest.mock('../src/api/client', () => ({
+  api: async (method: string, path: string) => {
+    mockCalls.push(`${method} ${path}`);
+    if (path === '/trusted') return { contacts: [{ id: 'r1', accepted: true, push: true }] };
+    if (path === '/checkin' && method === 'POST') return { token: 't1', due_at: new Date(Date.now() + 7200_000).toISOString() };
+    return {};
+  },
+}));
 jest.mock('../src/chat/engine', () => ({ getConv: () => undefined, messages: async () => [] }));
 
 import { Platform } from 'react-native';
@@ -109,28 +94,5 @@ describe('#112 live state (R-13.16)', () => {
     await S.okCheckin();
     off();
     expect(seen.map((x) => (x ? x.live : null))).toEqual([false, true, null]);
-  });
-});
-
-describe('#127 check-in left on the server by a lost phone copy', () => {
-  it('starting a new one ends the orphan and starts', async () => {
-    Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
-    mockStore.set('safety:contacts', [{ id: 'r1', rid: 'x', key: 'A'.repeat(43), label: 'Léa' }]);
-    mockOrphan = true;
-    mockCalls.length = 0;
-    const a = await S.startCheckin({ minutes: 60, name: 'Me', live: false });
-    expect(a.token).toBe('t1');
-    expect(mockCalls.filter((c) => c.includes('/checkin'))).toEqual(['POST /checkin', 'DELETE /checkin/current', 'POST /checkin']);
-    await S.okCheckin();
-  });
-
-  it('never ends a check-in this phone runs', async () => {
-    await S.startCheckin({ minutes: 60, name: 'Me', live: false });
-    mockOrphan = true;
-    mockCalls.length = 0;
-    await expect(S.startCheckin({ minutes: 60, name: 'Me', live: false })).rejects.toMatchObject({ code: 'checkin_active' });
-    expect(mockCalls).not.toContain('DELETE /checkin/current');
-    mockOrphan = false;
-    await S.okCheckin();
   });
 });

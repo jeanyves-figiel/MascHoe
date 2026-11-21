@@ -103,26 +103,44 @@ defmodule ThirstrWeb.SafetyTest do
     assert authed(u) |> post("/v1/checkin/#{t}/ok", %{}) |> json_response(404)
   end
 
-  test "a check-in whose phone lost its copy can be ended without the token (#127)", %{
+  test "phone lost its copy: DELETE /checkin ends it without the token (#127, R-13.21)", %{
     u: u,
-    c: c
+    c: c,
+    conn: conn
   } do
     {id, rid} = contact(u, c)
     env = [%{relay: id, ciphertext: ct()}]
+
     authed(u) |> post("/v1/checkin", %{due_at: due(60), alerts: env}) |> json_response(201)
 
+    # restart is refused while the server copy runs
     assert %{"error" => %{"code" => "checkin_active"}} =
              authed(u)
              |> post("/v1/checkin", %{due_at: due(60), alerts: env})
              |> json_response(409)
 
-    authed(u) |> delete("/v1/checkin/current") |> response(204)
+    # someone else can neither end it nor send through my relay
+    other = onboarded(conn)
+    assert recycle_authed(other.c) |> delete("/v1/checkin", %{}) |> json_response(404)
+
+    assert recycle_authed(other.c)
+           |> delete("/v1/checkin", %{oks: env})
+           |> json_response(422)
+
+    authed(u) |> delete("/v1/checkin", %{oks: env}) |> response(204)
+    assert_receive {:webpush, @ep}
     assert %{"checkin" => nil} = authed(u) |> get("/v1/checkin") |> json_response(200)
 
-    assert [[0]] = Thirstr.Repo.query!("SELECT count(*) FROM safety_msgs").rows
-    assert [] = inbox(c, rid)
-    authed(u) |> post("/v1/checkin", %{due_at: due(60), alerts: env}) |> json_response(201)
-    authed(u) |> delete("/v1/checkin/current") |> response(204)
+    assert [[0]] =
+             Thirstr.Repo.query!("SELECT count(*) FROM safety_msgs WHERE release_at IS NULL").rows
+
+    # held alert gone: the sweep releases nothing; inbox = ok only
+    Thirstr.Safety.sweep()
+    refute_receive {:webpush, @ep}, 50
+    assert [%{}] = inbox(c, rid)
+
+    assert authed(u) |> delete("/v1/checkin", %{}) |> json_response(404)
+    assert authed(u) |> post("/v1/checkin", %{due_at: due(60), alerts: env}) |> json_response(201)
   end
 
   test "panic releases immediately; envelopes only to own accepted relays", %{

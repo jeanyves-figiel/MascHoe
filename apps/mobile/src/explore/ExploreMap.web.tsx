@@ -7,7 +7,7 @@ import { distanceLabel, tx } from '../i18n/app';
 import { pl } from '../i18n/places';
 import { tr } from '../i18n/travel';
 import { color } from '../theme/tokens';
-import { cellLabels, cellsGeoJSON, initial, MapProps, pinLabel, ringSegments, START_ZOOM, STYLE_URL } from './mapShared';
+import { cellLabels, initial, MapProps, pinLabel, ringSegments, START_ZOOM, STYLE_URL } from './mapShared';
 import { partyTag } from './Places';
 
 const ICON: Record<string, string> = {
@@ -87,9 +87,6 @@ export function ExploreMap({ center, me, data, accent, recenter, onRegion, onSel
     m.on('dragstart', () => (touched.current = true));
     m.on('zoomstart', (e) => e.originalEvent && (touched.current = true));
     m.on('load', () => {
-      m.addSource('cells', { type: 'geojson', data: cellsGeoJSON(null) });
-      m.addLayer({ id: 'cells-fill', type: 'fill', source: 'cells', paint: { 'fill-color': accent, 'fill-opacity': ['get', 'w'] } });
-      m.addLayer({ id: 'cells-line', type: 'line', source: 'cells', paint: { 'line-color': accent, 'line-opacity': 0.45, 'line-width': 1 } });
       emit();
     });
     map.current = m;
@@ -100,10 +97,6 @@ export function ExploreMap({ center, me, data, accent, recenter, onRegion, onSel
   useEffect(() => {
     const m = map.current;
     if (!m) return;
-    const src = m.getSource('cells') as maplibregl.GeoJSONSource | undefined;
-    src?.setData(cellsGeoJSON(data));
-    if (m.getLayer('cells-fill')) m.setPaintProperty('cells-fill', 'fill-color', accent);
-    if (m.getLayer('cells-line')) m.setPaintProperty('cells-line', 'line-color', accent);
     markers.current.forEach((mk) => mk.remove());
     markers.current = [];
     const add = (lng: number, lat: number, el: HTMLElement) => markers.current.push(new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(m));
