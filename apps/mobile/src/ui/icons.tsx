@@ -71,6 +71,11 @@ export const Icon = {
       <Path d="M9 14L4 9l5-5M4 9h10.5a5.5 5.5 0 010 11H11" {...base(c, w)} />
     </Svg>
   ),
+  Expand: ({ size = 20, c = color.fgPrimary, w = 2.2 }: P) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" {...base(c, w)} />
+    </Svg>
+  ),
   Copy: ({ size = 20, c = color.fgPrimary, w = 2.1 }: P) => (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Path d="M9 9h10v10H9zM5 15V5h10" {...base(c, w)} />
