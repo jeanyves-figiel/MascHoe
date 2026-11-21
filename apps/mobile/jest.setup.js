@@ -19,7 +19,16 @@ jest.mock('react-native-reanimated', () => {
     __esModule: true,
     default: Animated,
     ...Animated,
-    useSharedValue: (v) => React.useRef({ value: v }).current,
+    useSharedValue: (v) =>
+      React.useRef({
+        value: v,
+        get() {
+          return this.value;
+        },
+        set(n) {
+          this.value = n;
+        },
+      }).current,
     useAnimatedStyle: (fn) => fn(),
     useDerivedValue: (fn) => ({ value: fn() }),
     useAnimatedReaction: () => {},
@@ -28,6 +37,8 @@ jest.mock('react-native-reanimated', () => {
     withTiming: id,
     withDelay: (_d, v) => v,
     withSequence: (...v) => v[v.length - 1],
+    withRepeat: id,
+    Easing: { linear: id, quad: id, out: id, in: id, inOut: id },
     cancelAnimation: () => {},
     interpolate: (v, i, o) => o[0] + ((v - i[0]) / (i[1] - i[0] || 1)) * (o[1] - o[0]),
     Extrapolation: { CLAMP: 'clamp' },
