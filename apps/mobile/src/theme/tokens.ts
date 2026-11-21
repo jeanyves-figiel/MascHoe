@@ -22,6 +22,8 @@ export const color = {
   sport: '#B8F04A',
   trust: '#3DD6C3',
   trustSoft: '#3DD6C3',
+  // #211 E2E chip on Chats (teal 14 % on ink).
+  trustTint: 'rgba(61,214,195,0.14)',
   safety: '#3DD6C3',
   personal: '#FFC93C',
   // F-20 (#188): travel plans only (Visiting labels, visitor tiles, trip cards, Look-around bar)

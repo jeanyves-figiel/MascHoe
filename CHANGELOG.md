@@ -5,6 +5,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+- **Chats redesign "Spotlight"** (app, #211, F-07 R-07.40–R-07.42, [mockup option A](https://claude.ai/artifact/RzKMnX67pWujoMPQDnRoD2)): Taps is now a full-width coral button above the tabs with the faces of your latest tappers, a pulsing flame, "3 new Taps" and "Marco, Leo and 1 more · 1 mutual". The end-to-end notice is a teal chip next to the title. Avatars get a ring by state (coral unread, violet friend), unread rows show their time in coral, Unread tab carries a count badge, "New" is now "Your move", and a chat whose peer is typing shows "typing…" with breathing dots. Animations run on the UI thread, stop when Chats is not on screen and respect Reduce Motion.
+
 ### Fixed
 - **Test bots keep their device** (staging, #208): a bot whose refresh token is lost or rejected resumes its existing device (`resume: true` on `POST /v1/testbot/session`) instead of replacing it, so chats with it no longer break with 422 unknown device; refreshes are single-flight.
 - **Duplicate migration version** (server, #200): test bot handles migration renamed to `20261121160001` (clashed with precise distance `20261121150001`, broke `mix test` on main).

@@ -256,6 +256,11 @@ export const de: Partialize<AppStrings> = {
     title: 'Chats',
     taps: 'Taps',
     tapsNew: (n: number) => (n ? `${n} neu` : 'Sieh, wer dich getappt hat'),
+    tapsTitle: (n: number) => (n ? (n > 1 ? `${n} neue Taps` : '1 neuer Tap') : 'Taps'),
+    tapsWho: (names: string[], mutual: number) =>
+      (names.length <= 2 ? names.join(' und ') : `${names[0]}, ${names[1]} und ${names.length - 2} weitere`) + (mutual ? ` · ${mutual} gegenseitig` : ''),
+    yourMove: 'Du bist dran',
+    e2eChip: 'Verschlüsselt',
     new: 'Neu',
     chats: 'Chats',
     parties: 'Partys & Gruppen',

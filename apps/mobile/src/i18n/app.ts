@@ -306,6 +306,12 @@ const en = {
     title: 'Chats',
     taps: 'Taps',
     tapsNew: (n: number) => (n ? `${n} new` : 'See who tapped you'),
+    // #211 S-40 Spotlight
+    tapsTitle: (n: number) => (n ? `${n} new Tap${n > 1 ? 's' : ''}` : 'Taps'),
+    tapsWho: (names: string[], mutual: number) =>
+      (names.length <= 2 ? names.join(' and ') : `${names[0]}, ${names[1]} and ${names.length - 2} more`) + (mutual ? ` · ${mutual} mutual` : ''),
+    yourMove: 'Your move',
+    e2eChip: 'End-to-end',
     new: 'New',
     chats: 'Chats',
     parties: 'Parties & groups',
