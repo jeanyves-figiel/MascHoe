@@ -3,7 +3,8 @@
 # WAL archiving to pgBackRest (RPO ≤ archive_timeout) + backup-loop.sh for base backups.
 set -euo pipefail
 
-if [ "${1:-}" = "postgres" ] && [ -n "${PGBACKREST_REPO1_S3_BUCKET:-}" ]; then
+# BACKUPS=off: restore drills / copies must never write into the live repo.
+if [ "${1:-}" = "postgres" ] && [ -n "${PGBACKREST_REPO1_S3_BUCKET:-}" ] && [ "${BACKUPS:-on}" != "off" ]; then
   export PGBACKREST_STANZA="${PGBACKREST_STANZA:-thirstr}"
   export PGBACKREST_PG1_PATH="${PGDATA:-/var/lib/postgresql/data}"
   export PGBACKREST_REPO1_TYPE=s3
