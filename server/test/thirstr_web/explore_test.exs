@@ -551,7 +551,10 @@ defmodule ThirstrWeb.ExploreTest do
     assert v.c |> recycle_authed() |> get("/v1/explore/summary?mode=nope") |> json_response(422)
   end
 
-  test "profile view shows online, symmetric with the online setting (#115, R-07.33)", %{viewer: v, other: o} do
+  test "profile view shows online, symmetric with the online setting (#115, R-07.33)", %{
+    viewer: v,
+    other: o
+  } do
     # `o` made requests during onboarding, so its seen:<account> key is fresh.
     view = fn -> v.c |> recycle_authed() |> get("/v1/profiles/#{o.pid}") |> json_response(200) end
     assert view.()["online"] == true
