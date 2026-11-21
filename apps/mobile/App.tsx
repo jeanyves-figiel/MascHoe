@@ -21,6 +21,8 @@ import { LocationScreen } from './src/screens/Location';
 import { PhotoScreen } from './src/screens/Photo';
 import { VerifyScreen } from './src/screens/Verify';
 import { LinkDeviceScreen } from './src/screens/LinkDevice';
+import { RecoveredScreen, RecoverSignInScreen } from './src/screens/RecoverSignIn';
+import type { Restored } from './src/auth/recovery';
 import { WelcomeScreen } from './src/screens/Welcome';
 import { DoneScreen } from './src/screens/Done';
 import { color } from './src/theme/tokens';
@@ -50,7 +52,8 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
 
 export default function App() {
   const [me, setMe] = useState<Me | null>(null);
-  const [screen, setScreen] = useState<S | 'loading'>('loading');
+  const [screen, setScreen] = useState<S | 'loading' | 'recover' | 'recovered'>('loading');
+  const [restored, setRestored] = useState<Restored | null>(null);
   const [mode, setMode] = useState<'signup' | 'login'>('signup');
   const [sent, setSent] = useState<{ email: string; adult: boolean }>({ email: '', adult: true });
   const [fontsLoaded, fontsError] = useFonts({ BricolageGrotesque_400Regular, BricolageGrotesque_500Medium, BricolageGrotesque_700Bold, BricolageGrotesque_800ExtraBold });
@@ -107,6 +110,12 @@ export default function App() {
     case 'loading':
       body = <ActivityIndicator style={{ flex: 1 }} color={color.hookup} />;
       break;
+    case 'recover':
+      body = <RecoverSignInScreen onBack={() => setScreen('create')} onDone={(m, r) => { setMe(m); setRestored(r); setScreen('recovered'); }} />;
+      break;
+    case 'recovered':
+      body = <RecoveredScreen me={me!} restored={restored} onDone={() => land(me!)} />;
+      break;
     case 'welcome':
       body = <WelcomeScreen onStart={() => { setMode('signup'); setScreen('create'); }} onLogin={() => { setMode('login'); setScreen('create'); }} onLink={() => setScreen('link')} />;
       break;
@@ -114,7 +123,7 @@ export default function App() {
       body = <LinkDeviceScreen onDone={land} onBack={() => setScreen('welcome')} />;
       break;
     case 'create':
-      body = <CreateAccountScreen mode={mode} onBack={() => setScreen('welcome')} onDone={land} onEmailSent={(email, adult) => { setSent({ email, adult }); setScreen('inbox'); }} onUnderage={() => setScreen('underage')} />;
+      body = <CreateAccountScreen mode={mode} onBack={() => setScreen('welcome')} onDone={land} onEmailSent={(email, adult) => { setSent({ email, adult }); setScreen('inbox'); }} onUnderage={() => setScreen('underage')} onRecover={() => setScreen('recover')} />;
       break;
     case 'inbox':
       body = <CheckInboxScreen email={sent.email} adult={sent.adult} onBack={() => setScreen('create')} />;

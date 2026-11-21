@@ -1,7 +1,7 @@
 defmodule ThirstrWeb.AccountDataController do
   @moduledoc "B4d: data export (R-01.11), linked devices (R-01.6), linked accounts (I-01), share links (I-02)."
   use ThirstrWeb, :controller
-  alias Thirstr.{DeviceAttest, DeviceLink, Export, Linked, Social}
+  alias Thirstr.{DeviceAttest, DeviceLink, Export, Linked, Recovery, Social}
 
   action_fallback ThirstrWeb.FallbackController
 
@@ -37,6 +37,17 @@ defmodule ThirstrWeb.AccountDataController do
 
   def attest(conn, p), do: DeviceAttest.attest(dev(conn), p) |> done(conn)
   def assert(conn, p), do: DeviceAttest.assert(dev(conn), p) |> done(conn)
+
+  # R-01.7 recovery phrase + sealed backup
+  def recovery_status(conn, _), do: json(conn, Recovery.status(me(conn)))
+  def recovery_put(conn, p), do: Recovery.put_key(me(conn), p) |> done(conn)
+  def recovery_delete(conn, _), do: Recovery.delete(me(conn)) |> done(conn)
+  def vault_get(conn, _), do: Recovery.get_vault(me(conn)) |> done(conn)
+
+  def vault_put(conn, p) do
+    with {:ok, _} <- Social.limit(me(conn), "vault", 30, 86_400),
+         do: Recovery.put_vault(me(conn), p) |> done(conn)
+  end
 
   def link_claim(conn, p) do
     case DeviceLink.claim(p) do
