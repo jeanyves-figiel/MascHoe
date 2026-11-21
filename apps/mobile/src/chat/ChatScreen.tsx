@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { api, ApiError } from '../api/client';
+import { ApiError } from '../api/client';
 import { useSession } from '../app/session';
 import { tx } from '../i18n/app';
+import { SafetySheet, SheetRow } from '../trust/SafetySheet';
 import { color, font, radius, space, type } from '../theme/tokens';
 import { Banner, Button, Icon, ListRow, Loading, Photo, Segmented, Sheet, Toggle, useAccent, VerifiedTick } from '../ui';
 import * as E from './engine';
@@ -178,6 +179,54 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
   const group = !!conv.ctx;
   const who = (m: E.Msg) => (m.from === 'me' ? tx.chat.you : group ? (m.by && conv.names?.[m.by]) || '…' : conv.name);
 
+  const chatSettings = (
+    <>
+        <View style={{ gap: space.s }}>
+          <Text style={{ ...type.meta, color: color.fgSecondary }}>{tx.chat.disappearing}</Text>
+          <Segmented
+            label={tx.chat.disappearing}
+            value={conv.ttl}
+            options={(['24h', '7d', 'never'] as E.Ttl[]).map((v) => ({ value: v, label: tx.chat.ttl[v] }))}
+            onChange={(v) => {
+              if (v !== conv.ttl) send({ t: 'disappearing', ttl: v });
+            }}
+          />
+        </View>
+        <View>
+          {trCan ? (
+            <Toggle
+              label={trx.chat}
+              sub={trFrom ? trx.chatSub(langName(trFrom), langName(targetLang())) : trx.chatSubAny}
+              value={conv.translate !== 'off'}
+              onChange={(v) => E.setConv(conv.id, { translate: v ? undefined : 'off' })}
+            />
+          ) : null}
+          <Toggle
+            label={tx.chat.chatReceipts}
+            sub={me.settings?.read_receipts === false ? tx.chat.chatReceiptsGlobalOff : tx.chat.chatReceiptsSub}
+            value={me.settings?.read_receipts !== false && conv.receipts !== 'off'}
+            disabled={me.settings?.read_receipts === false}
+            onChange={(v) => E.setConv(conv.id, { receipts: v ? undefined : 'off' })}
+          />
+          <ListRow title={conv.muted ? tx.chat.unmute : tx.chat.mute} onPress={() => E.setConv(conv.id, { muted: !conv.muted })} />
+          {!group && conv.gone ? (
+            <ListRow
+              title={tx.chat.report}
+              danger
+              onPress={() => {
+                setMenu(false);
+                navigation.navigate('Report', { profileId: conv.peer, cid: conv.id });
+              }}
+            />
+          ) : null}
+          <ListRow
+            title={tx.chat.deleteChat}
+            danger
+            onPress={() => E.deleteConv(conv.id).then(() => { setMenu(false); navigation.goBack(); })}
+          />
+        </View>
+    </>
+  );
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: color.bgBase }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={{ paddingTop: insets.top + space.xs, paddingHorizontal: space.l, paddingBottom: space.s, flexDirection: 'row', alignItems: 'center', gap: space.m, borderBottomWidth: 1, borderColor: color.lineSubtle }}>
@@ -379,7 +428,8 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
         <Text style={{ ...type.meta, color: color.fgMuted, textAlign: 'center', padding: space.l, paddingBottom: insets.bottom + space.l }}>{tx.chat.gone}</Text>
       )}
 
-      <Sheet visible={menu} onClose={() => setMenu(false)} title={conv.name} closeLabel={tx.common.close}>
+      {group || conv.gone ? (
+        <Sheet visible={menu} onClose={() => setMenu(false)} title={conv.name} closeLabel={tx.common.close}>
         {!conv.gone && !group ? <ListRow title={tx.chat.viewProfile} onPress={() => { setMenu(false); navigation.navigate('Profile', { id: conv.peer }); }} /> : null}
         {!conv.gone && !group ? (
           <ListRow
@@ -391,66 +441,27 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
             }}
           />
         ) : null}
-        <View style={{ gap: space.s }}>
-          <Text style={{ ...type.meta, color: color.fgSecondary }}>{tx.chat.disappearing}</Text>
-          <Segmented
-            label={tx.chat.disappearing}
-            value={conv.ttl}
-            options={(['24h', '7d', 'never'] as E.Ttl[]).map((v) => ({ value: v, label: tx.chat.ttl[v] }))}
-            onChange={(v) => {
-              if (v !== conv.ttl) send({ t: 'disappearing', ttl: v });
-            }}
-          />
-        </View>
-        <View>
-          {trCan ? (
-            <Toggle
-              label={trx.chat}
-              sub={trFrom ? trx.chatSub(langName(trFrom), langName(targetLang())) : trx.chatSubAny}
-              value={conv.translate !== 'off'}
-              onChange={(v) => E.setConv(conv.id, { translate: v ? undefined : 'off' })}
-            />
-          ) : null}
-          <Toggle
-            label={tx.chat.chatReceipts}
-            sub={me.settings?.read_receipts === false ? tx.chat.chatReceiptsGlobalOff : tx.chat.chatReceiptsSub}
-            value={me.settings?.read_receipts !== false && conv.receipts !== 'off'}
-            disabled={me.settings?.read_receipts === false}
-            onChange={(v) => E.setConv(conv.id, { receipts: v ? undefined : 'off' })}
-          />
-          <ListRow title={conv.muted ? tx.chat.unmute : tx.chat.mute} onPress={() => E.setConv(conv.id, { muted: !conv.muted })} />
-          {!group ? (
+          {chatSettings}
+        </Sheet>
+      ) : (
+        // #111 S-51: 1:1 chat ⋯ = shared Hide / Block / Report sheet, chat settings below.
+        <SafetySheet
+          visible={menu}
+          target={{ id: conv.peer, name: conv.name, age: conv.age }}
+          onClose={() => setMenu(false)}
+          onReport={(t) => navigation.navigate('Report', { profileId: t.id, cid: conv.id })}
+          onGone={(kind) => {
+            if (kind === 'block') E.setConv(conv.id, { archived: true }).finally(() => navigation.goBack());
+          }}
+          lead={
             <>
-              <ListRow
-                title={tx.chat.report}
-                danger
-                onPress={() => {
-                  setMenu(false);
-                  navigation.navigate('Report', { profileId: conv.peer, cid: conv.id });
-                }}
-              />
-              <ListRow
-                title={tx.chat.block}
-                danger
-                onPress={() =>
-                  api('POST', `/profiles/${conv.peer}/block`)
-                    .then(() => E.setConv(conv.id, { archived: true }))
-                    .then(() => {
-                      setMenu(false);
-                      navigation.goBack();
-                    })
-                    .catch((e) => setProblem(errorText(e)))
-                }
-              />
+              <SheetRow title={tx.chat.viewProfile} onPress={() => { setMenu(false); navigation.navigate('Profile', { id: conv.peer }); }} />
+              <SheetRow last testID="chat-checkin" title={tx.safety.checkin} onPress={() => { setMenu(false); navigation.navigate('CheckinStart', { cid: conv.id }); }} />
             </>
-          ) : null}
-          <ListRow
-            title={tx.chat.deleteChat}
-            danger
-            onPress={() => E.deleteConv(conv.id).then(() => { setMenu(false); navigation.goBack(); })}
-          />
-        </View>
-      </Sheet>
+          }
+          after={chatSettings}
+        />
+      )}
 
       <Sheet visible={mediaSheet} onClose={() => setMediaSheet(false)} title={tx.chat.sendPhoto} closeLabel={tx.common.close}>
         <Toggle label={tx.chat.viewOnce} value={mopts.once} onChange={(v) => setMopts({ ...mopts, once: v })} />

@@ -9,6 +9,7 @@ import { EmptyState, Icon, ListRow, Photo, Segmented, Sheet, VerifiedTick } from
 import { v2 } from '../i18n/v2';
 import { Conv, deleteConv, getConvs, setConv } from './engine';
 import { useTopics } from './hooks';
+import { SafetySheet, SheetRow } from '../trust/SafetySheet';
 
 type Nav = { navigate: (s: string, p?: object) => void };
 
@@ -142,16 +143,36 @@ export function InboxScreen({ navigation }: { navigation: Nav }) {
           }
         />
       )}
-      <Sheet visible={!!menu} onClose={() => setMenu(null)} title={menu?.name ?? ''} closeLabel={tx.common.close}>
-        {menu ? (
+      {menu && (menu.ctx || menu.gone) ? (
+        <Sheet visible onClose={() => setMenu(null)} title={menu.name} closeLabel={tx.common.close}>
           <View>
             <ListRow title={menu.starred ? tx.chat.unstar : tx.chat.star} onPress={() => setConv(menu.id, { starred: !menu.starred }).then(() => setMenu(null))} />
             <ListRow title={menu.muted ? tx.chat.unmute : tx.chat.mute} onPress={() => setConv(menu.id, { muted: !menu.muted }).then(() => setMenu(null))} />
             <ListRow title={menu.archived ? tx.chat.unarchive : tx.chat.archive} onPress={() => setConv(menu.id, { archived: !menu.archived }).then(() => setMenu(null))} />
             <ListRow title={tx.chat.deleteChat} danger onPress={() => deleteConv(menu.id).then(() => setMenu(null))} />
           </View>
-        ) : null}
-      </Sheet>
+        </Sheet>
+      ) : (
+        // #111 S-51: hold a 1:1 chat = shared Hide / Block / Report sheet + chat actions.
+        <SafetySheet
+          visible={!!menu}
+          target={menu ? { id: menu.peer, name: menu.name, age: menu.age } : null}
+          onClose={() => setMenu(null)}
+          onReport={(t) => menu && navigation.navigate('Report', { profileId: t.id, cid: menu.id })}
+          onGone={(kind) => {
+            if (kind === 'block' && menu) setConv(menu.id, { archived: true });
+          }}
+        >
+          {menu ? (
+            <>
+              <SheetRow title={menu.starred ? tx.chat.unstar : tx.chat.star} onPress={() => setConv(menu.id, { starred: !menu.starred }).then(() => setMenu(null))} />
+              <SheetRow title={menu.muted ? tx.chat.unmute : tx.chat.mute} onPress={() => setConv(menu.id, { muted: !menu.muted }).then(() => setMenu(null))} />
+              <SheetRow title={menu.archived ? tx.chat.unarchive : tx.chat.archive} onPress={() => setConv(menu.id, { archived: !menu.archived }).then(() => setMenu(null))} />
+              <SheetRow last danger title={tx.chat.deleteChat} onPress={() => deleteConv(menu.id).then(() => setMenu(null))} />
+            </>
+          ) : null}
+        </SafetySheet>
+      )}
     </View>
   );
 }

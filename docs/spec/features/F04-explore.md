@@ -40,10 +40,10 @@ Top: **live header** (R-04.17, #104, option A of the [top bar mockup](https://cl
 | Gesture | Result |
 |---|---|
 | Tap mode segment | Recolour animation 250 ms; reload data |
-| Tap pin | Select it: bigger pin + name chip, tile highlighted in the sheet (R-04.14) |
+| Tap pin | Select it: bigger pin + name chip, tile highlighted in the sheet, **peek card** above the sheet edge (photo, name, tick, distance · Online, ⋯ → S-21 safety sheet; tap card → profile) (R-04.14, #111). Second tap on the selected pin opens the profile |
 | Tap name chip / tile | Profile S-20 |
 | Drag / tap sheet handle | Sheet snaps peek · half · full (R-04.14) |
-| Long-press card | Quick actions: tap, message, hide this profile, block |
+| Long-press card | Medium haptic, safety sheet S-21 (F-15 R-15.17): Open profile, Tap, Message, then Hide / Block / Report tiles (#111) |
 | Tap location pill | Location sheet S-30 |
 | Tap Filters | Filters sheet S-12 |
 | Map pan/zoom | Join/leave `cell:{r7}` topics for viewport (max 12) |
