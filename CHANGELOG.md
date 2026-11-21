@@ -2,10 +2,12 @@
 
 All notable changes to this project are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+When a build brings something people can see or use, also add a 2–4 line note to `apps/mobile/src/whatsnew/notes.ts` (shown once in the app's What's new card, F-17 R-17.15).
 
 ## [Unreleased]
 
 ### Added
+- **What's new card after updates** (app, #238, F-17 R-17.15, S-78/S-78b/S-79, [mockup option B](https://claude.ai/artifact/MfUBpaiRKoVvKb79m7A6U1)): after an update with a new release note, a small card appears once under the Explore header (no scrim, map stays usable): "New in 0.9.0", up to 3 one-line previews in the feature colours, ✕. Tap it for the full list (2–4 lines, each opens its screen); ✕, swipe up or 12 s untouched closes it. It hides while another sheet, the keyboard or a stack screen is open and comes back on the next quiet Explore. Fresh installs and fix-only builds show nothing. Settings › About › **What's new** lists the last 10 notes (also in Settings search). Notes ship inside the app in en / fr / de (`src/whatsnew/notes.ts`, curated from this file); the only stored value is the last seen note id on the phone; nothing is sent. CI checks note ids, line count, lengths and languages. First notes: Moments, Chats redone, I'm in from Tonight, full data archive; and gestures, travel plans, closer distances.
 - **Record a video in chat** (app, #231, F-08 R-08.12/R-08.17): the tray's camera now records videos (up to 3 min) as well as photos. The app asks for the microphone the first time you record (iOS). The video goes through the same 50 MB cap and location/device metadata removal as any video. The video check still records without sound.
 
 ### Security
