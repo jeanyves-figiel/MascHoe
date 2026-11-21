@@ -20,6 +20,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Valkey outage no longer blocks chat** (server, SR-11 #151): rate limits fall back to a per-machine counter and push wakes still go out.
 
 ### Added
+- **Load test kit** (infra, SR-12 #152): k6 scenarios for grid paging, chat send → pull → ack and realtime sockets with the SLO thresholds (`infra/load/`), load accounts from `Thirstr.LoadTest.users/1` (only on `DEPLOY_ENV=load` or DEV), sizing method and run log (`docs/runbooks/capacity.md`). A real load environment is not created yet (needs owner OK: cost).
+
+### Fixed
+- **Seeding refused on prod** (server): `Thirstr.Release.seed` only refused `DEPLOY_ENV=production`, but prod sets `prod`; it now refuses both.
+
+### Added
 - **Metrics** (server, SR-07 #147): Prometheus metrics on an internal port (Fly managed Prometheus/Grafana): API latency and errors per route, DB time, Oban queues, chat backlog age, push results, Valkey fallback, DB size. Content-free. Alert rules: `docs/runbooks/monitoring.md`.
 
 ### Added

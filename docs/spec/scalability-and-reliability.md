@@ -111,7 +111,7 @@ Rule for every cache: inside the encrypted store or an AES-GCM file whose key is
 | P1 | SR-10 Thumbnails + photo cache | #150 | ✔ 2026-11-21 (stable URLs, 480 px thumbnails) |
 | P1 | SR-09 Explore caching + no N+1 H3 | #149 | ✔ 2026-11-21 (page order cache 2 min, memoized H3 centroids) |
 | P1 | SR-11 Valkey failure fallback | #151 | ✔ 2026-11-21 |
-| P1 | SR-12 k6 load test + machine sizing | #152 | M |
+| P1 | SR-12 k6 load test + machine sizing | #152 | ◐ kit + runbook done (`infra/load/`, `runbooks/capacity.md`); load env + runs need owner OK |
 | P1 | SR-06 History transfer + encrypted backup | #146 | L (spec first) |
 | P2 | SR-13 Ciphertext over socket | #153 | M |
 | P2 | SR-16 Offline caches (Explore, profiles, tiles) | #156 | M |
