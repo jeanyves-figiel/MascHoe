@@ -6,6 +6,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Chat translation on Android** (app, #107, F-07 R-07.25/R-07.29, D-16): the on-device translation from #106 now has its Android side, in the same `thirstr-translate` module (Kotlin). Google ML Kit detects the language (model bundled in the app) and translates on the phone; no message text leaves it. Same rules as iPhone: Automatic translates only when both language models are already on the phone; a missing model shows the "Translate ‹language›" chip, and a tap downloads it (~30 MB, once) then translates. New `Android compile` workflow builds the app's Kotlin modules on PRs that touch them, until there is a Play Store pipeline.
 - **Actions on Tonight cards** (app + server, #210, F-09 R-09.8, F-10 R-10.2a, [mockup](https://claude.ai/artifact/1YSABPxLq3S7pMxGoEwwbW)): plan cards get **I'm in** (opens the chat with the plan quoted and “I'm in 👋” ready to send), **Tap** and **Chat**; **⋯ or press and hold** opens Hide this plan, Hide, Block and Report; **swipe left** hides the plan with Undo. Party cards get **Request a seat** right on the card (then Requested, or You’re in which opens the party and its guest chat), **Map** (Explore map centred on the party's approximate area with its marker selected), house rules, a seat bar, and **⋯** for Hide this party and Report. Hidden plans and parties stay on this phone only (encrypted) until they end; a hidden party also leaves the map. Reports from Tonight are tagged `tonight` for moderators.
 
 ### Changed
