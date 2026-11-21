@@ -97,3 +97,21 @@ describe('map marker taps (#187 follow-up)', () => {
     expect(fn).toHaveBeenCalledTimes(3);
   });
 });
+
+describe('swipe between profiles (G10)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { stepIndex } = require('../src/profile/profileCache') as typeof import('../src/profile/profileCache');
+  const ids = ['a', 'b', 'c', 'd'];
+  test('next and previous in grid order', () => {
+    expect(stepIndex(ids, 1, 1, () => false)).toBe(2);
+    expect(stepIndex(ids, 1, -1, () => false)).toBe(0);
+  });
+  test('skips profiles that are not available', () => {
+    expect(stepIndex(ids, 0, 1, (x) => x === 'b' || x === 'c')).toBe(3);
+  });
+  test('none at the ends', () => {
+    expect(stepIndex(ids, 3, 1, () => false)).toBe(-1);
+    expect(stepIndex(ids, 0, -1, () => false)).toBe(-1);
+    expect(stepIndex(ids, 2, 1, (x) => x === 'd')).toBe(-1);
+  });
+});
