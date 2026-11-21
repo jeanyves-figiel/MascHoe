@@ -460,6 +460,94 @@ defmodule ThirstrWeb.AdminController do
     """)
   end
 
+  # ------------------------------------------------------------------ places (A-07b, #113)
+
+  def places(conn, params) do
+    audit(conn.assigns.admin, "view_places", nil, nil)
+    %{counts: counts, last: last, events: events} = Thirstr.Places.admin_summary()
+    found = Thirstr.Places.search(params["q"])
+    csrf = ~s(<input type="hidden" name="_csrf_token" value="#{get_csrf_token()}">)
+
+    count_rows =
+      Enum.map_join(counts, "", fn [src, kind, n, hidden] ->
+        "<tr><td>#{e(src)}</td><td>#{e(kind)}</td><td>#{n}</td><td>#{hidden}</td></tr>"
+      end)
+
+    last_txt =
+      case last do
+        nil ->
+          "Never imported."
+
+        [st, fin, a, u, r, err] ->
+          "Started #{e(st && DateTime.to_iso8601(st))}, finished #{e((fin && DateTime.to_iso8601(fin)) || "running")}: +#{a} added, #{u} updated, #{r} removed. #{e(err || "")}"
+      end
+
+    event_rows =
+      Enum.map_join(events, "", fn [id, title, st, en, venue] ->
+        """
+        <tr><td>#{e(title)}</td><td>#{e(venue)}</td><td>#{e(DateTime.to_iso8601(st))} → #{e(DateTime.to_iso8601(en))}</td>
+        <td><form method="post" action="/admin/places/events/#{e(id)}/remove">#{csrf}<button>Remove</button></form></td></tr>
+        """
+      end)
+
+    found_rows =
+      Enum.map_join(found, "", fn [id, name, kind, hidden, city] ->
+        """
+        <tr><td>#{e(name)}</td><td>#{e(kind)}</td><td>#{e(city)}</td>
+        <td><form method="post" action="/admin/places/venues/#{e(id)}/#{if hidden, do: "unhide", else: "hide"}">#{csrf}<button>#{if hidden, do: "Unhide", else: "Hide"}</button></form></td>
+        <td><form method="post" action="/admin/places/events">#{csrf}<input type="hidden" name="venue_id" value="#{e(id)}">
+          <input name="title" maxlength="60" placeholder="Party title" required>
+          <input type="datetime-local" name="starts_at" required> <input type="datetime-local" name="ends_at" required>
+          <input name="url" placeholder="https://… (optional)"> <button>Add official party</button></form></td></tr>
+        """
+      end)
+
+    page(conn, "Places", """
+    #{nav()}<h1>A-07b Places</h1>
+    <h2>Catalogue</h2><table><tr><th>Source</th><th>Kind</th><th>Venues</th><th>Hidden</th></tr>#{count_rows}</table>
+    <h2>OpenStreetMap import</h2><p>#{last_txt}</p>
+    <p class="muted">Gay venues worldwide by tag, gyms for the configured countries. Only tags and countries are sent, never anything about users (F-12 R-12.9).</p>
+    <form method="post" action="/admin/places/import">#{csrf}<button>Import now</button></form>
+    <h2>Upcoming official parties</h2><table><tr><th>Title</th><th>Venue</th><th>When (UTC)</th><th></th></tr>#{event_rows}</table>
+    <h2>Find a venue</h2><form method="get" action="/admin/places"><input name="q" value="#{e(params["q"])}" placeholder="Venue name"> <button>Search</button></form>
+    <p class="muted">Times are UTC. A party shows on the map from 12 h before it starts until it ends.</p>
+    <table>#{found_rows}</table>
+    """)
+  end
+
+  def places_import(conn, _) do
+    audit(conn.assigns.admin, "places_import", nil, nil)
+    %{} |> Thirstr.Jobs.PlaceImport.new() |> Oban.insert!()
+    redirect(conn, to: "/admin/places")
+  end
+
+  def venue_hidden(conn, %{"id" => id, "action" => act}) when act in ~w(hide unhide) do
+    audit(conn.assigns.admin, "venue_" <> act, id, nil)
+    Thirstr.Places.set_hidden(id, act == "hide")
+    redirect(conn, to: "/admin/places")
+  end
+
+  def add_event(conn, params) do
+    case Thirstr.Places.add_event(params) do
+      :ok ->
+        audit(conn.assigns.admin, "event_add", params["venue_id"], nil)
+        redirect(conn, to: "/admin/places")
+
+      _ ->
+        page(
+          conn,
+          "Places",
+          "#{nav()}<p class=\"danger\">Check title (1–60), times (end after start, max 24 h) and link (https).</p><a href=\"/admin/places\">Back</a>"
+        )
+    end
+  end
+
+  def remove_event(conn, %{"id" => id}) do
+    audit(conn.assigns.admin, "event_remove", id, nil)
+    Thirstr.Places.remove_event(id)
+    redirect(conn, to: "/admin/places")
+  end
+
   # ------------------------------------------------------------------ delivery latency (R-07.24)
 
   def delivery(conn, _) do
@@ -536,7 +624,7 @@ defmodule ThirstrWeb.AdminController do
 
   defp nav do
     """
-    <nav><a href="/admin">Reports</a><a href="/admin/photos">Photos</a><a href="/admin/quarantine">Quarantine</a><a href="/admin/delivery">Delivery</a>
+    <nav><a href="/admin">Reports</a><a href="/admin/photos">Photos</a><a href="/admin/quarantine">Quarantine</a><a href="/admin/delivery">Delivery</a><a href="/admin/places">Places</a>
     <a href="/admin/appeals">Appeals</a><a href="/admin/audit">Audit</a>
     <form method="post" action="/admin/logout" style="display:inline"><input type="hidden" name="_csrf_token" value="#{get_csrf_token()}"><button>Sign out</button></form></nav>
     """

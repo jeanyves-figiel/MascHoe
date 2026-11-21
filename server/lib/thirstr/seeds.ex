@@ -67,22 +67,39 @@ defmodule Thirstr.Seeds do
     {"Dampfbad Kreis 4", "sauna", 47.3769, 8.5417},
     {"Bar Neon", "bar", 47.3745, 8.5300},
     {"Club Lagerhaus", "club", 47.3890, 8.5170},
-    {"Iron Gym Letten", "gym", 47.3870, 8.5300}
+    {"Iron Gym Letten", "gym", 47.3870, 8.5300},
+    {"Altstetten Fitness", "gym", 47.3905, 8.4880},
+    {"Bar Altstetten", "bar", 47.3880, 8.4840}
   ]
 
   defp seed_venues do
     Enum.each(@seed_venues, fn {name, kind, lat, lng} ->
       Repo.query!(
         """
-        INSERT INTO venues (id, name, kind, cell_r9, cell_r5, created_at)
+        INSERT INTO venues (id, name, kind, cell_r9, cell_r5, lat, lng, created_at)
         SELECT gen_random_uuid(), $1::text, $2::text,
                h3_lat_lng_to_cell(point($4::float8, $3::float8), 9)::bigint,
-               h3_lat_lng_to_cell(point($4::float8, $3::float8), 5)::bigint, now()
+               h3_lat_lng_to_cell(point($4::float8, $3::float8), 5)::bigint, $3, $4, now()
         WHERE NOT EXISTS (SELECT 1 FROM venues WHERE name = $1)
         """,
         [name, kind, lat, lng]
       )
+
+      Repo.query!("UPDATE venues SET lat = $2, lng = $3 WHERE name = $1 AND lat IS NULL", [
+        name,
+        lat,
+        lng
+      ])
     end)
+
+    # R-10.10: one official party at the club, tonight (DEV only).
+    Repo.query!("""
+    INSERT INTO events (id, venue_id, title, starts_at, ends_at, created_at)
+    SELECT gen_random_uuid(), v.id, 'Glitter Night', date_trunc('day', now()) + interval '22 hours',
+           date_trunc('day', now()) + interval '30 hours', now()
+    FROM venues v WHERE v.name = 'Club Lagerhaus'
+      AND NOT EXISTS (SELECT 1 FROM events e WHERE e.venue_id = v.id AND e.ends_at > now())
+    """)
   end
 
   defp seed_cities do

@@ -28,11 +28,36 @@ defmodule Thirstr.Explore do
   def lens(mode) when mode in ["hookup", "friends", "sport"], do: mode
   def lens(_), do: "hookup"
 
+  @intents ~w(hookup friends sport)
+
+  @doc """
+  F-04 R-04.18 (#113): `intents=hookup,friends,sport` param → ordered, non-empty list, or nil
+  when absent/invalid (legacy single-mode call).
+  """
+  def parse_intents(nil), do: nil
+  def parse_intents(""), do: nil
+
+  def parse_intents(s) when is_binary(s) do
+    given = String.split(s, ",", trim: true)
+
+    case Enum.filter(@intents, &(&1 in given)) do
+      [] -> nil
+      list -> list
+    end
+  end
+
+  def parse_intents(_), do: nil
+
+  @doc "R-04.19: a profile's intents, ordered hookup → friends → sport."
+  def intents_of(show_in), do: Enum.filter(@intents, &(&1 in (show_in || [])))
+
   # ------------------------------------------------------------------ viewer
 
   @doc "Everything the queries need to know about the viewer."
-  def viewer(%Account{} = a, mode) do
+  def viewer(%Account{} = a, mode, intents \\ nil) do
     kind = kind_for_mode(mode) || "now"
+    merged = not is_nil(intents)
+    intents = intents || [lens(mode)]
 
     own =
       Repo.query!("SELECT id::text, kind, age FROM profiles WHERE account_id = $1", [dump(a.id)]).rows
@@ -40,7 +65,10 @@ defmodule Thirstr.Explore do
     %{
       account: a,
       mode: mode,
-      lens: lens(mode),
+      # R-04.18: one lens when a single intent is selected, else per card (first match).
+      lens: if(length(intents) == 1, do: hd(intents), else: "mixed"),
+      intents: intents,
+      merged: merged,
       kind: kind,
       verified: Account.verified?(a),
       new: Account.new?(a),
@@ -116,31 +144,38 @@ defmodule Thirstr.Explore do
   end
 
   @doc """
-  GET /explore/summary (R-04.17): live header data. Per-mode count of people the viewer can see
-  within the near radius (grid rules), Now count for the active mode, and the viewer's own
-  city-level place name. `filters` apply to the active mode only; other modes use defaults.
+  GET /explore/summary (R-04.17, R-04.18): live header data. Per-intent count of people the
+  viewer can see within the near radius (grid rules), the union `total` for the selected intents,
+  Now count (none when Sport is the only intent) and the viewer's own city-level place name.
+  Legacy call (no `intents`): `filters` apply to the active mode only; other modes use defaults.
   """
-  def summary(%Account{} = a, mode, filters) do
-    v = viewer(a, mode)
+  def summary(%Account{} = a, mode, filters, intents \\ nil) do
+    v = viewer(a, mode, intents)
 
     case v.point do
       nil ->
-        %{place: nil, counts: %{"hookup" => 0, "friends" => 0, "sport" => 0}, now: 0}
+        %{place: nil, counts: %{"hookup" => 0, "friends" => 0, "sport" => 0}, total: 0, now: 0}
 
       point ->
         near = fn rows -> Enum.reject(rows, &(&1.dist_m > @near_m)) end
         active = candidates(v, filters, "show_in_grid") |> near.()
 
         counts =
-          Map.new(~w(hookup friends sport), fn m ->
+          Map.new(@intents, fn m ->
             n =
-              if m == mode,
-                do: length(active),
-                else:
+              cond do
+                v.intents == [m] ->
+                  length(active)
+
+                intents ->
+                  viewer(a, m, [m]) |> candidates(filters, "show_in_grid") |> near.() |> length()
+
+                true ->
                   viewer(a, m)
                   |> candidates(parse_filters(%{}), "show_in_grid")
                   |> near.()
                   |> length()
+              end
 
             {m, n}
           end)
@@ -148,7 +183,8 @@ defmodule Thirstr.Explore do
         %{
           place: place(point),
           counts: counts,
-          now: if(mode == "sport", do: 0, else: Enum.count(active, & &1.now))
+          total: length(active),
+          now: if(v.intents == ["sport"], do: 0, else: Enum.count(active, & &1.now))
         }
     end
   end
@@ -290,7 +326,7 @@ defmodule Thirstr.Explore do
       v.point.lng,
       v.point.lat,
       dump(v.account.id),
-      v.lens,
+      v.intents,
       v.verified,
       v.hidden,
       v.new,
@@ -306,15 +342,16 @@ defmodule Thirstr.Explore do
            d.dcell::text, (h3_cell_to_lat_lng(d.dcell))[1], (h3_cell_to_lat_lng(d.dcell))[0],
            h3_great_circle_distance(h3_cell_to_lat_lng(d.dcell), vp.pt, 'm'),
            ns.status, ns.text, ns.created_at, ph.storage_key,
-           lc.cell_r7, lc.cell_r5, p.public_updated_at
+           lc.cell_r7, lc.cell_r5, p.public_updated_at, p.show_in
     FROM vp, location_cells lc
     JOIN profiles p ON p.id = lc.profile_id
     JOIN accounts a ON a.id = p.account_id
     CROSS JOIN LATERAL (SELECT (CASE lc.display_res WHEN 9 THEN lc.cell_r9 WHEN 8 THEN lc.cell_r8
                           WHEN 7 THEN lc.cell_r7 ELSE lc.cell_r5 END)::h3index AS dcell) d
-    LEFT JOIN now_status ns ON ns.profile_id = p.id AND ns.expires_at > now() AND $4::text <> 'sport'
+    LEFT JOIN now_status ns ON ns.profile_id = p.id AND ns.expires_at > now()
+                          AND NOT ($4::text[] <@ ARRAY['sport']::text[])
     LEFT JOIN photos ph ON ph.id = p.photo_ids[1]
-    WHERE $4::text = ANY(p.show_in)
+    WHERE p.show_in::text[] && $4::text[]
       AND ($9 = 0 OR lc.cell_r5 IN (SELECT h3_grid_disk(vp.r5, $9)::bigint))
       AND a.id <> $3
       AND a.status = 'active' AND NOT a.hidden
@@ -377,7 +414,8 @@ defmodule Thirstr.Explore do
          key,
          r7,
          r5,
-         upd
+         upd,
+         show_in
        ]) do
     [vat, ins, nat, upd] = Enum.map([vat, ins, nat, upd], &utc/1)
 
@@ -411,7 +449,8 @@ defmodule Thirstr.Explore do
       pin: nil,
       seen: nil,
       online: false,
-      updated_at: upd
+      updated_at: upd,
+      show_in: show_in || []
     }
   end
 
@@ -446,7 +485,7 @@ defmodule Thirstr.Explore do
 
     now = System.system_time(:second)
     see_online? = v.settings["online_visible"]
-    pins_ok? = v.verified and not v.safe_mode and v.mode != "sport"
+    pins_ok? = v.verified and not v.safe_mode and Map.get(v, :intents, [v.mode]) != ["sport"]
 
     Enum.map(rows, fn r ->
       pin = if pins_ok?, do: allowed_pin(pins[r.id], r.id, v, chats)
@@ -507,6 +546,8 @@ defmodule Thirstr.Explore do
   # hookup filters only for verified viewers (R-04.8) and only in the Hookup lens (R-06.1b)
   @verified_only ~w(position hosting)a
   @hookup_only ~w(position hosting)a
+  # R-04.18: Sport filters only when Sport is the only intent (merged map, #113)
+  @sport_only ~w(sports sport_level schedule sport_intent)a
 
   @doc "Parses query params into a filter map (all filters free, never HIV/ethnicity)."
   def parse_filters(params) do
@@ -630,7 +671,8 @@ defmodule Thirstr.Explore do
 
   defp filter_allowed?(k, v) do
     not (k in @verified_only and not v.verified) and
-      not (k in @hookup_only and Map.get(v, :lens, "hookup") != "hookup")
+      not (k in @hookup_only and Map.get(v, :lens, "hookup") != "hookup") and
+      not (k in @sport_only and Map.get(v, :merged, false) and v.intents != ["sport"])
   end
 
   # ------------------------------------------------------------------ cards
@@ -639,7 +681,7 @@ defmodule Thirstr.Explore do
   def card(r, v) do
     viewer = if v.verified, do: :verified, else: :stranger
     {fields, _} = Thirstr.Profiles.Fields.visible(r.fields || %{}, r.vis || %{}, viewer)
-    fields = Thirstr.Profiles.Fields.lens(fields, Map.get(v, :lens, "hookup"))
+    fields = Thirstr.Profiles.Fields.lens(fields, card_lens(r, v))
 
     %{
       id: r.id,
@@ -656,8 +698,17 @@ defmodule Thirstr.Explore do
       creator: fields["creator"] == true,
       intent: fields["sport_intent"],
       position: fields["position"],
-      new: DateTime.diff(DateTime.utc_now(), r.inserted_at, :day) < 14
+      new: DateTime.diff(DateTime.utc_now(), r.inserted_at, :day) < 14,
+      intents: intents_of(Map.get(r, :show_in))
     }
+  end
+
+  # R-04.18: the card's lens is his first intent (hookup → friends → sport) among the selected.
+  defp card_lens(r, v) do
+    case Map.get(v, :lens, "hookup") do
+      "mixed" -> Enum.find(v.intents, "hookup", &(&1 in Map.get(r, :show_in, [])))
+      l -> l
+    end
   end
 
   @buckets [

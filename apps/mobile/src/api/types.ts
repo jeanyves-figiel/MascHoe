@@ -45,10 +45,32 @@ export type Card = {
   new: boolean;
   lat?: number;
   lng?: number;
+  /** R-04.19 (#113): his `show_in`, ordered hookup → friends → sport. */
+  intents?: Mode[];
+};
+
+/** GET /places (#113, R-04.20). Venues/events at public coordinates; hosted parties at their r8 centroid. */
+export type Place = {
+  id: string;
+  type: 'venue' | 'event' | 'party';
+  kind: 'club' | 'bar' | 'sauna' | 'gym' | 'official' | 'hosted';
+  name: string;
+  lat: number;
+  lng: number;
+  distance: Distance | null;
+  here?: string | null;
+  hours?: string | null;
+  starts_at?: string;
+  ends_at?: string;
+  url?: string | null;
+  venue_id?: string;
+  venue_name?: string;
+  seats?: { taken: number; capacity: number };
+  source: 'osm' | 'team' | 'member';
 };
 
 /** GET /explore/summary (R-04.17, #104). */
-export type ExploreSummary = { place: string | null; counts: Record<Mode, number>; now: number };
+export type ExploreSummary = { place: string | null; counts: Record<Mode, number>; now: number; total?: number };
 export type Grid = { items: Card[]; next: string | null; further_from: number | null; reason: string | null; fit_m?: number | null };
 export type MapData = { cells: { cell: string; res: number; count: number }[]; pins: Card[]; avatars: Card[] };
 

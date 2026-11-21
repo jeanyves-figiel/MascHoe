@@ -29,6 +29,7 @@ Internal web app (`/server/apps/admin`, Phoenix LiveView). Implements back offic
 | A-05 | Appeals | user appeals of bans/rejections | uphold, overturn; user notified in app |
 | A-06 | Verification appeals | failed/cooldown cases (no images stored) | grant re-try, reset cooldown |
 | A-07 | Venues & clubs | submissions, edits, claims | approve, edit, reject |
+| A-07b | Places (#113) | venue catalogue counts by source/kind, last OSM import (time, added/updated/removed), upcoming official parties | Import now (OSM, F-12 R-12.9); hide/unhide venue; add official party (venue search by name + city, title, start, end, link); remove party. Every action audited |
 | A-08 | Legal register | requests, jurisdiction, response, hold | log; respond with templated "data held" summary |
 | A-09 | Config | rate limits, k-anon k, view caps, flags | change with 2-person approval |
 | A-10 | Audit log | filter by actor, action, time | read-only |

@@ -96,6 +96,11 @@ defmodule ThirstrWeb.Router do
     post "/appeals/:id", AdminController, :appeal_decision
     get "/audit", AdminController, :audit_log
     get "/delivery", AdminController, :delivery
+    get "/places", AdminController, :places
+    post "/places/import", AdminController, :places_import
+    post "/places/venues/:id/:action", AdminController, :venue_hidden
+    post "/places/events", AdminController, :add_event
+    post "/places/events/:id/remove", AdminController, :remove_event
   end
 
   # iOS passkeys / universal links (I-03). Apple fetches this without auth.
@@ -235,6 +240,7 @@ defmodule ThirstrWeb.Router do
       post "/clubs/:id/leave", SceneController, :leave_club
       post "/clubs/:id/members/:profile_id/:action", SceneController, :club_admin
       get "/venues/nearby", SceneController, :venues
+      get "/places", SceneController, :places
       post "/venues/:id/checkin", SceneController, :checkin
       patch "/venues/:id/checkin", SceneController, :update_checkin
       post "/venues/checkout", SceneController, :checkout

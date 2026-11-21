@@ -1,5 +1,5 @@
 import { api } from '../api/client';
-import type { Card, ExploreSummary, Grid, MapData, Mode } from '../api/types';
+import type { Card, ExploreSummary, Grid, MapData, Mode, Place } from '../api/types';
 
 export type Filters = {
   age_min?: number;
@@ -25,8 +25,9 @@ export function restoreFilters(saved: string | null): Filters {
   return f;
 }
 
-export function query(mode: Mode, f: Filters, extra: Record<string, string> = {}): string {
-  const p: string[] = ['mode=' + mode];
+/** R-04.18 (#113): the chips go as `intents`; `mode` (first chip) keeps older servers working. */
+export function query(intents: Mode[], f: Filters, extra: Record<string, string> = {}): string {
+  const p: string[] = ['mode=' + intents[0], 'intents=' + intents.join(',')];
   for (const [k, v] of Object.entries({ ...f, ...extra })) {
     if (v === undefined || v === null || v === '') continue;
     if (Array.isArray(v)) {
@@ -36,11 +37,17 @@ export function query(mode: Mode, f: Filters, extra: Record<string, string> = {}
   return p.join('&');
 }
 
-export const loadGrid = (mode: Mode, f: Filters, cursor?: string | null) => api<Grid>('GET', '/explore/grid?' + query(mode, f, cursor ? { cursor } : {}));
-export const loadTray = (mode: Mode, f: Filters) => api<{ items: Card[] }>('GET', '/explore/tray?' + query(mode, f));
-export const loadMap = (mode: Mode, f: Filters, bbox: [number, number, number, number]) =>
-  api<MapData>('GET', '/explore/map?' + query(mode, f, { bbox: bbox.map((n) => n.toFixed(5)).join(',') }));
-export const loadSummary = (mode: Mode, f: Filters) => api<ExploreSummary>('GET', '/explore/summary?' + query(mode, f));
+export const loadGrid = (i: Mode[], f: Filters, cursor?: string | null) => api<Grid>('GET', '/explore/grid?' + query(i, f, cursor ? { cursor } : {}));
+export const loadTray = (i: Mode[], f: Filters) => api<{ items: Card[] }>('GET', '/explore/tray?' + query(i, f));
+const bboxParam = (b: [number, number, number, number]) => b.map((n) => n.toFixed(5)).join(',');
+export const loadMap = (i: Mode[], f: Filters, bbox: [number, number, number, number]) => api<MapData>('GET', '/explore/map?' + query(i, f, { bbox: bboxParam(bbox) }));
+export const loadSummary = (i: Mode[], f: Filters) => api<ExploreSummary>('GET', '/explore/summary?' + query(i, f));
+/** R-04.20: only the viewport goes out, to our own API (never a third-party place service). */
+export const loadPlaces = (kinds: string[], bbox: [number, number, number, number]) =>
+  kinds.length ? api<{ places: Place[] }>('GET', `/places?bbox=${bboxParam(bbox)}&kinds=${kinds.join(',')}`) : Promise.resolve({ places: [] as Place[] });
+
+/** R-04.18: filters panel for the chips: a single chip shows its own groups; several show the shared ones. */
+export const filterMode = (i: Mode[]): Mode => (i.length === 1 ? i[0] : 'friends');
 
 /** R-04.17: number of filters that differ from the defaults (badge on the Filters button). */
 export function activeFilterCount(f: Filters): number {
