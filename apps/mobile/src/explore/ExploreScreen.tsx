@@ -27,7 +27,7 @@ import { setLookAround, useLookAround } from '../travel/travel';
 import { tr } from '../i18n/travel';
 import { LiveHeader, VerifyRow } from './LiveHeader';
 import { ExploreMap } from './ExploreMap';
-import { GridSheet, Snap, snapHeight } from './GridSheet';
+import { GridSheet, restoreSnap, Snap, snapHeight } from './GridSheet';
 import { activeKinds, defaultLayers, fitCamera, INTENTS, isNear, Layers, PlaceKind, placeKind, restoreIntents, restoreLayers, toggleIntent, toggleLayer } from './mapShared';
 import { PlaceCard, PlaceChips } from './Places';
 import { NowSheet } from '../me/NowSheet';
@@ -56,7 +56,7 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
   const hasMain = !!me.profile?.photos.some((x) => x.slot === 0 && x.status === 'ok_main');
   const accent = useAccent();
   const insets = useSafeAreaInsets();
-  const [snap, setSnap] = useState<Snap>('half');
+  const [snap, setSnap] = useState<Snap>('peek');
   const [selected, setSelected] = useState<string | null>(null);
   const [box, setBox] = useState<{ w: number; h: number } | null>(null);
   const [screen, setScreen] = useState<{ w: number; h: number } | null>(null);
@@ -132,7 +132,7 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
   useEffect(() => onDevicePosition(setDevice), []);
 
   useEffect(() => {
-    AsyncStorage.getItem(SNAP_KEY).then((v) => (v === 'peek' || v === 'half' || v === 'full') && setSnap(v));
+    AsyncStorage.getItem(SNAP_KEY).then((v) => setSnap(restoreSnap(v)));
   }, []);
 
   // R-04.18: chips + place layers saved on the device; one filter set (falls back to the old Hookup set).
@@ -378,7 +378,7 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
     [visiting, me.verified],
   );
   const onVisiting = useCallback(() => {
-    changeSnap('half');
+    changeSnap('full');
     const i = items ? items.findIndex((c) => c.visitor) : -1;
     if (i >= 0) list.current?.scrollToIndex({ index: Math.floor(i / 3), animated: true, viewPosition: 0.2 });
   }, [items, changeSnap]);
@@ -646,8 +646,8 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
             ListHeaderComponent={
               head || (!holdSeen && items.length > 0) || items.length > 0 ? (
                 <View>
-                  {/* F-21 D-21a B: Moments row on top of the grid (hidden in peek by the sheet height). */}
-                  {snap !== 'peek' && !look ? (
+                  {/* F-21 D-21a B; #250: Moments row on top of the grid in both stops (the strip shows it). */}
+                  {!look ? (
                     <MomentsRow
                       items={items}
                       myId={own?.id ?? 'me'}
