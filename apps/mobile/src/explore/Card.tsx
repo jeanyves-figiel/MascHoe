@@ -4,6 +4,7 @@ import type { Card } from '../api/types';
 import { distanceLabel, tx } from '../i18n/app';
 import { color, radius, space, type } from '../theme/tokens';
 import { Photo, Scrim, useAccent, VerifiedTick } from '../ui';
+import { IntentBar } from './IntentRing';
 
 // R-04.5 grid card / R-04.4 tray card: photo, name, tick, online dot, distance, Now/Exact badge.
 export function ProfileTile({ card, onPress, onLongPress, tray, selected }: { card: Card; onPress: () => void; onLongPress?: () => void; tray?: boolean; selected?: boolean }) {
@@ -28,7 +29,9 @@ export function ProfileTile({ card, onPress, onLongPress, tray, selected }: { ca
     >
       <Photo uri={card.photo} id={card.id} label={`${card.display_name}'s photo`} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
       <Scrim height="60%" max={tray ? 0.92 : 0.85} />
-      {card.online ? <View accessible accessibilityLabel="Online" style={{ position: 'absolute', top: 8, right: 8, width: 12, height: 12, borderRadius: 6, backgroundColor: color.sport, borderWidth: 2, borderColor: color.bgBase }} /> : null}
+      {card.online ? (
+        <View accessible accessibilityLabel="Online" style={{ position: 'absolute', top: 8, right: 8, width: 12, height: 12, borderRadius: 6, backgroundColor: color.sport, borderWidth: 2, borderColor: color.bgBase }} />
+      ) : null}
       {card.now || card.exact ? (
         <View style={{ position: 'absolute', top: space.s, left: space.s, paddingHorizontal: space.s, paddingVertical: 3, borderRadius: radius.pill, backgroundColor: card.exact ? color.trust : accent }}>
           <Text style={{ ...type.caption, fontSize: 10, color: color.onAccent }}>{card.now ? tx.now[card.now.status] : 'Exact'}</Text>
@@ -46,6 +49,8 @@ export function ProfileTile({ card, onPress, onLongPress, tray, selected }: { ca
           {[distanceLabel(card.distance), card.now?.text].filter(Boolean).join(' · ')}
         </Text>
       </View>
+      {/* R-04.19: his intents along the bottom edge */}
+      {tray ? null : <IntentBar intents={card.intents} />}
     </Pressable>
   );
 }

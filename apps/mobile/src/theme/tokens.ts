@@ -27,6 +27,10 @@ export const color = {
   warn: '#FFC93C',
   danger: '#FF4D6D',
   scrim: 'rgba(23,20,46,0.72)',
+  // #113 floating header / chips over the map (ink 82 %), drop shadows, selected place halo.
+  glass: 'rgba(23,20,46,0.82)',
+  shadow: '#000000',
+  halo: 'rgba(255,255,255,0.45)',
 } as const;
 
 // Photo placeholder tones, rotated by id hash.

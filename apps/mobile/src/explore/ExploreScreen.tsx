@@ -1,26 +1,31 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { cellToLatLng } from 'h3-js';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, ApiError } from '../api/client';
-import type { Card, ExploreSummary, MapData } from '../api/types';
+import type { Card, ExploreSummary, MapData, Mode, Place } from '../api/types';
 import { useSession } from '../app/session';
 import { tx } from '../i18n/app';
 import { color, radius, space, type } from '../theme/tokens';
 import { Banner, EmptyState, ErrorState, Icon, Loading, Sheet, useAccent } from '../ui';
 import { ProfileTile } from './Card';
-import { activeFilterCount, defaultFilters, Filters, restoreFilters, loadGrid, loadMap, loadSummary, loadTray } from './explore';
+import { activeFilterCount, defaultFilters, Filters, filterMode, restoreFilters, loadGrid, loadMap, loadPlaces, loadSummary, loadTray } from './explore';
 import { LiveHeader, VerifyRow } from './LiveHeader';
 import { ExploreMap } from './ExploreMap';
 import { GridSheet, Snap, snapHeight } from './GridSheet';
-import { fitCamera, isNear } from './mapShared';
+import { activeKinds, defaultLayers, fitCamera, INTENTS, isNear, Layers, PlaceKind, placeKind, restoreIntents, restoreLayers, toggleIntent, toggleLayer } from './mapShared';
+import { PlaceCard, PlaceChips } from './Places';
 import { NowSheet } from '../me/NowSheet';
 import { FiltersSheet } from './FiltersSheet';
 import { devicePosition, lastKnown, LatLng, locateDevice, onDevicePosition, syncLocation } from './location';
 import { LocationSheet } from './LocationSheet';
 
 const FILTER_KEY = (m: string) => 'thirstr.filters.' + m;
+// #113: one filter set for the merged map; chips and place layers saved on the device.
+const MERGED_FILTERS = 'thirstr.filters.explore';
+const INTENTS_KEY = 'thirstr.exploreIntents';
+const LAYERS_KEY = 'thirstr.exploreLayers';
 const SNAP_KEY = 'thirstr.exploreSnap';
 /** Floating tab bar (16 pt inset + 64 pt + 18 pt) the sheet content must clear. */
 const TAB_SPACE = 96;
@@ -35,6 +40,12 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
   const [snap, setSnap] = useState<Snap>('half');
   const [selected, setSelected] = useState<string | null>(null);
   const [box, setBox] = useState<{ w: number; h: number } | null>(null);
+  const [screen, setScreen] = useState<{ w: number; h: number } | null>(null);
+  const [headerH, setHeaderH] = useState(0);
+  const [intents, setIntents] = useState<Mode[]>(() => (INTENTS.includes(mode) ? [...INTENTS] : ['hookup']));
+  const [layers, setLayers] = useState<Layers>(defaultLayers);
+  const [places, setPlaces] = useState<Place[]>([]);
+  const [place, setPlace] = useState<Place | null>(null);
   const [fitM, setFitM] = useState<number | null>(null);
   const [plans, setPlans] = useState(0);
   const [showNow, setShowNow] = useState(false);
@@ -62,10 +73,36 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
     AsyncStorage.getItem(SNAP_KEY).then((v) => (v === 'peek' || v === 'half' || v === 'full') && setSnap(v));
   }, []);
 
-  // Filters saved per mode (R-04.8).
+  // R-04.18: chips + place layers saved on the device; one filter set (falls back to the old Hookup set).
   useEffect(() => {
-    AsyncStorage.getItem(FILTER_KEY(mode)).then((f) => setFilters(restoreFilters(f)));
-  }, [mode]);
+    AsyncStorage.getItem(INTENTS_KEY).then((v) => setIntents(restoreIntents(v)));
+    AsyncStorage.getItem(LAYERS_KEY).then((v) => setLayers(restoreLayers(v)));
+    AsyncStorage.getItem(MERGED_FILTERS)
+      .then((f) => f ?? AsyncStorage.getItem(FILTER_KEY('hookup')))
+      .then((f) => setFilters(restoreFilters(f)));
+  }, []);
+  // App mode (accent, tab bar, other tabs) follows the first chip.
+  useEffect(() => {
+    if (intents[0] && intents[0] !== mode) setMode(intents[0]);
+  }, [intents, mode, setMode]);
+  const onIntent = useCallback((m: Mode) => {
+    setIntents((cur) => {
+      const next = toggleIntent(cur, m);
+      AsyncStorage.setItem(INTENTS_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+  const safe = me.safe_mode === 'on' || !!me.safe_mode_active;
+  const kinds = useMemo(() => (safe ? [] : activeKinds(layers, intents)), [safe, layers, intents]);
+  const onLayer = useCallback(
+    (k: PlaceKind) =>
+      setLayers((cur) => {
+        const next = toggleLayer(cur, k, intents);
+        AsyncStorage.setItem(LAYERS_KEY, JSON.stringify(next));
+        return next;
+      }),
+    [intents],
+  );
 
   // Location refresh on open (R-05.8).
   useEffect(() => {
@@ -88,14 +125,14 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
 
   // R-04.17: header counts; failure keeps the "·" placeholder, never a made-up number.
   const reloadSummary = useCallback(() => {
-    loadSummary(mode, filters)
+    loadSummary(intents, filters)
       .then(setSummary)
       .catch(() => setSummary(null));
-  }, [mode, filters]);
+  }, [intents, filters]);
 
   const reload = useCallback(
     () =>
-      Promise.all([loadGrid(mode, filters), loadTray(mode, filters), bbox.current ? loadMap(mode, filters, bbox.current) : Promise.resolve(null)]).then(
+      Promise.all([loadGrid(intents, filters), loadTray(intents, filters), bbox.current ? loadMap(intents, filters, bbox.current) : Promise.resolve(null)]).then(
         ([g, t, m]) => {
           setErr(null);
           setItems(g.items);
@@ -107,7 +144,7 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
         },
         (e) => setErr(e instanceof ApiError ? e.message : tx.common.error),
       ),
-    [mode, filters],
+    [intents, filters],
   );
 
   useEffect(() => {
@@ -118,26 +155,50 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
     reloadSummary();
   }, [reloadSummary, me.location?.level, locTick, me.now]);
 
+  // R-04.20: places for the viewport, from our own API only.
+  const reloadPlaces = useCallback(() => {
+    const b = bbox.current;
+    if (!b) return;
+    loadPlaces(kinds, b)
+      .then((r) => setPlaces(r.places))
+      .catch(() => {});
+  }, [kinds]);
+  useEffect(() => {
+    reloadPlaces();
+  }, [reloadPlaces]);
   const onRegion = useCallback(
     (b: [number, number, number, number]) => {
       bbox.current = b;
-      loadMap(mode, filters, b).then(setMapData).catch(() => {});
+      loadMap(intents, filters, b)
+        .then(setMapData)
+        .catch(() => {});
+      reloadPlaces();
     },
-    [mode, filters],
+    [intents, filters, reloadPlaces],
   );
+  const shownPlaces = places.filter((p) => kinds.includes(placeKind(p)));
 
   async function more() {
     if (!next) return;
-    const g = await loadGrid(mode, filters, next);
+    const g = await loadGrid(intents, filters, next);
     setItems((cur) => [...(cur ?? []), ...g.items]);
     setNext(g.next);
   }
 
-  const open = useCallback((c: Card) => navigation.navigate('Profile', { id: c.id, mode }), [navigation, mode]);
+  // R-04.18: open in the card's lens = his first intent among the chips.
+  const open = useCallback(
+    (c: Card) =>
+      navigation.navigate('Profile', {
+        id: c.id,
+        mode: intents.find((m) => (c.intents ?? ['hookup']).includes(m)) ?? intents[0],
+      }),
+    [navigation, intents],
+  );
   // R-04.14: first tap on a pin selects it (tile highlighted), a tap on the selected pin opens the profile.
   const selectPin = useCallback(
     (c: Card) => {
       if (selected === c.id) return open(c);
+      setPlace(null);
       setSelected(c.id);
       setSnap((cur) => (cur === 'peek' ? 'half' : cur));
     },
@@ -149,11 +210,17 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
   }, []);
   useEffect(() => {
     const i = selected && items ? items.findIndex((c) => c.id === selected) : -1;
-    if (i >= 0) list.current?.scrollToIndex({ index: Math.floor(i / 3), animated: true, viewPosition: 0.2 });
+    if (i >= 0)
+      list.current?.scrollToIndex({
+        index: Math.floor(i / 3),
+        animated: true,
+        viewPosition: 0.2,
+      });
   }, [selected, items]);
   // R-04.1: the viewer isn't shown in this mode → one tap turns it on (Sport opens its fields).
   const own = me.profile ?? me.profiles?.[0];
-  const notShown = !!own && !(own.show_in ?? ['hookup']).includes(mode);
+  // R-04.18: not shown under any selected chip → one tap adds the first one.
+  const notShown = !!own && !intents.some((m) => (own.show_in ?? ['hookup']).includes(m));
   const showMe = useCallback(async () => {
     if (!own) return;
     const order = ['hookup', 'friends', 'sport'] as const;
@@ -192,14 +259,14 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
 
   // R-04.15: zoom to fit the nearest people above the sheet.
   const sheetPx = box ? snapHeight(snap, box.h, TAB_SPACE) : 0;
-  const camera = center && box ? fitCamera(center, fitM, box.w, box.h, Math.min(sheetPx, box.h * 0.6)) : center;
+  const camera = center && box && screen ? fitCamera(center, fitM, screen.w, screen.h, Math.min(sheetPx, box.h * 0.6), headerH) : center;
   const quiet = !!items && items.length > 0 && !items.some((c) => isNear(c.distance));
   useEffect(() => {
     if (!quiet) return;
-    api<{ plans: unknown[] }>('GET', `/tonight?mode=${mode}`)
+    api<{ plans: unknown[] }>('GET', `/tonight?mode=${intents[0]}`)
       .then((r) => setPlans(r.plans?.length ?? 0))
       .catch(() => setPlans(0));
-  }, [quiet, mode]);
+  }, [quiet, intents]);
 
   async function locateMe() {
     const p = await locateDevice().catch(() => null);
@@ -207,22 +274,29 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
     setRecenter((n) => n + 1);
   }
 
-  const iconBtn = { width: 44, height: 44, borderRadius: radius.pill, backgroundColor: color.bgRaised, alignItems: 'center' as const, justifyContent: 'center' as const };
+  const iconBtn = {
+    width: 44,
+    height: 44,
+    borderRadius: radius.pill,
+    backgroundColor: color.bgRaised,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  };
 
   // App v2 header (design-system.md › App v2 rules): wordmark + location chip + filters; mode switch (no Map/Grid toggle, #100).
   // R-04.17 live header (#104): place + counts + mode tiles. Verify nudge moved into the sheet.
   const banner = !hasMain ? (
     <Banner testID="photo-banner" tone="warn" text={tx.explore.photoBanner} onPress={() => navigation.navigate('EditProfile')} />
   ) : notShown ? (
-    <Banner testID="lens-banner" tone="warn" text={tx.explore.notShownIn(tx.modes[mode])} onPress={showMe} />
-  ) : me.safe_mode_active || me.safe_mode === 'on' ? (
+    <Banner testID="lens-banner" tone="warn" text={tx.explore.notShownIn(tx.modes[intents[0]])} onPress={showMe} />
+  ) : safe ? (
     <Banner tone="personal" text={tx.explore.safeMode} />
   ) : null;
   const header = (
     <LiveHeader
       me={me}
-      mode={mode}
-      onMode={setMode}
+      intents={intents}
+      onIntent={onIntent}
       summary={summary}
       filtersOn={activeFilterCount(filters)}
       topInset={insets.top}
@@ -239,15 +313,45 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
       accessibilityRole="button"
       accessibilityLabel={`${title}. ${sub}`}
       onPress={onPress}
-      style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', gap: space.m, padding: 14, borderRadius: radius.tray, backgroundColor: color.bgRaised, marginBottom: space.l }, pressed && { opacity: 0.85 }]}
+      style={({ pressed }) => [
+        {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: space.m,
+          padding: 14,
+          borderRadius: radius.tray,
+          backgroundColor: color.bgRaised,
+          marginBottom: space.l,
+        },
+        pressed && { opacity: 0.85 },
+      ]}
     >
-      <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: tint + '29', alignItems: 'center', justifyContent: 'center' }}>{icon}</View>
+      <View
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 22,
+          backgroundColor: tint + '29',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {icon}
+      </View>
       <View style={{ flex: 1 }}>
         <Text style={{ ...type.headline, color: color.fgPrimary }}>{title}</Text>
         <Text style={{ ...type.meta, color: color.fgSecondary }}>{sub}</Text>
       </View>
       {action ? (
-        <View style={{ height: 40, paddingHorizontal: space.l, borderRadius: radius.pill, backgroundColor: accent, justifyContent: 'center' }}>
+        <View
+          style={{
+            height: 40,
+            paddingHorizontal: space.l,
+            borderRadius: radius.pill,
+            backgroundColor: accent,
+            justifyContent: 'center',
+          }}
+        >
           <Text style={{ ...type.headline, fontSize: 14, color: color.onAccent }}>{action}</Text>
         </View>
       ) : (
@@ -262,18 +366,34 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
   const listHead =
     items && items.length === 0 ? (
       <View>
-        {!me.verified
-          ? card(<Icon.Shield c={color.trust} />, tx.explore.verifyToSee, tx.explore.verifyToSeeBody, null, () => navigation.navigate('Verify'), 'verify-to-see', color.trust)
-          : beFirst}
+        {!me.verified ? card(<Icon.Shield c={color.trust} />, tx.explore.verifyToSee, tx.explore.verifyToSeeBody, null, () => navigation.navigate('Verify'), 'verify-to-see', color.trust) : beFirst}
         <EmptyState title={tx.explore.empty} body={tx.explore.emptyBody} action={tx.explore.filters} onAction={() => setShowFilters(true)} />
       </View>
     ) : quiet ? (
       <View>
         {!me.verified ? <VerifyRow onPress={() => navigation.navigate('Verify')} /> : null}
-        <Text style={{ ...type.meta, color: color.fgSecondary, marginBottom: space.l }}>{tx.explore.quietBody}</Text>
+        <Text
+          style={{
+            ...type.meta,
+            color: color.fgSecondary,
+            marginBottom: space.l,
+          }}
+        >
+          {tx.explore.quietBody}
+        </Text>
         {beFirst}
         {plans > 0 ? card(<Icon.Moon c={accent} />, tx.explore.tonightRow(plans), tx.tabs.tonight, null, () => navigation.navigate('Tonight'), 'tonight-row', accent) : null}
-        <Text style={{ ...type.caption, fontSize: 12, letterSpacing: 0.8, color: color.fgMuted, marginBottom: space.s }}>{tx.explore.further.toUpperCase()}</Text>
+        <Text
+          style={{
+            ...type.caption,
+            fontSize: 12,
+            letterSpacing: 0.8,
+            color: color.fgMuted,
+            marginBottom: space.s,
+          }}
+        >
+          {tx.explore.further.toUpperCase()}
+        </Text>
       </View>
     ) : items && !me.verified ? (
       <VerifyRow onPress={() => navigation.navigate('Verify')} />
@@ -288,7 +408,37 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
   else
     body = (
       <View style={{ flex: 1 }}>
-        <ExploreMap center={camera} me={dot} data={mapData} accent={accent} recenter={recenter} onRegion={onRegion} onSelect={selectPin} onClear={() => setSelected(null)} selected={selected} />
+        {/* #113 option B: the map runs full-bleed behind the floating header */}
+        <View
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: 0,
+            top: -headerH,
+          }}
+        >
+          <ExploreMap
+            center={camera}
+            me={dot}
+            data={mapData}
+            accent={accent}
+            recenter={recenter}
+            onRegion={onRegion}
+            onSelect={selectPin}
+            onClear={() => {
+              setSelected(null);
+              setPlace(null);
+            }}
+            selected={selected}
+            places={shownPlaces}
+            selectedPlace={place?.id ?? null}
+            onPlace={(p) => {
+              setSelected(null);
+              setPlace((cur) => (cur?.id === p.id ? null : p));
+            }}
+          />
+        </View>
         <GridSheet
           h={box.h}
           bottom={TAB_SPACE}
@@ -297,26 +447,43 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
           title={sheetTitle}
           right={items.length ? tx.explore.nearestFirst : undefined}
           above={
-            <>
-              <View style={{ flex: 1, alignItems: 'flex-start' }}>
-                {fitM && snap !== 'full' ? (
-                  <View testID="fit-chip" style={{ height: 30, paddingHorizontal: space.m, borderRadius: radius.pill, backgroundColor: color.scrim, justifyContent: 'center' }}>
-                    <Text style={{ ...type.caption, fontSize: 12, color: color.fgSecondary }}>{fitM >= 5000 ? tx.explore.fitFar : tx.explore.fitNear}</Text>
-                  </View>
-                ) : null}
+            place ? (
+              <View style={{ flex: 1 }}>
+                <PlaceCard
+                  p={place}
+                  onClose={() => setPlace(null)}
+                  onCheckIn={() =>
+                    navigation.navigate('Venue', {
+                      venue: {
+                        id: place.id,
+                        name: place.name,
+                        kind: place.kind,
+                        geofence_radius_m: 80,
+                        here: place.here ?? '0',
+                        area_cell: '',
+                        distance: place.distance,
+                      },
+                    })
+                  }
+                  onJoin={() => navigation.navigate('Party', { id: place.id })}
+                />
               </View>
-              {snap !== 'full' ? (
-                <Pressable
-                  testID="locate-me"
-                  accessibilityRole="button"
-                  accessibilityLabel={tx.explore.locateMe}
-                  onPress={locateMe}
-                  style={({ pressed }) => [iconBtn, { backgroundColor: color.bgInverse }, pressed && { opacity: 0.8 }]}
-                >
-                  <Icon.Locate c={color.onAccent} />
-                </Pressable>
-              ) : null}
-            </>
+            ) : (
+              <>
+                <View style={{ flex: 1 }}>{!safe && snap !== 'full' ? <PlaceChips active={kinds} onToggle={onLayer} /> : null}</View>
+                {snap !== 'full' ? (
+                  <Pressable
+                    testID="locate-me"
+                    accessibilityRole="button"
+                    accessibilityLabel={tx.explore.locateMe}
+                    onPress={locateMe}
+                    style={({ pressed }) => [iconBtn, { backgroundColor: color.bgInverse }, pressed && { opacity: 0.8 }]}
+                  >
+                    <Icon.Locate c={color.onAccent} />
+                  </Pressable>
+                ) : null}
+              </>
+            )
           }
         >
           <FlatList
@@ -325,11 +492,20 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
             numColumns={3}
             keyExtractor={(c) => c.id}
             columnWrapperStyle={{ gap: space.s }}
-            contentContainerStyle={{ gap: space.s, paddingHorizontal: space.l, paddingBottom: listPad }}
+            contentContainerStyle={{
+              gap: space.s,
+              paddingHorizontal: space.l,
+              paddingBottom: listPad,
+            }}
             ListHeaderComponent={listHead ?? undefined}
             onEndReached={more}
             onEndReachedThreshold={0.5}
-            onScrollToIndexFailed={(e) => list.current?.scrollToOffset({ offset: e.averageItemLength * e.index, animated: true })}
+            onScrollToIndexFailed={(e) =>
+              list.current?.scrollToOffset({
+                offset: e.averageItemLength * e.index,
+                animated: true,
+              })
+            }
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
@@ -344,7 +520,17 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
             }
             renderItem={({ item, index }) => (
               <View style={{ flex: 1 / 3 }}>
-                {index === furtherFrom && !quiet ? <Text style={{ ...type.caption, color: color.fgSecondary, marginBottom: 4 }}>{tx.explore.further}</Text> : null}
+                {index === furtherFrom && !quiet ? (
+                  <Text
+                    style={{
+                      ...type.caption,
+                      color: color.fgSecondary,
+                      marginBottom: 4,
+                    }}
+                  >
+                    {tx.explore.further}
+                  </Text>
+                ) : null}
                 <ProfileTile card={item} selected={item.id === selected} onPress={() => open(item)} onLongPress={() => setQuick(item)} />
               </View>
             )}
@@ -354,20 +540,38 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
     );
 
   return (
-    <View style={{ flex: 1, backgroundColor: color.bgBase }}>
-      {header}
-      <View style={{ flex: 1, marginTop: space.s }} onLayout={(e) => setBox({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
+    <View
+      style={{ flex: 1, backgroundColor: color.bgMap }}
+      onLayout={(e) =>
+        setScreen({
+          w: e.nativeEvent.layout.width,
+          h: e.nativeEvent.layout.height,
+        })
+      }
+    >
+      <View
+        style={{ flex: 1, marginTop: headerH }}
+        onLayout={(e) =>
+          setBox({
+            w: e.nativeEvent.layout.width,
+            h: e.nativeEvent.layout.height,
+          })
+        }
+      >
         {body}
+      </View>
+      <View pointerEvents="box-none" style={{ position: 'absolute', left: 0, right: 0, top: 0 }} onLayout={(e) => setHeaderH(Math.round(e.nativeEvent.layout.height))}>
+        {header}
       </View>
       <FiltersSheet
         visible={showFilters}
-        mode={mode}
+        mode={filterMode(intents)}
         verified={me.verified}
         value={filters}
         onClose={() => setShowFilters(false)}
         onApply={(f) => {
           setFilters(f);
-          AsyncStorage.setItem(FILTER_KEY(mode), JSON.stringify(f));
+          AsyncStorage.setItem(MERGED_FILTERS, JSON.stringify(f));
           setShowFilters(false);
         }}
       />
@@ -397,7 +601,14 @@ function QuickActions({ card, onDone, onOpen, onChanged }: { card: Card; onDone:
   };
   const row = (label: string, onPress: () => void, danger?: boolean) => (
     <Pressable key={label} accessibilityRole="button" onPress={onPress} style={{ paddingVertical: space.m }}>
-      <Text style={{ ...type.headline, color: danger ? color.danger : color.fgPrimary }}>{label}</Text>
+      <Text
+        style={{
+          ...type.headline,
+          color: danger ? color.danger : color.fgPrimary,
+        }}
+      >
+        {label}
+      </Text>
     </Pressable>
   );
   return (

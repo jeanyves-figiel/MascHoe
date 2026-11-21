@@ -2,15 +2,61 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import * as maplibregl from 'maplibre-gl';
 import React, { useEffect, useRef } from 'react';
 import { View } from 'react-native';
-import { distanceLabel } from '../i18n/app';
+import type { Card, Place } from '../api/types';
+import { distanceLabel, tx } from '../i18n/app';
+import { pl } from '../i18n/places';
 import { color } from '../theme/tokens';
-import { cellLabels, cellsGeoJSON, initial, MapProps, START_ZOOM, STYLE_URL } from './mapShared';
+import { cellLabels, cellsGeoJSON, initial, MapProps, pinLabel, ringSegments, START_ZOOM, STYLE_URL } from './mapShared';
+import { partyTag } from './Places';
+
+const ICON: Record<string, string> = {
+  party: '<path d="M12 3l2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2z"/>',
+  gym: '<path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/>',
+  sauna: '<path d="M8 3c-1.5 2 1.5 3 0 5M12 3c-1.5 2 1.5 3 0 5M16 3c-1.5 2 1.5 3 0 5"/><path d="M4 13h16v3a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/>',
+  club: '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+};
+const esc = (t: string) => t.replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
+
+// R-04.20 square place marker (DOM).
+function placeEl(p: Place, on: boolean): HTMLElement {
+  const key = p.type !== 'venue' ? 'party' : p.kind === 'gym' ? 'gym' : p.kind === 'sauna' ? 'sauna' : 'club';
+  const bg = p.type !== 'venue' ? color.personal : color.bgInverse;
+  const el = document.createElement('button');
+  el.setAttribute('aria-label', `${pl.kind[p.kind] ?? p.kind}: ${p.name}`);
+  el.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:0;padding:0;cursor:pointer';
+  const tag = partyTag(p);
+  el.innerHTML =
+    `<span style="width:34px;height:34px;border-radius:11px;background:${bg};display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 ${on ? 3 : 0}px rgba(255,255,255,.45),0 3px 8px rgba(0,0,0,.45)">` +
+    `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${color.onAccent}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${ICON[key]}</svg></span>` +
+    (tag ? `<span style="font:800 10px sans-serif;padding:2px 7px;border-radius:999px;background:${color.bgBase};color:${color.personal};white-space:nowrap">${esc(tag)}</span>` : '');
+  return el;
+}
+
+// R-04.19 ring pin (DOM): segments as SVG circles, face inside.
+function ringEl(c: Card, on: boolean): HTMLElement {
+  const box = on ? 60 : 52;
+  const face = on ? 40 : 36;
+  const segs = ringSegments(c.intents ?? ['hookup'], 23)
+    .map((sg) => `<circle cx="26" cy="26" r="23" fill="none" stroke="${sg.color}" stroke-width="4.5" stroke-dasharray="${sg.dash}" stroke-dashoffset="${sg.offset}"/>`)
+    .join('');
+  const el = document.createElement('button');
+  el.setAttribute('aria-label', pinLabel(c, tx.modes, pl.and, distanceLabel(c.distance), pl.lookingFor));
+  el.setAttribute('aria-pressed', String(on));
+  el.style.cssText = `position:relative;width:${box}px;height:${box}px;padding:0;border:0;background:none;cursor:pointer;border-radius:50%;${c.exact ? `box-shadow:0 0 0 3px ${color.trust}` : ''}`;
+  const faceStyle = `position:absolute;left:${(box - face) / 2}px;top:${(box - face) / 2}px;width:${face}px;height:${face}px;border-radius:50%;background:${color.bgOverlay} center/cover no-repeat;display:flex;align-items:center;justify-content:center;color:${color.fgPrimary};font:800 16px sans-serif`;
+  el.innerHTML =
+    `<svg width="${box}" height="${box}" viewBox="0 0 52 52" style="position:absolute;left:0;top:0;transform:rotate(-90deg)"><circle cx="26" cy="26" r="23" fill="${color.bgBase}"/>${segs}</svg>` +
+    `<span style="${faceStyle}">${c.photo ? '' : esc(initial(c.display_name))}</span>` +
+    (c.now ? `<span style="position:absolute;right:1px;top:1px;width:14px;height:14px;box-sizing:border-box;border-radius:7px;background:#fff;border:3px solid ${color.bgMap}"></span>` : '');
+  if (c.photo) (el.children[1] as HTMLElement).style.backgroundImage = `url("${c.photo}")`;
+  return el;
+}
 
 // Worker copied by scripts/copy-maplibre-worker.js (Metro has no import.meta.url).
 maplibregl.setWorkerUrl('/maplibre/maplibre-gl-worker.mjs');
 
 // S-10 map on the web build (DEV tool). Same data, maplibre-gl.
-export function ExploreMap({ center, me, data, accent, recenter, onRegion, onSelect, onClear, selected }: MapProps) {
+export function ExploreMap({ center, me, data, accent, recenter, onRegion, onSelect, onClear, selected, places, onPlace, selectedPlace }: MapProps) {
   const clear = useRef(onClear);
   useEffect(() => {
     clear.current = onClear;
@@ -73,18 +119,20 @@ export function ExploreMap({ center, me, data, accent, recenter, onRegion, onSel
         el.style.cssText = `min-width:34px;height:26px;padding:0 8px;box-sizing:border-box;border-radius:13px;background:${color.bgInverse};color:${color.onAccent};font:700 12px/26px sans-serif;text-align:center;pointer-events:none`;
         add(c.lng, c.lat, el);
       }
+    for (const p of places ?? []) {
+      const el = placeEl(p, selectedPlace === p.id);
+      el.onclick = (e) => {
+        e.stopPropagation();
+        onPlace?.(p);
+      };
+      add(p.lng, p.lat, el);
+    }
     for (const c of people) {
       if (c.lat === undefined || c.lng === undefined) continue;
       const on = selected === c.id;
-      const size = on ? 58 : 44;
       const wrap = document.createElement('div');
       wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center';
-      const el = document.createElement('button');
-      el.setAttribute('aria-label', `${c.display_name}, ${c.age}, ${distanceLabel(c.distance)}`);
-      el.setAttribute('aria-pressed', String(on));
-      el.style.cssText = `width:${size}px;height:${size}px;border-radius:50%;border:3px solid ${on || c.now ? accent : c.exact ? color.trust : color.bgInverse};background:${accent} center/cover no-repeat;color:${color.onAccent};font:800 16px sans-serif;cursor:pointer;padding:0`;
-      if (c.photo) el.style.backgroundImage = `url("${c.photo}")`;
-      else el.textContent = initial(c.display_name);
+      const el = ringEl(c, on);
       el.onclick = (e) => {
         e.stopPropagation();
         onSelect(c);
@@ -98,7 +146,7 @@ export function ExploreMap({ center, me, data, accent, recenter, onRegion, onSel
       }
       add(c.lng, c.lat, wrap);
     }
-  }, [data, me, accent, onSelect, selected]);
+  }, [data, me, accent, onSelect, selected, places, onPlace, selectedPlace]);
 
   // R-04.13: centre once when the first position arrives (unless the user moved), and on Locate me.
   useEffect(() => {

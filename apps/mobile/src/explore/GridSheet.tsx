@@ -111,7 +111,7 @@ export function GridSheet({ h, bottom, snap, onSnap, title, right, above, childr
       }}
     >
       {above ? (
-        <View pointerEvents="box-none" style={{ position: 'absolute', left: 0, right: 0, top: -56, height: 44, paddingHorizontal: space.l, flexDirection: 'row', alignItems: 'center' }}>
+        <View pointerEvents="box-none" style={{ position: 'absolute', left: 0, right: 0, bottom: '100%', marginBottom: 12, minHeight: 44, paddingHorizontal: space.l, flexDirection: 'row', alignItems: 'center' }}>
           {above}
         </View>
       ) : null}

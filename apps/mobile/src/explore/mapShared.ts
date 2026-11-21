@@ -1,6 +1,7 @@
 import { cellToBoundary, cellToLatLng } from 'h3-js';
 import { API_BASE } from '../api/client';
-import type { Card, MapData } from '../api/types';
+import type { Card, MapData, Mode, Place } from '../api/types';
+import { modeColor } from '../theme/tokens';
 
 // Tiles + style come through our API (/v1/tiles), never a third-party host (I-03).
 export const STYLE_URL = API_BASE + '/tiles/style.json';
@@ -20,7 +21,18 @@ export type MapProps = {
   onClear?: () => void;
   /** Selected pin (grown, name chip). */
   selected?: string | null;
+  /** R-04.20 place markers (already filtered by the chips). */
+  places?: Place[];
+  onPlace?: (p: Place) => void;
+  selectedPlace?: string | null;
 };
+
+/** R-04.19 screen-reader label: "Sam, 31, looking for Hookup and Friends, 400 m". */
+export function pinLabel(c: Card, names: Record<Mode, string>, and: string, dist: string, fmt: (who: string, list: string, dist: string) => string): string {
+  const list = INTENTS.filter((m) => (c.intents ?? []).includes(m)).map((m) => names[m]);
+  const joined = list.length > 1 ? `${list.slice(0, -1).join(', ')} ${and} ${list[list.length - 1]}` : (list[0] ?? names.hookup);
+  return fmt(`${c.display_name}, ${c.age}`, joined, dist);
+}
 
 /** Cell heat polygons (R-04.2 a). Opacity grows with count, capped. */
 export function cellsGeoJSON(data: MapData | null): GeoJSON.FeatureCollection {
@@ -62,10 +74,11 @@ const FIT_MAX = 15;
 /**
  * R-04.15 auto-fit: camera that shows a circle of `fitM` metres around `p` inside the map area
  * above the sheet. The map is `w`×`h`; the sheet covers its bottom `sheet` px, so the camera
- * centre moves south by half the sheet to keep `p` in the middle of the visible part.
+ * centre moves south by half the sheet to keep `p` in the middle of the visible part. `top` = px
+ * covered by the floating header (#113).
  */
-export function fitCamera(p: { lat: number; lng: number }, fitM: number | null | undefined, w: number, h: number, sheet: number): { lat: number; lng: number; zoom: number } {
-  const visible = Math.max(120, h - sheet);
+export function fitCamera(p: { lat: number; lng: number }, fitM: number | null | undefined, w: number, h: number, sheet: number, top = 0): { lat: number; lng: number; zoom: number } {
+  const visible = Math.max(120, h - sheet - top);
   const cos = Math.cos((p.lat * Math.PI) / 180);
   let zoom = START_ZOOM;
   if (fitM && fitM > 0) {
@@ -74,7 +87,8 @@ export function fitCamera(p: { lat: number; lng: number }, fitM: number | null |
     zoom = Math.min(FIT_MAX, Math.max(FIT_MIN, Math.round(zoom * 4) / 4));
   }
   const mpp = (M_PER_PX_Z0 * cos) / 2 ** zoom;
-  const shift = Math.max(0, h / 2 - visible / 2);
+  // #113: the floating header covers the top `top` px, so centre `p` between header and sheet.
+  const shift = top ? h / 2 - (top + visible / 2) : Math.max(0, h / 2 - visible / 2);
   return { lat: p.lat - (shift * mpp) / 111_320, lng: p.lng, zoom };
 }
 
@@ -86,4 +100,74 @@ export function isNear(d: Card['distance']): boolean {
   if (d.kind === 'exact') return d.m < 2000;
   if (d.kind === 'area') return NEAR.has(d.bucket);
   return false;
+}
+
+// ------------------------------------------------------------------ #113 merged map
+
+export const INTENTS: Mode[] = ['hookup', 'friends', 'sport'];
+
+/** R-04.18: chips → ordered, never empty (the last chip on can't be turned off). */
+export function toggleIntent(cur: Mode[], m: Mode): Mode[] {
+  const next = cur.includes(m) ? cur.filter((x) => x !== m) : [...cur, m];
+  return next.length ? INTENTS.filter((x) => next.includes(x)) : cur;
+}
+
+/** Saved chips (AsyncStorage) → valid ordered list, default all three. */
+export function restoreIntents(saved: string | null): Mode[] {
+  try {
+    const v = saved ? (JSON.parse(saved) as unknown) : null;
+    const list = Array.isArray(v) ? INTENTS.filter((m) => v.includes(m)) : [];
+    return list.length ? list : [...INTENTS];
+  } catch {
+    return [...INTENTS];
+  }
+}
+
+export type RingSeg = { color: string; dash: string; offset: number };
+
+/**
+ * R-04.19 intent ring: equal segments clockwise from 12 o'clock (caller rotates -90°), in order
+ * hookup → friends → sport, `gap` px between segments, none for a single intent.
+ */
+export function ringSegments(intents: Mode[] | undefined, r: number, gap = 5): RingSeg[] {
+  const list = INTENTS.filter((m) => (intents ?? []).includes(m));
+  const circ = 2 * Math.PI * r;
+  if (list.length === 0) return [];
+  if (list.length === 1) return [{ color: modeColor[list[0]], dash: `${circ} 0`, offset: 0 }];
+  const n = list.length;
+  const len = circ / n - gap;
+  return list.map((m, i) => ({ color: modeColor[m], dash: `${len.toFixed(2)} ${(circ - len).toFixed(2)}`, offset: -(i * (circ / n) + gap / 2) }));
+}
+
+export type PlaceKind = 'clubs' | 'saunas' | 'parties' | 'gyms';
+export const PLACE_KINDS: PlaceKind[] = ['clubs', 'saunas', 'parties', 'gyms'];
+export type Layers = { on: Record<PlaceKind, boolean>; gymsTouched: boolean };
+export const defaultLayers: Layers = { on: { clubs: true, saunas: true, parties: true, gyms: false }, gymsTouched: false };
+
+export function restoreLayers(saved: string | null): Layers {
+  try {
+    const v = saved ? (JSON.parse(saved) as Partial<Layers>) : null;
+    return { on: { ...defaultLayers.on, ...(v?.on ?? {}) }, gymsTouched: !!v?.gymsTouched };
+  } catch {
+    return defaultLayers;
+  }
+}
+
+/** R-04.20: effective layers. Gyms turn on by themselves while Sport is the only chip, until toggled once. */
+export function activeKinds(l: Layers, intents: Mode[]): PlaceKind[] {
+  const sportOnly = intents.length === 1 && intents[0] === 'sport';
+  return PLACE_KINDS.filter((k) => (k === 'gyms' && !l.gymsTouched ? l.on.gyms || sportOnly : l.on[k]));
+}
+
+export function toggleLayer(l: Layers, k: PlaceKind, intents: Mode[]): Layers {
+  const shown = activeKinds(l, intents).includes(k);
+  return { on: { ...l.on, [k]: !shown }, gymsTouched: l.gymsTouched || k === 'gyms' };
+}
+
+/** Which kinds a place belongs to (for chip filtering on the client). */
+export function placeKind(p: Place): PlaceKind {
+  if (p.type !== 'venue') return 'parties';
+  if (p.kind === 'gym') return 'gyms';
+  if (p.kind === 'sauna') return 'saunas';
+  return 'clubs';
 }
