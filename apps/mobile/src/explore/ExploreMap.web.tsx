@@ -56,7 +56,7 @@ function ringEl(c: Card, on: boolean): HTMLElement {
 maplibregl.setWorkerUrl('/maplibre/maplibre-gl-worker.mjs');
 
 // S-10 map on the web build (DEV tool). Same data, maplibre-gl.
-export function ExploreMap({ center, me, data, accent, recenter, onRegion, onSelect, onClear, selected, places, onPlace, selectedPlace }: MapProps) {
+export function ExploreMap({ center, me, data, accent, recenter, onRegion, onSelect, onHold, onClear, selected, places, onPlace, selectedPlace }: MapProps) {
   const clear = useRef(onClear);
   useEffect(() => {
     clear.current = onClear;
@@ -137,6 +137,11 @@ export function ExploreMap({ center, me, data, accent, recenter, onRegion, onSel
         e.stopPropagation();
         onSelect(c);
       };
+      el.oncontextmenu = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onHold?.(c);
+      };
       wrap.appendChild(el);
       if (on) {
         const chip = document.createElement('div');
@@ -146,7 +151,7 @@ export function ExploreMap({ center, me, data, accent, recenter, onRegion, onSel
       }
       add(c.lng, c.lat, wrap);
     }
-  }, [data, me, accent, onSelect, selected, places, onPlace, selectedPlace]);
+  }, [data, me, accent, onSelect, onHold, selected, places, onPlace, selectedPlace]);
 
   // R-04.13: centre once when the first position arrives (unless the user moved), and on Locate me.
   useEffect(() => {

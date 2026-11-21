@@ -17,6 +17,8 @@ export type MapProps = {
   onRegion: (bbox: [number, number, number, number]) => void;
   /** Tap on a pin: the screen selects it, or opens the profile when already selected (R-04.14). */
   onSelect: (card: Card) => void;
+  /** R-04.14: long-press on a person's pin → safety sheet (S-21). */
+  onHold?: (card: Card) => void;
   /** Tap on the map away from pins: clears the selection. */
   onClear?: () => void;
   /** Selected pin (grown, name chip). */

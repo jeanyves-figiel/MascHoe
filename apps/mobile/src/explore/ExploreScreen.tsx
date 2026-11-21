@@ -13,7 +13,7 @@ import { prefs } from '../me/prefs';
 import { SafetySheet, SheetRow } from '../trust/SafetySheet';
 import { toast } from '../ui/Toast';
 import { color, radius, space, type } from '../theme/tokens';
-import { Banner, EmptyState, ErrorState, Icon, Loading, Photo, useAccent, VerifiedTick } from '../ui';
+import { Banner, EmptyState, ErrorState, Icon, Loading, useAccent } from '../ui';
 import { ProfileTile } from './Card';
 import { activeFilterCount, defaultFilters, Filters, filterMode, restoreFilters, loadGrid, loadMap, loadPlaces, loadSummary, loadTray } from './explore';
 import { LiveHeader, VerifyRow } from './LiveHeader';
@@ -68,11 +68,12 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
   const [showFilters, setShowFilters] = useState(false);
   const [showLocation, setShowLocation] = useState(false);
   const [quick, setQuick] = useState<Card | null>(null);
-  // #111 map peek card: the selected pin's card (first tap), with ⋯ for Hide / Block / Report.
-  const [peek, setPeek] = useState<Card | null>(null);
   const [holdSeen, setHoldSeen] = useState(true);
   useEffect(() => {
-    AsyncStorage.getItem(HOLD_KEY).then((v) => setHoldSeen(v === '1'), () => {});
+    AsyncStorage.getItem(HOLD_KEY).then(
+      (v) => setHoldSeen(v === '1'),
+      () => {},
+    );
   }, []);
   const hold = useCallback((c: Card) => {
     if (Platform.OS !== 'web' && prefs().haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
@@ -212,16 +213,14 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
       }),
     [navigation, intents],
   );
-  // R-04.14: first tap on a pin selects it (tile highlighted), a tap on the selected pin opens the profile.
+  // R-04.14: one tap on a pin opens the profile; holding it opens Hide / Block / Report (S-21).
   const selectPin = useCallback(
     (c: Card) => {
-      if (selected === c.id) return open(c);
       setPlace(null);
       setSelected(c.id);
-      setPeek(c);
-      setSnap((cur) => (cur === 'peek' ? 'half' : cur));
+      open(c);
     },
-    [selected, open],
+    [open],
   );
   const changeSnap = useCallback((v: Snap) => {
     setSnap(v);
@@ -445,9 +444,9 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
             recenter={recenter}
             onRegion={onRegion}
             onSelect={selectPin}
+            onHold={hold}
             onClear={() => {
               setSelected(null);
-              setPeek(null);
               setPlace(null);
             }}
             selected={selected}
@@ -455,7 +454,6 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
             selectedPlace={place?.id ?? null}
             onPlace={(p) => {
               setSelected(null);
-              setPeek(null);
               setPlace((cur) => (cur?.id === p.id ? null : p));
             }}
           />
@@ -491,13 +489,7 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
               </View>
             ) : (
               <>
-                <View style={{ flex: 1, alignItems: peek ? 'flex-start' : undefined }}>
-                  {snap === 'full' ? null : peek ? (
-                    <PeekCard card={peek} onOpen={() => open(peek)} onMore={() => setQuick(peek)} />
-                  ) : !safe ? (
-                    <PlaceChips active={kinds} onToggle={onLayer} />
-                  ) : null}
-                </View>
+                <View style={{ flex: 1 }}>{snap === 'full' ? null : !safe ? <PlaceChips active={kinds} onToggle={onLayer} /> : null}</View>
                 {snap !== 'full' ? (
                   <Pressable
                     testID="locate-me"
@@ -611,7 +603,6 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
           setMapData((m) => (m ? { ...m, pins: m.pins.filter((c) => c.id !== t.id), avatars: m.avatars.filter((c) => c.id !== t.id) } : m));
           if (selected === t.id) {
             setSelected(null);
-            setPeek(null);
           }
           reloadSummary();
         }}
@@ -622,14 +613,25 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
         lead={
           quick ? (
             <>
-              <SheetRow testID="quick-open" title={mod.openProfile} onPress={() => { const c = quick; setQuick(null); open(c); }} />
+              <SheetRow
+                testID="quick-open"
+                title={mod.openProfile}
+                onPress={() => {
+                  const c = quick;
+                  setQuick(null);
+                  open(c);
+                }}
+              />
               <SheetRow
                 testID="quick-tap"
                 title={tx.explore.quick.tap}
                 onPress={() => {
                   const c = quick;
                   setQuick(null);
-                  api('POST', `/profiles/${c.id}/tap`).then(() => toast(mod.tapped(c.display_name)), (e) => toast(e instanceof ApiError ? e.message : tx.common.error));
+                  api('POST', `/profiles/${c.id}/tap`).then(
+                    () => toast(mod.tapped(c.display_name)),
+                    (e) => toast(e instanceof ApiError ? e.message : tx.common.error),
+                  );
                 }}
               />
               <SheetRow
@@ -647,30 +649,6 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
           ) : null
         }
       />
-    </View>
-  );
-}
-
-// #111 map peek card (R-04.14): first tap on a pin shows it above the sheet; tap opens, ⋯ = safety sheet.
-function PeekCard({ card, onOpen, onMore }: { card: Card; onOpen: () => void; onMore: () => void }) {
-  return (
-    <View testID="peek-card" style={{ alignSelf: 'stretch', marginRight: space.s, flexDirection: 'row', alignItems: 'center', gap: space.m, padding: space.s, borderRadius: radius.md, backgroundColor: color.bgRaised }}>
-      <Pressable accessibilityRole="button" accessibilityLabel={`${card.display_name}, ${card.age}`} onPress={onOpen} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.m }}>
-        <Photo uri={card.photo} id={card.id} label={card.display_name} style={{ width: 44, height: 44, borderRadius: radius.sm }} />
-        <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <Text numberOfLines={1} style={{ ...type.headline, color: color.fgPrimary, flexShrink: 1 }}>{`${card.display_name}, ${card.age}`}</Text>
-            {card.verified ? <VerifiedTick /> : null}
-          </View>
-          <Text numberOfLines={1} style={{ ...type.meta, color: color.fgSecondary }}>
-            {distanceLabel(card.distance)}
-            {card.online ? ` · ${mod.online}` : ''}
-          </Text>
-        </View>
-      </Pressable>
-      <Pressable testID="peek-more" accessibilityRole="button" accessibilityLabel={tx.profile.menu} onPress={onMore} hitSlop={8} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: color.bgOverlay, alignItems: 'center', justifyContent: 'center' }}>
-        <Icon.More size={18} />
-      </Pressable>
     </View>
   );
 }
