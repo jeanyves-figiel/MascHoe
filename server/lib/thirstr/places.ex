@@ -10,7 +10,7 @@ defmodule Thirstr.Places do
   alias Thirstr.{Nearby, Repo}
 
   @kinds ~w(clubs saunas parties gyms)
-  @venue_kinds %{"clubs" => ~w(club bar), "saunas" => ~w(sauna), "gyms" => ~w(gym)}
+  @venue_kinds %{"clubs" => ~w(club bar other), "saunas" => ~w(sauna), "gyms" => ~w(gym)}
   @max 150
   @max_span 0.5
   # Official parties show from 12 h before start until the end (R-10.10).
@@ -48,7 +48,8 @@ defmodule Thirstr.Places do
     Repo.query!(
       """
       SELECT v.id::text, v.name, v.kind, v.lat, v.lng, v.hours_text, v.ext_id,
-             (SELECT count(*) FROM venue_checkins c WHERE c.venue_id = v.id AND c.auto_out_at > now())
+             (SELECT count(*) FROM venue_checkins c WHERE c.venue_id = v.id AND c.auto_out_at > now()),
+             v.added_by
       FROM venues v
       WHERE NOT v.hidden AND v.lat BETWEEN $1 AND $2 AND v.lng BETWEEN $3 AND $4
         AND v.kind = ANY($5)
@@ -56,7 +57,7 @@ defmodule Thirstr.Places do
       """,
       [s, n, w, e, kinds]
     ).rows
-    |> Enum.map(fn [id, name, kind, lat, lng, hours, ext, here] ->
+    |> Enum.map(fn [id, name, kind, lat, lng, hours, ext, here, by] ->
       %{
         id: id,
         type: "venue",
@@ -67,10 +68,15 @@ defmodule Thirstr.Places do
         hours: hours,
         here: here_label(here),
         distance: distance(ctx, lat, lng),
-        source: if(ext, do: "osm", else: "team")
+        source: venue_source(ext, by)
       }
     end)
   end
+
+  # R-12.11: "member" = added by a member (label "Added by a member"; the creator is never shown).
+  defp venue_source(ext, _) when is_binary(ext), do: "osm"
+  defp venue_source(_, "member"), do: "member"
+  defp venue_source(_, _), do: "team"
 
   defp events(ctx, {w, s, e, n}) do
     Repo.query!(
@@ -192,7 +198,7 @@ defmodule Thirstr.Places do
   def admin_summary do
     counts =
       Repo.query!("""
-      SELECT CASE WHEN ext_id IS NULL THEN 'team' ELSE 'osm' END, kind, count(*), count(*) FILTER (WHERE hidden)
+      SELECT CASE WHEN ext_id IS NOT NULL THEN 'osm' ELSE added_by END, kind, count(*), count(*) FILTER (WHERE hidden)
       FROM venues GROUP BY 1, 2 ORDER BY 1, 2
       """).rows
 
@@ -224,6 +230,29 @@ defmodule Thirstr.Places do
   end
 
   def search(_), do: []
+
+  @doc "Places added by members (R-12.11), newest first, for review after the fact (A-07b)."
+  def member_places(limit \\ 50) do
+    Repo.query!(
+      """
+      SELECT v.id::text, v.name, v.kind, v.hidden, v.created_at, v.lat, v.lng, coalesce(c.name, ''),
+             (SELECT count(*) FROM venue_checkins k WHERE k.venue_id = v.id AND k.auto_out_at > now())
+      FROM venues v
+      LEFT JOIN LATERAL (SELECT name FROM cities ORDER BY point(lng, lat) <-> point(v.lng, v.lat) LIMIT 1) c ON true
+      WHERE v.added_by = 'member' ORDER BY v.created_at DESC LIMIT $1
+      """,
+      [limit]
+    ).rows
+  end
+
+  @doc "Team deletes a venue (check-ins and parties go with it)."
+  def delete_venue(id) do
+    with {:ok, _} <- Ecto.UUID.cast(id) do
+      Repo.query!("DELETE FROM venues WHERE id = $1", [Nearby.dump(id)])
+      Phoenix.PubSub.broadcast(Thirstr.PubSub, "venue:" <> id, {:event, "here.diff", %{}})
+      :ok
+    end
+  end
 
   def set_hidden(id, hidden) do
     with {:ok, _} <- Ecto.UUID.cast(id) do

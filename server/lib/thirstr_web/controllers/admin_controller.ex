@@ -466,6 +466,7 @@ defmodule ThirstrWeb.AdminController do
     audit(conn.assigns.admin, "view_places", nil, nil)
     %{counts: counts, last: last, events: events} = Thirstr.Places.admin_summary()
     found = Thirstr.Places.search(params["q"])
+    members = Thirstr.Places.member_places()
     csrf = ~s(<input type="hidden" name="_csrf_token" value="#{get_csrf_token()}">)
 
     count_rows =
@@ -502,9 +503,22 @@ defmodule ThirstrWeb.AdminController do
         """
       end)
 
+    member_rows =
+      Enum.map_join(members, "", fn [id, name, kind, hidden, at, lat, lng, city, here] ->
+        """
+        <tr><td>#{e(name)}</td><td>#{e(kind)}</td><td>#{e(city)}</td><td>#{e(DateTime.to_iso8601(Thirstr.Explore.utc_any(at)))}</td><td>#{here}</td>
+        <td><a href="https://www.openstreetmap.org/?mlat=#{lat}&amp;mlon=#{lng}#map=19/#{lat}/#{lng}" target="_blank" rel="noopener noreferrer">Map</a></td>
+        <td><form method="post" action="/admin/places/venues/#{e(id)}/#{if hidden, do: "unhide", else: "hide"}">#{csrf}<button>#{if hidden, do: "Unhide", else: "Hide"}</button></form></td>
+        <td><form method="post" action="/admin/places/venues/#{e(id)}/delete" onsubmit="return confirm('Delete this place for everyone?')">#{csrf}<button class="danger">Delete</button></form></td></tr>
+        """
+      end)
+
     page(conn, "Places", """
     #{nav()}<h1>A-07b Places</h1>
     <h2>Catalogue</h2><table><tr><th>Source</th><th>Kind</th><th>Venues</th><th>Hidden</th></tr>#{count_rows}</table>
+    <h2>Added by members</h2>
+    <p class="muted">Live as soon as they are added, no review before (F-12 R-12.11). Hide it if it is wrong, delete it if it is a home or private address. The creator is never shown in the app.</p>
+    <table><tr><th>Name</th><th>Kind</th><th>Near</th><th>Added (UTC)</th><th>Here</th><th></th><th></th><th></th></tr>#{member_rows}</table>
     <h2>OpenStreetMap import</h2><p>#{last_txt}</p>
     <p class="muted">Gay venues worldwide by tag, gyms for the configured countries. Only tags and countries are sent, never anything about users (F-12 R-12.9).</p>
     <form method="post" action="/admin/places/import">#{csrf}<button>Import now</button></form>
@@ -518,6 +532,12 @@ defmodule ThirstrWeb.AdminController do
   def places_import(conn, _) do
     audit(conn.assigns.admin, "places_import", nil, nil)
     %{} |> Thirstr.Jobs.PlaceImport.new() |> Oban.insert!()
+    redirect(conn, to: "/admin/places")
+  end
+
+  def venue_hidden(conn, %{"id" => id, "action" => "delete"}) do
+    audit(conn.assigns.admin, "venue_delete", id, nil)
+    Thirstr.Places.delete_venue(id)
     redirect(conn, to: "/admin/places")
   end
 

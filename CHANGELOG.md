@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- **Add a place** (server + app, #191, F-12 R-12.11): not listed? Tonight › Venues nearby › "Add a place" pins a club, bar, sauna, gym or other place at your exact position and checks you in. A clear warning says this shares your exact location and that everyone will see the place. No review before: it is on the map and in Tonight for everyone at once, labelled "Added by a member" (the creator is never shown). Similar name within 75 m → "Check in there" instead. 3 per day. The creator can remove it while nobody else is checked in. Admin console › Places › Added by members lists them with Hide / Delete. Places you added are in your data export.
+
+### Fixed
+- **Hidden venues stay hidden in Tonight** (server, #191): Venues nearby listed venues the team had hidden, and they could still be checked into. Venue counts now ignore expired check-ins. New coordinates index for the map's place query.
+
 ### Fixed
 - **Location mode switches in one tap, everywhere** (app, #190, S-60, S-30, R-05.4, [mockup](https://claude.ai/artifact/TC8czvMyPo13hWdQKQFsTM)): on Me, tapping **Exact** opened a second "Your location" sheet that listed all four modes again; picking a mode there only marked it until **Save**, so closing the sheet kept the old mode. Now there is no second sheet and no Save: Hidden / City / Area apply on tap, and Exact shows its own panel under the switch (like Hidden): pin time, who sees it, and one **Share my pin** button (the explicit confirm, was Save + Confirm). While the pin is live, changing time or audience updates it right away and **Stop pin** goes back to Area. Safe Mode still asks a second time. Explore's location button and Settings › Privacy open a short sheet with the same control plus "Hide me from guys who are hidden".
 

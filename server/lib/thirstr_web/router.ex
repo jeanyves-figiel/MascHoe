@@ -241,6 +241,8 @@ defmodule ThirstrWeb.Router do
       post "/clubs/:id/members/:profile_id/:action", SceneController, :club_admin
       get "/venues/nearby", SceneController, :venues
       get "/places", SceneController, :places
+      post "/venues", SceneController, :create_venue
+      delete "/venues/:id", SceneController, :remove_venue
       post "/venues/:id/checkin", SceneController, :checkin
       patch "/venues/:id/checkin", SceneController, :update_checkin
       post "/venues/checkout", SceneController, :checkout
