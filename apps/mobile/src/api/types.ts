@@ -25,7 +25,12 @@ export type MyProfile = {
 
 export type NowStatus = { status: 'now' | 'hosting' | 'can_travel' | 'door_open'; text: string | null; since?: string; expires_at?: string; fresh?: boolean };
 
-export type Distance = null | { kind: 'exact'; m: number } | { kind: 'area'; bucket: string } | { kind: 'city'; city: string | null };
+/** #197 R-04.6: area carries a rounded `m` (approx; `floor` = "< m"), absent under range-only or the spoof brake; `bucket` stays for old builds. */
+export type Distance =
+  | null
+  | { kind: 'exact'; m: number }
+  | { kind: 'area'; bucket: string; m?: number; floor?: boolean; approx?: boolean; precise?: boolean }
+  | { kind: 'city'; city: string | null };
 
 export type Card = {
   id: string;

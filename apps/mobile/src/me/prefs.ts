@@ -35,12 +35,18 @@ const MI: Record<string, string> = {
 };
 
 /** Miles variant of a distance label (km is the default in tx.distance). */
-export function inMiles(d: { kind: string; m?: number; bucket?: string }): string | null {
+export function inMiles(d: { kind: string; m?: number; bucket?: string; floor?: boolean; approx?: boolean }): string | null {
   if (cur.units !== 'mi') return null;
   if (d.kind === 'exact') {
     const ft = (d.m ?? 0) * 3.281;
     return ft < 1000 ? `${Math.round(ft / 10) * 10} ft` : `${((d.m ?? 0) / 1609).toFixed(1)} mi`;
   }
   if (d.kind === 'city') return null;
+  // #197: rounded area distance in miles (0.1 mi steps, never finer than the metric step)
+  if (typeof d.m === 'number') {
+    const mi = d.m / 1609;
+    if (d.floor || mi < 0.1) return '< 0.1 mi';
+    return `${d.approx ? '~' : ''}${mi < 10 ? (Math.floor(mi * 10) / 10).toFixed(1) : Math.floor(mi)} mi`;
+  }
   return MI[d.bucket ?? ''] ?? null;
 }

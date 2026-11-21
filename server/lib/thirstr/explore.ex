@@ -20,7 +20,7 @@ defmodule Thirstr.Explore do
   @far_m 100_000
   @sparse 30
   @online_s 300
-  @edge_m %{5 => 8544, 7 => 1220, 8 => 461, 9 => 174}
+  @edge_m %{5 => 8544, 7 => 1220, 8 => 461, 9 => 174, 10 => 66}
 
   def kind_for_mode(mode), do: Map.get(@modes, mode)
 
@@ -76,6 +76,8 @@ defmodule Thirstr.Explore do
       safe_mode: Account.safe_mode_on?(a),
       settings: Settings.get(a),
       point: Location.viewer_point(a),
+      # #197 R-05.16: ranges only while the viewer jumps through too many cells.
+      brake: Location.spoof_brake?(a),
       # F-20 R-20.15: true while looking around a trip city (point = its centre)
       remote: false,
       # R-06.1: one profile per account, whatever the mode.
@@ -387,17 +389,13 @@ defmodule Thirstr.Explore do
     end
   end
 
-  # R-04.4 sort: exact by metres → Now → area by distance → online recency
+  # R-04.4 sort (#197): nearest first by the distance the card shows, then Now, then online
+  # recency. City-only people (no number) after everyone with a distance.
   defp sorted(rows) do
     Enum.sort_by(rows, fn r ->
-      group =
-        cond do
-          r.pin -> 0
-          r.now -> 1
-          true -> 2
-        end
-
-      {r.further, group, round(r.dist_m / 100), -(r.seen || 0)}
+      city? = r.level == "city"
+      shown = if city?, do: 0, else: shown_m(r)
+      {r.further, city?, shown, if(r.now, do: 0, else: 1), -(r.seen || 0)}
     end)
   end
 
@@ -557,7 +555,7 @@ defmodule Thirstr.Explore do
     FROM vp, location_cells lc
     JOIN profiles p ON p.id = lc.profile_id
     JOIN accounts a ON a.id = p.account_id
-    CROSS JOIN LATERAL (SELECT (CASE lc.display_res WHEN 9 THEN lc.cell_r9 WHEN 8 THEN lc.cell_r8
+    CROSS JOIN LATERAL (SELECT (CASE lc.display_res WHEN 10 THEN lc.cell_r10 WHEN 9 THEN lc.cell_r9 WHEN 8 THEN lc.cell_r8
                           WHEN 7 THEN lc.cell_r7 ELSE lc.cell_r5 END)::h3index AS dcell) d
     LEFT JOIN now_status ns ON ns.profile_id = p.id AND ns.expires_at > now()
                           AND NOT ($4::text[] <@ ARRAY['sport']::text[])
@@ -947,7 +945,12 @@ defmodule Thirstr.Explore do
     {10_000, "5_10k"}
   ]
 
-  @doc "R-04.6 distance buckets. Clients localize the bucket key."
+  @doc """
+  R-04.6 (#197): rounded distance, step set by the shown person's precision (exact pin,
+  r10, r9, r8/r7), rounded down so it never says more than the cell. `bucket` is kept for
+  old builds and is the only value under the viewer's spoof brake (R-05.16) or when the
+  owner chose `show_distance = range`.
+  """
   def distance(r, v) do
     show = r.settings["show_distance"]
 
@@ -959,13 +962,56 @@ defmodule Thirstr.Explore do
         %{kind: "city", city: city_name(r.cell_r5)}
 
       r.pin && show == "exact" && v.verified ->
-        %{kind: "exact", m: round(r.dist_m / 5) * 5}
+        %{kind: "exact", m: shown_m(r)}
 
       true ->
         d = if v.verified, do: r.dist_m, else: max(r.dist_m, 1000.0)
         b = Enum.find_value(@buckets, "10k_plus", fn {max, key} -> if d < max, do: key end)
-        %{kind: "area", bucket: b}
+        base = %{kind: "area", bucket: b, precise: Map.get(r, :display_res) == 10}
+
+        if Map.get(v, :brake, false) or show == "range" do
+          base
+        else
+          {m, floor?} =
+            rounded(d, if(r.pin && show == "exact", do: 10, else: Map.get(r, :display_res, 9)))
+
+          m = if v.verified, do: m, else: max(m, 1000)
+          Map.merge(base, %{m: m, floor: floor? and v.verified, approx: true})
+        end
     end
+  end
+
+  # Distance the card shows, in metres (sort key, R-04.4).
+  defp shown_m(r) do
+    res =
+      if r.pin && r.settings["show_distance"] == "exact",
+        do: :pin,
+        else: Map.get(r, :display_res, 9)
+
+    r.dist_m |> rounded(res) |> elem(0)
+  end
+
+  @doc "#197 R-04.6 steps. Returns {metres, floor?}; floor? = show as \"< metres\"."
+  def rounded(d, res) when is_number(d) do
+    {near, mid, far, min} =
+      case res do
+        r when r in [:pin, 15] -> {10, 100, 1000, 10}
+        10 -> {50, 100, 1000, 100}
+        9 -> {100, 500, 1000, 200}
+        8 -> {1000, 500, 1000, 1000}
+        _ -> {1000, 1000, 1000, 1000}
+      end
+
+    step =
+      cond do
+        d < 1000 -> near
+        d < 10_000 -> mid
+        true -> far
+      end
+
+    m = trunc(d / step) * step
+
+    if m < min, do: {min, true}, else: {m, false}
   end
 
   @doc "City name for an r5 cell (nearest `cities` row), cached."

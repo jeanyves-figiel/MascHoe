@@ -62,7 +62,7 @@ const en = {
     '2_5k': '2–5 km',
     '5_10k': '5–10 km',
     '10k_plus': '10+ km',
-    m: (m: number) => (m < 1000 ? `${m} m` : `${(m / 1000).toFixed(1)} km`),
+    m: (m: number) => (m < 1000 ? `${m} m` : m < 10_000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m / 1000)} km`),
     city: (c: string | null) => (c ? `In ${c}` : 'Nearby city'),
   },
   now: { now: 'Now', hosting: 'Hosting', can_travel: 'Can travel', door_open: 'Door open' } as Record<string, string>,
@@ -106,6 +106,11 @@ const en = {
       city: (c: string) => `"In ${c}"`,
       area: 'A distance range and your photo somewhere in a ~200 m zone',
       exact: 'Your pin on the map, a few metres off, with the distance',
+    },
+    closer: {
+      label: 'Show closer distance',
+      on: 'Guys see "~150 m": a ~50 m zone. Never your exact spot.',
+      off: 'Guys see "~400 m": a ~200 m zone.',
     },
     permission: 'Location permission is off. Using your city.',
     stopPin: 'Remove pin now',
@@ -790,11 +795,13 @@ export function opt(value: string, field?: string): string {
 /** Field label without a unit suffix, for read-only display ("Height (cm)" → "Height"). */
 export const bareLabel = (label: string) => label.replace(/\s*\([^)]*\)\s*$/, '');
 
-export function distanceLabel(d: { kind: string; m?: number; bucket?: string; city?: string | null } | null): string {
+export function distanceLabel(d: { kind: string; m?: number; bucket?: string; city?: string | null; floor?: boolean; approx?: boolean } | null): string {
   if (!d) return '';
   const mi = inMiles(d);
   if (mi) return mi;
   if (d.kind === 'exact') return tx.distance.m(d.m ?? 0);
   if (d.kind === 'city') return tx.distance.city(d.city ?? null);
+  // #197 R-04.6: rounded number ("~150 m", "< 100 m"); buckets when the server sends none.
+  if (typeof d.m === 'number') return `${d.floor ? '< ' : d.approx ? '~' : ''}${tx.distance.m(d.m)}`;
   return (tx.distance as unknown as Record<string, string>)[d.bucket ?? ''] ?? '';
 }
