@@ -10,18 +10,22 @@ import * as Albums from './albums';
 import * as E from './engine';
 import { useTopics } from './hooks';
 import { decryptToUri, strangerPolicy } from './media';
+import { isVideo } from './video';
+import { VideoMark } from './VideoPlayer';
 
 type Grant = Extract<E.Payload, { t: 'album.grant' }>;
 const W = 232;
 
 function Tile({ item, w, h, blur, more }: { item?: E.AlbumItem; w: number; h: number; blur: boolean; more?: number }) {
   const [uri, setUri] = useState<string | null>(null);
+  const video = !!item && isVideo(item);
   useEffect(() => {
-    if (item) decryptToUri(item).then(setUri, () => {});
-  }, [item]);
+    if (item && !video) decryptToUri(item).then(setUri, () => {});
+  }, [item, video]);
   return (
-    <View style={{ width: w, height: h, backgroundColor: item ? tileFor(item.blob) : color.bgOverlay, overflow: 'hidden' }}>
+    <View style={{ width: w, height: h, backgroundColor: item && !video ? tileFor(item.blob) : color.bgOverlay, overflow: 'hidden' }}>
       {uri ? <Image source={{ uri }} style={{ width: w, height: h }} blurRadius={blur ? 30 : 0} resizeMode="cover" /> : null}
+      {video && !more ? <VideoMark dur={item?.dur} small /> : null}
       {more ? (
         <View style={{ position: 'absolute', inset: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: color.scrim }}>
           <Text style={{ ...type.headline, color: color.fgPrimary }}>+{more}</Text>
@@ -91,14 +95,15 @@ export function AlbumCard({ p, mine, conv, onOpen, onLongPress }: { p: Grant; mi
   const ended = !!p.until && p.until < now;
   if (!state || (state.until && state.until < now)) return <Locked mine={mine} text={ended || state ? mx.ended : mx.noLonger} />;
 
-  const photos = state.items.filter((i) => i.mime.startsWith('image/')).length;
+  const videos = state.items.filter(isVideo).length;
+  const n = mx.countsPV(state.items.length - videos, videos);
   const blur = !mine && strangerPolicy(conv, me.settings?.explicit_from_strangers) !== 'show';
   const when = state.until ? (mine ? mx.until(clock(state.until)) : mx.left(timeLeft(state.until))) : mine ? mx.untilYouStop : mx.untilStop;
   return (
     <Pressable
       testID={mine ? 'album-card-mine' : 'album-card'}
       accessibilityRole="button"
-      accessibilityLabel={`${state.name}, ${mx.photosN(photos)}, ${when}`}
+      accessibilityLabel={`${state.name}, ${n}, ${when}`}
       onPress={mine ? undefined : onOpen}
       onLongPress={onLongPress}
       style={{
@@ -121,7 +126,7 @@ export function AlbumCard({ p, mine, conv, onOpen, onLongPress }: { p: Grant; mi
           </Text>
         </View>
         <Text style={{ ...type.meta, fontSize: 12, color: color.fgSecondary }}>
-          {mx.photosN(photos)} · {when}
+          {n} · {when}
         </Text>
       </View>
       {mine ? (

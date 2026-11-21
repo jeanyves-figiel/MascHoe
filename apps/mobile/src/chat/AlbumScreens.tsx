@@ -5,10 +5,14 @@ import { v2 } from '../i18n/v2';
 import { color, radius, space, tileFor, type } from '../theme/tokens';
 import { Banner, Button, EmptyState, Field, Icon, ListRow, Loading, Scrim, Section, SectionLabel, Sheet } from '../ui';
 import * as A from './albums';
+import type * as E from './engine';
 import { getConv } from './engine';
 import { useTopics } from './hooks';
 import { PhotoViewer } from '../ui/PhotoViewer';
-import { decryptToUri } from './media';
+import { mmss, mx } from '../i18n/media';
+import { decryptToUri, videoProblem } from './media';
+import { isVideo } from './video';
+import { VideoMark, VideoPlayer } from './VideoPlayer';
 
 type Nav = { navigate: (s: string, p?: object) => void; goBack: () => void };
 
@@ -22,38 +26,56 @@ function useAlbums() {
   return list;
 }
 
-function Thumb({ item, size, onPress, h, r = radius.sm }: { item: { blob: string; key: string; iv: string; mime: string }; size: number; onPress?: () => void; h?: number; r?: number }) {
+type Item = E.AlbumItem;
+
+function Thumb({ item, size, onPress, h, r = radius.sm }: { item: Item; size: number; onPress?: () => void; h?: number; r?: number }) {
   const [uri, setUri] = useState<string | null>(null);
+  const video = isVideo(item);
   useEffect(() => {
-    decryptToUri(item).then(setUri, () => {});
-  }, [item]);
+    // Videos show a ▶ tile; they are only downloaded when played (#138).
+    if (!video) decryptToUri(item).then(setUri, () => {});
+  }, [item, video]);
   return (
-    <Pressable accessibilityRole="imagebutton" onPress={onPress} onLongPress={onPress} style={{ width: size, height: h ?? size, borderRadius: r, overflow: 'hidden', backgroundColor: color.bgRaised }}>
+    <Pressable
+      testID={video ? 'album-video' : undefined}
+      accessibilityRole={video ? 'button' : 'imagebutton'}
+      accessibilityLabel={video ? `${mx.play}${item.dur != null ? ', ' + mmss(item.dur) : ''}` : undefined}
+      onPress={onPress}
+      onLongPress={onPress}
+      style={{ width: size, height: h ?? size, borderRadius: r, overflow: 'hidden', backgroundColor: video ? color.bgOverlay : color.bgRaised }}
+    >
       {uri ? <Image source={{ uri }} style={{ width: size, height: h ?? size }} resizeMode="cover" /> : null}
+      {video ? <VideoMark dur={item.dur} small={size < 120} /> : null}
     </Pressable>
   );
 }
 
-type Item = { blob: string; key: string; iv: string; mime: string };
-
-/** F-19 G13: album photos full screen; swipe between them, pinch to zoom, swipe down to close. */
-function Viewer({ items, item, onClose, onRemove }: { items: Item[]; item: Item | null; onClose: () => void; onRemove?: (it: Item) => void }) {
+function RemoveButton({ onPress }: { onPress: () => void }) {
   return (
-    <PhotoViewer
-      items={item ? items : null}
-      index={item ? Math.max(0, items.indexOf(item)) : 0}
-      src={(it: Item) => () => decryptToUri(it)}
-      onClose={onClose}
-      footer={
-        onRemove
-          ? (it: Item) => (
-              <Pressable accessibilityRole="button" onPress={() => onRemove(it)} style={{ paddingHorizontal: space.xl, height: 44, justifyContent: 'center', borderRadius: radius.pill, backgroundColor: color.danger }}>
-                <Text style={{ ...type.headline, color: color.fgPrimary }}>{tx.albums.remove}</Text>
-              </Pressable>
-            )
-          : undefined
-      }
-    />
+    <Pressable accessibilityRole="button" onPress={onPress} style={{ paddingHorizontal: space.xl, height: 44, justifyContent: 'center', borderRadius: radius.pill, backgroundColor: color.danger }}>
+      <Text style={{ ...type.headline, color: color.fgPrimary }}>{tx.albums.remove}</Text>
+    </Pressable>
+  );
+}
+
+/**
+ * F-19 G13: album photos full screen; swipe between them, pinch to zoom, swipe down to close.
+ * Videos (#138) open the video player on their own; the photo pager holds only the photos.
+ */
+function Viewer({ items, item, onClose, onRemove }: { items: Item[]; item: Item | null; onClose: () => void; onRemove?: (it: Item) => void }) {
+  const photos = items.filter((i) => !isVideo(i));
+  const video = item && isVideo(item) ? item : null;
+  return (
+    <>
+      <PhotoViewer
+        items={item && !video ? photos : null}
+        index={item && !video ? Math.max(0, photos.indexOf(item)) : 0}
+        src={(it: Item) => () => decryptToUri(it)}
+        onClose={onClose}
+        footer={onRemove ? (it: Item) => <RemoveButton onPress={() => onRemove(it)} /> : undefined}
+      />
+      <VideoPlayer item={video} onClose={onClose} footer={onRemove && video ? <RemoveButton onPress={() => onRemove(video)} /> : undefined} />
+    </>
   );
 }
 
@@ -159,7 +181,12 @@ export function AlbumEditScreen({ navigation, route }: { navigation: Nav; route:
         {a.items.map((it) => (
           <Thumb key={it.blob} item={it} size={cell} r={16} onPress={() => setView(it)} />
         ))}
-        <Pressable testID="album-add" accessibilityRole="button" accessibilityLabel={tx.albums.add} disabled={busy === 'add'} onPress={() => run('add', () => A.addItems(a.id))} style={{ width: cell, height: cell, borderRadius: 16, borderWidth: 2, borderStyle: 'dashed', borderColor: color.line, alignItems: 'center', justifyContent: 'center' }}>
+        <Pressable testID="album-add" accessibilityRole="button" accessibilityLabel={tx.albums.add} disabled={busy === 'add'} onPress={() =>
+            run('add', async () => {
+              const skipped = await A.addItems(a.id);
+              if (skipped) setErr(videoProblem(skipped));
+            })
+          } style={{ width: cell, height: cell, borderRadius: 16, borderWidth: 2, borderStyle: 'dashed', borderColor: color.line, alignItems: 'center', justifyContent: 'center' }}>
           {busy === 'add' ? <Loading /> : <Icon.Plus c={color.fgMuted} />}
         </Pressable>
       </View>
