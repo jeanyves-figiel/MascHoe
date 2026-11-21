@@ -117,19 +117,39 @@ defmodule ThirstrWeb.AuthTest do
   end
 
   describe "tokens (R-01.5)" do
-    test "refresh rotates; re-use of a spent token revokes the device", %{conn: conn} do
+    test "refresh rotates; re-use of a token spent long ago revokes the device", %{conn: conn} do
       {_c, s} = sign_up(conn)
       r1 = s["refresh_token"]
       s2 = conn |> recycle() |> post("/v1/auth/refresh", %{refresh: r1}) |> json_response(200)
       assert s2["refresh_token"] != r1
+      # spent 2 min ago: theft signal
+      Thirstr.Repo.update_all(Thirstr.Accounts.RefreshToken,
+        set: [used_at: DateTime.add(DateTime.utc_now(), -120)]
+      )
+
       assert conn |> recycle() |> post("/v1/auth/refresh", %{refresh: r1}) |> json_response(401)
-      # theft signal: the whole device session is gone
+      # the whole device session is gone
       assert conn
              |> recycle()
              |> post("/v1/auth/refresh", %{refresh: s2["refresh_token"]})
              |> json_response(401)
 
       assert conn |> authed(s2["access_token"]) |> get("/v1/me") |> json_response(401)
+    end
+
+    test "#116: parallel refresh with the same token is a race, not theft", %{conn: conn} do
+      {_c, s} = sign_up(conn)
+      r1 = s["refresh_token"]
+      s2 = conn |> recycle() |> post("/v1/auth/refresh", %{refresh: r1}) |> json_response(200)
+      r = conn |> recycle() |> post("/v1/auth/refresh", %{refresh: r1}) |> json_response(409)
+      assert r["error"]["code"] == "refresh_race"
+      # device and the winner's tokens still valid
+      assert conn |> authed(s2["access_token"]) |> get("/v1/me") |> json_response(200)
+
+      assert conn
+             |> recycle()
+             |> post("/v1/auth/refresh", %{refresh: s2["refresh_token"]})
+             |> json_response(200)
     end
 
     test "log out everywhere kills access tokens immediately", %{conn: conn} do

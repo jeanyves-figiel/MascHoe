@@ -1,3 +1,4 @@
+import { mod } from '../../i18n/mod';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Platform, Pressable, Text, View } from 'react-native';
@@ -250,7 +251,7 @@ export function SafetySettings({ navigation }: { navigation: Nav }) {
   const [lock, setLock] = useState(false);
   useFocusEffect(
     useCallback(() => {
-      api<{ blocks: unknown[] }>('GET', '/me/blocks').then((r) => setBlocked(r.blocks.length), () => {});
+      Promise.all([api<{ blocks: unknown[] }>('GET', '/me/blocks'), api<{ hidden: unknown[] }>('GET', '/me/hidden')]).then(([b, h]) => setBlocked(b.blocks.length + h.hidden.length), () => {});
       api<{ notices: Notice[] }>('GET', '/me/notices').then((r) => setNotices(r.notices), () => {});
       getLock().then((l) => setLock(!!l), () => {});
     }, []),
@@ -288,7 +289,7 @@ export function SafetySettings({ navigation }: { navigation: Nav }) {
       <Group hint={S.checkinHint}>
         <Row testID="settings-applock" title={S.appLock} sub={S.appLockSub} value={lock ? v3.settings.sum.on : v3.me.off} onPress={() => navigation.navigate('AppLock')} />
         <Row title={tx.prefs.verification} sub={me.verified ? tx.prefs.verified(me.verified_since ? new Date(me.verified_since).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }) : '') : tx.prefs.notVerified} value={me.verified ? tx.prefs.reverify : undefined} onPress={() => navigation.navigate('Verify')} />
-        <Row testID="settings-blocked" title={S.blocked} value={blocked != null ? String(blocked) : undefined} onPress={() => navigation.navigate('Blocked')} />
+        <Row testID="settings-blocked" title={mod.list.row} value={blocked != null ? String(blocked) : undefined} onPress={() => navigation.navigate('Blocked')} />
         <Row testID="settings-notices" title={S.notices} sub={S.noticesSub} value={unseen ? String(unseen) : notices?.length ? undefined : S.none} onPress={() => navigation.navigate('Notices')} />
       </Group>
     </Page>

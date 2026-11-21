@@ -10,6 +10,8 @@ import { fromB64, fromUtf8, hex, rand, toB64, utf8 } from './bytes';
 import { kv } from './kv';
 import * as mls from './mls';
 import * as store from './store';
+import * as people from './people';
+import { ppl } from '../i18n/people';
 import { getLocal } from '../me/localFields';
 
 export type Ttl = '24h' | '7d' | 'never';
@@ -56,7 +58,9 @@ export type Payload =
   | { t: 'album.revoke'; album: string }
   | { t: 'profile.private'; fields: Record<string, unknown> }
   | { t: 'location.share'; lat: number; lng: number; until: number }
-  | { t: 'screenshot' };
+  | { t: 'screenshot' }
+  /** F-07 R-07.36 (#115): mutual friends, only inside the 1:1 E2EE chat. */
+  | { t: 'friend'; op: people.FriendOp };
 
 export type Msg = {
   id: string;
@@ -91,7 +95,10 @@ export type Conv = {
   unread: number;
   theyWrote: boolean;
   iWrote: boolean;
+  /** Group chats only since #115: pinned on top. 1:1 chats use favorites (people.ts). */
   starred?: boolean;
+  /** Last known online state of the peer (#115, from GET /profiles/:id). */
+  online?: boolean;
   muted?: boolean;
   archived?: boolean;
   ttl: Ttl;
@@ -166,6 +173,8 @@ export async function start(account: Me) {
   me = account;
   store.reset();
   convs = (await kv.get<Record<string, Conv>>('convs')) ?? {};
+  await people.loadPeople();
+  await migrateStars();
   emit('convs');
   await ensureKeyPackages().catch(() => {});
   connect();
@@ -183,6 +192,18 @@ export async function start(account: Me) {
   });
 }
 
+/** R-07.32: a starred 1:1 chat becomes a favorite of its peer once; groups keep `starred` as Pin. */
+async function migrateStars() {
+  let changed = false;
+  for (const c of Object.values(convs)) {
+    if (!c.starred || c.ctx || !c.peer) continue;
+    if (!people.isFav(c.peer)) await people.setFav(c.peer, true, { name: c.name, photo: c.photo });
+    delete c.starred;
+    changed = true;
+  }
+  if (changed) await saveConvs();
+}
+
 let sweepTimer: ReturnType<typeof setInterval> | null = null;
 let appSub: { remove: () => void } | null = null;
 
@@ -197,6 +218,7 @@ export function stop() {
   drainTimer = null;
   online = false;
   me = null;
+  people.resetPeople();
 }
 
 /** Sign-out / account delete: wipe everything on the device (data-model.md › Device-only). */
@@ -525,6 +547,12 @@ async function receive(cid: string, w: Wire, serverAt: number, from?: string, ra
     });
     return false;
   }
+  if (p.t === 'friend') {
+    // R-07.36: request/accept show as a row; decline, cancel and remove are quiet.
+    if (c.ctx || !c.peer) return false;
+    const show = await people.applyFriend(c.peer, p.op, mine);
+    if (!show) return false;
+  }
   switch (p.t) {
     case 'disappearing':
       c.ttl = p.ttl;
@@ -595,6 +623,8 @@ export function preview(p: Payload): string {
       return '📍';
     case 'disappearing':
       return '⏱';
+    case 'friend':
+      return p.op === 'accept' ? ppl.previewAccept : ppl.previewRequest;
     default:
       return '';
   }
@@ -787,8 +817,10 @@ export async function refreshPeer(c: Conv) {
       age: v.age,
       photo: v.photos[0] ?? null,
       verified: v.verified,
+      online: !!v.online,
       gone: false,
     });
+    people.touchFav(c.peer, { name: v.display_name, photo: v.photos[0] ?? null }).catch(() => {});
   } catch (e) {
     if (e instanceof ApiError && e.status === 404) c.gone = true;
   }
@@ -808,6 +840,41 @@ export async function setConv(id: string, patch: Partial<Pick<Conv, 'starred' | 
   Object.assign(convs[id], patch);
   await saveConvs();
 }
+
+// ------------------------------------------------------------------ friends (R-07.36, #115)
+
+/** Ask the peer of a 1:1 chat to be friends. Visible row in the chat ("Pending" card). */
+export async function requestFriend(cid: string) {
+  const c = convs[cid];
+  if (!c || c.ctx || !c.peer) return;
+  const cur = people.friendOf(c.peer);
+  if (cur === 'in') return answerFriend(cid, true);
+  if (!people.canAsk(c.peer)) return;
+  await people.applyFriend(c.peer, 'request', true);
+  await send(cid, { t: 'friend', op: 'request' });
+}
+
+/** Accept (visible "You are friends" row) or Not now (quiet `decline`). */
+export async function answerFriend(cid: string, accept: boolean) {
+  const c = convs[cid];
+  if (!c || c.ctx || !c.peer || people.friendOf(c.peer) !== 'in') return;
+  await people.applyFriend(c.peer, accept ? 'accept' : 'decline', true);
+  await send(cid, { t: 'friend', op: accept ? 'accept' : 'decline' }, { silent: !accept });
+}
+
+/** Cancel my pending request, or remove a friend. Both quiet on the other side. */
+export async function dropFriend(cid: string) {
+  const c = convs[cid];
+  if (!c || c.ctx || !c.peer) return;
+  const cur = people.friendOf(c.peer);
+  if (!cur) return;
+  const op = cur === 'out' ? 'cancel' : cur === 'in' ? 'decline' : 'remove';
+  await people.applyFriend(c.peer, op, true);
+  await send(cid, { t: 'friend', op }, { silent: true });
+}
+
+/** The 1:1 chat with a peer, if any. */
+export const convWith = (peer: string) => Object.values(convs).find((c) => !c.ctx && c.peer === peer) ?? null;
 
 /** Delete locally (R-07.8): messages, group state and the inbox row. */
 export async function deleteConv(id: string) {

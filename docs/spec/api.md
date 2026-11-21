@@ -16,7 +16,7 @@ Errors: `{ "error": { "code": "rate_limited", "message": "...", "retry_after": 3
 | POST | /auth/oidc | {provider: apple\|google, id_token} → tokens |
 | POST | /auth/email/link | {email} → 202 (always) |
 | POST | /auth/email/verify | {token} → tokens |
-| POST | /auth/refresh | {refresh} → tokens (rotated; re-use of a spent token revokes the device) |
+| POST | /auth/refresh | {refresh} → tokens (rotated; re-use of a spent token revokes the device, except within 60 s of its use: 409 `refresh_race`, no revoke; clients single-flight refresh, #116) |
 | POST | /auth/logout · /auth/logout_all | → 204 (this device · every device, R-01.5) |
 | POST | /auth/device/link/start | → {qr_payload, expires} (old device) |
 | POST | /auth/device/link/complete | {qr_payload, new_device_pubkey} → tokens |
@@ -61,11 +61,12 @@ Blind signature (R-03.4, Chaum RSA-FDH): client picks random `token` and `r`, se
 | POST | /me/profiles/{id}/photos/{photo_id}/check | inline classifier → {photo, account} (status ok_main / ok_public / pending / rejected) |
 | DELETE | /me/profiles/{id}/photos/{photo_id} | 204; main photo can't be removed |
 | PUT | /me/profiles/{id}/photos/order | {order:[photo_id]} → MyProfile; first must have `main_ok` |
-| GET | /profiles/{id}?mode | ProfileView through the viewer's lens (F-06 R-06.1b; default hookup) and audience (stranger: public; verified: public+verified). 404 when blocked/unavailable or mode not in the profile's `show_in`. 300 views/h |
+| GET | /profiles/{id}?mode | ProfileView through the viewer's lens (F-06 R-06.1b; default hookup) and audience (stranger: public; verified: public+verified). `online` (bool, #115): active in the last 5 min and both sides show online status (R-17.5); false for yourself. 404 when blocked/unavailable or mode not in the profile's `show_in`. 300 views/h |
 | POST | /profiles/{id}/tap | verified only; 100/day (50 for accounts < 7 days) → {mutual} |
 | POST | /profiles/{id}/block | account-level, silent |
 | POST · DELETE | /profiles/{id}/hide | hide from Explore |
-| GET | /me/blocks | {blocks:[{profile_id, display_name, at}]} · DELETE /me/blocks/{profile_id} |
+| GET | /me/blocks | {blocks:[{profile_id, display_name, age, photo, at}]} · DELETE /me/blocks/{profile_id} |
+| GET | /me/hidden | {hidden:[{profile_id, display_name, age, photo, at}]} newest first, max 500 (#111) · unhide = DELETE /profiles/{id}/hide |
 | GET | /taps | {taps:[{profile, at, seen, mutual, kind}]} (7 days) · POST /taps/seen |
 | POST | /profiles/{id}/report | {reason, franked_payload?} (B4) |
 

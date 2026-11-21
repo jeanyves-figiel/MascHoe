@@ -83,20 +83,39 @@ export async function hasSession() {
   return (await secure.get(K.refresh)) !== null;
 }
 
-async function refresh(): Promise<boolean> {
+// #116: one refresh at a time. Refresh tokens rotate on use and the server revokes the device
+// when a spent token comes back, so parallel 401s must share a single /auth/refresh call.
+let refreshing: Promise<boolean> | null = null;
+
+export function refresh(): Promise<boolean> {
+  refreshing ??= doRefresh().finally(() => {
+    refreshing = null;
+  });
+  return refreshing;
+}
+
+async function doRefresh(): Promise<boolean> {
   const token = await secure.get(K.refresh);
   if (!token) return false;
-  const res = await fetch(BASE + '/auth/refresh', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ refresh: token }),
-  });
-  if (!res.ok) {
-    await clearSession();
-    return false;
+  let res: Response;
+  try {
+    res = await fetch(BASE + '/auth/refresh', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ refresh: token }),
+    });
+  } catch {
+    return false; // offline: keep the session, retry later
   }
-  await saveSession(await res.json());
-  return true;
+  if (res.ok) {
+    await saveSession(await res.json());
+    return true;
+  }
+  // Another refresh (other JS context) already rotated it: use the new tokens.
+  if ((await secure.get(K.refresh)) !== token) return true;
+  // Only a definitive answer ends the session; 409 race, 429, 5xx keep it.
+  if (res.status === 401 || res.status === 403) await clearSession();
+  return false;
 }
 
 /** Thrown when a request gets no answer in time: the result is unknown (R-07.19). */
@@ -126,7 +145,8 @@ export async function api<T = unknown>(method: string, path: string, body?: unkn
   } finally {
     if (timer) clearTimeout(timer);
   }
-  if (res.status === 401 && retry && access && (await refresh())) return api<T>(method, path, body, false, timeoutMs);
+  // #116: a parallel call may already have refreshed; only refresh if our token is still the stored one.
+  if (res.status === 401 && retry && access && ((await secure.get(K.access)) !== access || (await refresh()))) return api<T>(method, path, body, false, timeoutMs);
   if (res.status === 204) return undefined as T;
   if (res.status === 202) return (await res.json().catch(() => undefined)) as T;
   const json = await res.json().catch(() => ({}));
