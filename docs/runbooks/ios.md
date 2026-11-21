@@ -5,6 +5,8 @@ Beta testers install the real app from TestFlight. Builds point at **staging** (
 ## How it works
 - `.github/workflows/ios-testflight.yml` runs on every push to `main` touching `apps/mobile/**`, or manually (Actions → iOS TestFlight → Run workflow).
 - GitHub macOS runner (owner choice 2026-11-17: no Expo cloud): `npx expo prebuild -p ios` generates the native project (env `EXPO_PUBLIC_API_URL=https://staging.thirstr.fun`), `xcodebuild archive` signs with Xcode automatic signing (`-allowProvisioningUpdates` + App Store Connect API key, so Apple creates/keeps the distribution certificate and profile), then `xcodebuild -exportArchive` with `destination=upload` sends it to App Store Connect. Build number = run number + 100. Apple processes the build (~5–15 min) and it appears in TestFlight.
+- Runner: `runs-on: xcode-27` (GitHub's Xcode 27 image, macOS 27, Apple Silicon; GA 2026-10-15). The "Newest release Xcode" step picks the newest `/Applications/Xcode_*.app` that is not a beta/RC (betas can't upload to the App Store) and prints the iOS SDK. Apple requires the iOS 27 SDK for uploads from April 2027 (ITMS-90725, #73); the step warns if the SDK is below 27. `macos-latest` (macOS 26 image) only had Xcode 26.6 / iOS 26.5 SDK. When Xcode 28 ships, switch both iOS workflows to the `xcode-28` label.
+- `.github/workflows/ios-sim-smoke.yml` uses the same runner and Xcode step.
 - Without the secrets below the workflow skips with a warning; nothing fails.
 
 ## Current values (2026-11-17)
@@ -33,6 +35,7 @@ GitHub secrets: repo → Settings → Secrets and variables → Actions.
 
 ## Troubleshooting
 - Build logs: the workflow run (Archive step prints the last 200 xcodebuild lines).
+- Upload warning "SDK version issue … built with the iOS NN SDK": the runner image's Xcode is too old; move `runs-on` to the newest `xcode-NN` label (see How it works).
 - Signing errors about cloud-managed certificates: the API key may need the Admin role; create a new key and update `ASC_KEY_ID` / `ASC_KEY_P8`.
 - "Missing compliance": answered in-app (`ITSAppUsesNonExemptEncryption = false`).
 - Passkey sheet says the app is not associated: check `curl https://staging.thirstr.fun/.well-known/apple-app-site-association` and the Team ID.

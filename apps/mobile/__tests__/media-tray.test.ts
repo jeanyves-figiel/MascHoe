@@ -60,7 +60,7 @@ import { kv } from '../src/chat/kv';
 // eslint-disable-next-line import/first
 import { mxDe, mxEn, mxFr, timeLeft } from '../src/i18n/media';
 // eslint-disable-next-line import/first
-import { toggle } from '../src/chat/pick';
+import { holdTray, keyboardClosesTray, toggle } from '../src/chat/pick';
 
 const pic = (n: number) => new Uint8Array([0xff, 0xd8, n, n + 1, n + 2]);
 
@@ -130,5 +130,31 @@ describe('strings', () => {
     expect(timeLeft(now + 23.5 * 3600e3, now)).toBe('23 h');
     expect(timeLeft(now + 5 * 60e3, now)).toBe('5 min');
     expect(timeLeft(now + 3 * 86400e3, now)).toBe('3 d');
+  });
+});
+
+describe('#222 tray sheets keep the keyboard', () => {
+  it('keyboard closes the tray only when no tray sheet is typing', () => {
+    expect(keyboardClosesTray()).toBe(true);
+    holdTray(true);
+    expect(keyboardClosesTray()).toBe(false);
+    holdTray(false);
+    expect(keyboardClosesTray()).toBe(true);
+    holdTray(false); // extra release never goes negative
+    holdTray(true);
+    expect(keyboardClosesTray()).toBe(false);
+    holdTray(false);
+  });
+});
+
+describe('#138 video labels', () => {
+  it('counts photos and videos, formats length', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { mxEn, mmss } = require('../src/i18n/media') as typeof import('../src/i18n/media');
+    expect(mxEn.countsPV(3, 1)).toBe('3 photos · 1 video');
+    expect(mxEn.countsPV(0, 2)).toBe('2 videos');
+    expect(mxEn.countsPV(1, 0)).toBe('1 photo');
+    expect(mmss(75)).toBe('1:15');
+    expect(mmss(9)).toBe('0:09');
   });
 });

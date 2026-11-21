@@ -28,6 +28,9 @@ import { commits, photoZone, rubber, TAP_SLOP } from '../ui/gestureMath';
 import { cachedProfile, fetchProfile, markDead, putProfile, stepIndex, warmProfile } from './profileCache';
 import { feel } from '../ui/haptics';
 import { settle } from '../ui/motion';
+import { RingAvatar } from '../moments/Ring';
+import { watchedAll } from '../moments/api';
+import { mx } from '../i18n/moments';
 import { PhotoViewer } from '../ui/PhotoViewer';
 
 type Nav = { navigate: (s: string, p?: object) => void; goBack: () => void; setParams?: (p: Partial<Params>) => void };
@@ -411,6 +414,21 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
                 <Pressable key={i} accessibilityRole="button" accessibilityLabel={gx.photoOf(i + 1, photos.length)} onPress={() => setPage(i)} hitSlop={{ top: 8, bottom: 12 }} style={{ flex: 1, height: 4, borderRadius: radius.pill, backgroundColor: color.fgPrimary, opacity: i === page ? 1 : 0.35 }} />
               ))}
             </View>
+          ) : null}
+          {/* F-21 R-21.9 (#212): his Moments, ring + tag on the photo. */}
+          {p.moments && p.moments.live > 0 && !preview ? (
+            <Pressable
+              testID="profile-moments"
+              accessibilityRole="button"
+              accessibilityLabel={mx.openA11y(p.display_name, p.moments.live, p.moments.unseen)}
+              onPress={() => navigation.navigate('Moments', { queue: [{ id: p.id, name: p.display_name, age: p.age, photo: p.photos[0] ?? null, where: p.self ? undefined : distanceLabel(p.distance) }], index: 0, mode, self: p.self })}
+              style={{ position: 'absolute', right: space.l, bottom: 84, flexDirection: 'row', alignItems: 'center', gap: 6, paddingLeft: 4, paddingRight: 12, height: 44, borderRadius: radius.pill, backgroundColor: color.scrim }}
+            >
+              <RingAvatar size={36} unseen={p.moments.unseen && !watchedAll(p.id)}>
+                <Photo uri={p.photos[0]} id={p.id} label="" style={{ width: '100%', height: '100%' }} />
+              </RingAvatar>
+              <Text style={{ ...type.caption, fontSize: 12, color: color.fgPrimary }}>{`▶ ${mx.moments} · ${p.moments.live}`}</Text>
+            </Pressable>
           ) : null}
         </View>
         <View style={{ marginTop: -64, paddingHorizontal: space.xl, gap: 14, maxWidth: 560, width: '100%', alignSelf: 'center' }}>

@@ -44,6 +44,7 @@ export function CheckinStartScreen({ navigation, route }: { navigation: Nav; rou
       await startForChat({ cid: conv?.id, minutes: m, include, live, name: await S.myName(me.profile?.display_name ?? 'Me') });
       navigation.goBack();
     } catch (e) {
+      if (e instanceof ApiError && e.code === 'checkin_active' && !(await S.active())) return navigation.replace ? navigation.replace('CheckinDue') : navigation.navigate('CheckinDue');
       setErr(e instanceof ApiError ? e.message : e instanceof Error && e.message === 'no_contacts' ? tx.safety.needContacts : tx.common.error);
     } finally {
       setBusy(false);
@@ -109,24 +110,40 @@ export function CheckinStartScreen({ navigation, route }: { navigation: Nav; rou
 }
 
 // S-52 Check-in due: I'm OK (PIN / biometrics), +30 min, SOS. Duress PIN looks identical (AC-13.3).
+// #127, R-13.21: also ends a check-in the server still runs after this phone lost its copy.
 export function CheckinDueScreen({ navigation }: { navigation: Nav }) {
   const { me } = useSession();
+  const myName = me.profile?.display_name ?? 'Me';
   const [act, setAct] = useState<S.Active | null | undefined>(undefined);
+  const [orphan, setOrphan] = useState<S.Orphan | null>(null);
   const [cfg, setCfg] = useState<LockCfg | null>(null);
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    S.syncActive().then(setAct);
+    S.syncActive()
+      .then(async (a) => {
+        if (!a) setOrphan(await S.orphanCheckin());
+        setAct(a);
+      })
+      .catch(() => setAct(null));
     getLock().then(setCfg);
   }, []);
 
   const ok = async () => {
     setBusy(true);
-    await S.okCheckin().catch(() => {});
-    setBusy(false);
-    setDone(true);
+    setErr(null);
+    try {
+      if (act) await S.okCheckin().catch(() => {});
+      else await S.endOrphan(myName);
+      setDone(true);
+    } catch {
+      // Orphan not ended: say so, the alert would still fire (R-13.21).
+      setErr(tx.common.error);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const pin = async (p: string) => {
@@ -136,7 +153,7 @@ export function CheckinDueScreen({ navigation }: { navigation: Nav }) {
     if (r === 'duress') {
       // Same screen as OK; the alert leaves silently (R-13.9).
       setDone(true);
-      S.panic(me.profile?.display_name ?? 'Me').catch(() => {});
+      S.panic(myName).catch(() => {});
       return;
     }
     setErr(r === 'wait' ? tx.safety.lock.wait(Math.ceil((await waitMs()) / 1000)) : tx.safety.lock.wrong);
@@ -159,7 +176,8 @@ export function CheckinDueScreen({ navigation }: { navigation: Nav }) {
       </View>
     );
   if (act === undefined) return <Loading />;
-  if (act === null)
+  const due = act?.due ?? orphan?.due;
+  if (!due)
     return (
       <View style={{ flex: 1, backgroundColor: color.bgBase, padding: space.l, gap: space.l }}>
         <Text style={{ ...type.body, color: color.fgSecondary }}>{tx.safety.contactsHint}</Text>
@@ -169,9 +187,9 @@ export function CheckinDueScreen({ navigation }: { navigation: Nav }) {
 
   return (
     <ScrollView keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets style={{ flex: 1, backgroundColor: color.bgBase }} contentContainerStyle={{ padding: space.l, gap: space.l, paddingBottom: 120 }}>
-      <Text style={{ ...type.display, color: color.fgPrimary }}>{tx.safety.allGood}</Text>
-      <Text style={{ ...type.body, color: color.fgSecondary }}>{tx.safety.allGoodBody}</Text>
-      <Text style={{ ...type.meta, color: color.trust }}>{tx.safety.active(time(act.due))}</Text>
+      <Text style={{ ...type.display, color: color.fgPrimary }}>{act ? tx.safety.allGood : tx.safety.orphanTitle}</Text>
+      <Text style={{ ...type.body, color: color.fgSecondary }}>{act ? tx.safety.allGoodBody : tx.safety.orphanBody(time(new Date(new Date(due).getTime() + 15 * 60_000).toISOString()))}</Text>
+      <Text style={{ ...type.meta, color: color.trust }}>{tx.safety.active(time(due))}</Text>
       {cfg ? (
         <PinPad
           title={tx.safety.imOk}
@@ -185,8 +203,8 @@ export function CheckinDueScreen({ navigation }: { navigation: Nav }) {
           <ErrorText text={err} />
         </>
       )}
-      {act.ext < 3 ? <Button testID="checkin-more" kind="secondary" title={tx.safety.more} onPress={more} /> : null}
-      <Sos name={act.name} onSent={() => navigation.goBack()} />
+      {act && act.ext < 3 ? <Button testID="checkin-more" kind="secondary" title={tx.safety.more} onPress={more} /> : null}
+      <Sos name={act?.name ?? myName} onSent={() => navigation.goBack()} />
     </ScrollView>
   );
 }

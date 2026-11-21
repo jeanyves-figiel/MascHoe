@@ -133,6 +133,8 @@ defmodule Thirstr.Social do
          linked_accounts:
            Thirstr.Linked.visible(t.id, viewer, audience, t.account_id == viewer.id),
          updated_at: t.updated_at,
+         # F-21 R-21.9: ring on the profile photo
+         moments: Thirstr.Moments.summary(viewer, t.id, lens),
          self: t.account_id == viewer.id
        }}
     end

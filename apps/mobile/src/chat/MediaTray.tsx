@@ -5,16 +5,18 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, Image, LayoutChangeEvent, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSession } from '../app/session';
 import { tx } from '../i18n/app';
-import { mx, timeLeft } from '../i18n/media';
+import { mmss, mx, timeLeft } from '../i18n/media';
 import { prefs } from '../me/prefs';
 import { color, font, radius, space, tileFor, type } from '../theme/tokens';
 import { Button, Field, Icon, Segmented, Sheet } from '../ui';
 import * as Albums from './albums';
 import * as E from './engine';
 import * as Lib from './library';
-import { decryptToUri, loadOpts, pickPhotos, saveOpts, SendOpts, Source, takePhoto } from './media';
-import { MAX_PICK, Pick, toggle } from './pick';
+import { decryptToUri, loadOpts, pickPhotos, saveOpts, SendOpts, Source, takePhoto, videoProblem } from './media';
+import { holdTray, MAX_PICK, Pick, toggle } from './pick';
 import * as Recent from './recent';
+import { isVideo } from './video';
+import { VideoMark } from './VideoPlayer';
 
 const EXPIRIES: SendOpts['expiry'][] = ['keep', '1h', '24h', '7d'];
 const DUR_S = { '1h': 3600, '24h': 86400, '7d': 604800, keep: null } as const;
@@ -44,7 +46,7 @@ function Badge({ n }: { n: number }) {
   );
 }
 
-function Tile({ uri, size, n, onPress, onLongPress, tag, label, testID, fill }: { uri: string | null; size: number; n: number; onPress: () => void; onLongPress?: () => void; tag?: string; label: string; testID?: string; fill: string }) {
+function Tile({ uri, size, n, onPress, onLongPress, tag, label, testID, fill, video, dur }: { uri: string | null; size: number; n: number; onPress: () => void; onLongPress?: () => void; tag?: string; label: string; testID?: string; fill: string; video?: boolean; dur?: number }) {
   return (
     <Pressable
       testID={testID}
@@ -56,6 +58,7 @@ function Tile({ uri, size, n, onPress, onLongPress, tag, label, testID, fill }: 
       style={{ width: size, height: size, borderRadius: size > 60 ? 10 : 12, overflow: 'hidden', backgroundColor: fill, borderWidth: n > 0 ? 3 : 0, borderColor: color.hookup }}
     >
       {uri ? <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" /> : null}
+      {video ? <VideoMark dur={dur} small /> : null}
       <Badge n={n} />
       {tag ? (
         <View pointerEvents="none" style={{ position: 'absolute', left: 4, bottom: 4, paddingHorizontal: 5, paddingVertical: 1, borderRadius: radius.pill, backgroundColor: color.glass }}>
@@ -108,7 +111,8 @@ function Chip({ label, on, onPress, testID, locked, a11y }: { label: string; on:
 function AlbumTile({ a, cid, w, onPress }: { a: Albums.Album; cid: string; w: number; onPress: () => void }) {
   const [uri, setUri] = useState<string | null>(null);
   const [now] = useState(() => Date.now());
-  const cover = a.items[0];
+  // Cover = first photo: videos are not downloaded just to show a cover (#138).
+  const cover = a.items.find((i) => !isVideo(i));
   useEffect(() => {
     if (cover) decryptToUri(cover).then(setUri, () => {});
   }, [cover]);
@@ -126,7 +130,7 @@ function AlbumTile({ a, cid, w, onPress }: { a: Albums.Album; cid: string; w: nu
           {a.name}
         </Text>
         <Text numberOfLines={1} style={{ ...type.meta, fontSize: 11, lineHeight: 15, color: color.fgSecondary }}>
-          {mx.photosN(a.items.length)}
+          {counts(a.items)}
         </Text>
       </View>
     </Pressable>
@@ -145,7 +149,7 @@ export function MediaTray({
   height: number;
   bottom: number;
   onSend: (items: Source[], opts: SendOpts) => void;
-  onAlbumError: () => void;
+  onAlbumError: (msg?: string) => void;
   onEditAlbum: (id: string) => void;
 }) {
   const { me } = useSession();
@@ -294,7 +298,7 @@ export function MediaTray({
                     <Camera />
                   </Pressable>
                 ) : (
-                  <Tile testID={`roll-${item.id}`} uri={item.uri} size={cell} n={pos('l:' + item.id)} label={mx.roll} fill={color.bgOverlay} onPress={() => pick({ key: 'l:' + item.id, src: { kind: 'roll', shot: item } })} />
+                  <Tile testID={`roll-${item.id}`} uri={item.uri} size={cell} n={pos('l:' + item.id)} label={item.video ? `${mx.video} ${mmss(item.dur)}` : mx.roll} video={item.video} dur={item.dur} fill={color.bgOverlay} onPress={() => pick({ key: 'l:' + item.id, src: { kind: 'roll', shot: item } })} />
                 )
               }
             />
@@ -360,7 +364,11 @@ export function MediaTray({
         onClose={() => setNaming(false)}
         onCreated={async (a) => {
           setNaming(false);
-          await Albums.addItems(a.id).catch(onAlbumError);
+          const skipped = await Albums.addItems(a.id).catch(() => {
+            onAlbumError();
+            return undefined;
+          });
+          if (skipped) onAlbumError(videoProblem(skipped));
           const fresh = (await Albums.listAlbums()).find((x) => x.id === a.id);
           if (fresh) setShare(fresh);
         }}
@@ -371,12 +379,24 @@ export function MediaTray({
   );
 }
 
+/** "3 photos · 1 video" (#138). */
+export const counts = (items: { mime: string }[]) => {
+  const v = items.filter(isVideo).length;
+  return mx.countsPV(items.length - v, v);
+};
+
 function Camera() {
   return <Text style={{ fontSize: 24 }}>📷</Text>;
 }
 
 function NewAlbumSheet({ visible, onClose, onCreated }: { visible: boolean; onClose: () => void; onCreated: (a: Albums.Album) => void }) {
   const [name, setName] = useState('');
+  // #222: keep the tray (and this sheet) open while the name keyboard is up.
+  useEffect(() => {
+    if (!visible) return;
+    holdTray(true);
+    return () => holdTray(false);
+  }, [visible]);
   return (
     <Sheet visible={visible} onClose={onClose} title={mx.newAlbum} closeLabel={tx.common.close}>
       <Field label={mx.newName} value={name} onChangeText={setName} maxLength={40} autoFocus testID="tray-album-name" />
@@ -471,18 +491,19 @@ export function ShareSheet({ album, conv, group, onClose, onError, onEdit }: { a
 function ShareCover({ album }: { album: Albums.Album }) {
   const [uris, setUris] = useState<(string | null)[]>([]);
   useEffect(() => {
-    Promise.all(album.items.slice(0, 4).map((i) => decryptToUri(i).catch(() => null))).then(setUris);
+    Promise.all(album.items.slice(0, 4).map((i) => (isVideo(i) ? null : decryptToUri(i).catch(() => null)))).then(setUris);
   }, [album]);
   return (
     <View style={{ flexDirection: 'row', gap: 4, height: 84 }}>
       {(album.items.length ? album.items.slice(0, 4) : [null]).map((it, i) => (
         <View key={it?.blob ?? i} style={{ flex: 1, borderRadius: 12, overflow: 'hidden', backgroundColor: tileFor(it?.blob ?? album.id) }}>
           {uris[i] ? <Image source={{ uri: uris[i]! }} style={{ width: '100%', height: '100%' }} resizeMode="cover" /> : null}
+          {it && isVideo(it) ? <VideoMark dur={it.dur} small /> : null}
         </View>
       ))}
       <View style={{ position: 'absolute', top: 6, left: 6, flexDirection: 'row', alignItems: 'center', gap: 4, height: 20, paddingHorizontal: 7, borderRadius: radius.pill, backgroundColor: color.friends }}>
         <Icon.Lock size={10} c={color.onAccent} />
-        <Text style={{ ...type.caption, fontSize: 9.5, lineHeight: 12, color: color.onAccent }}>{mx.photosN(album.items.length)}</Text>
+        <Text style={{ ...type.caption, fontSize: 9.5, lineHeight: 12, color: color.onAccent }}>{counts(album.items)}</Text>
       </View>
     </View>
   );

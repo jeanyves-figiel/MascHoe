@@ -50,5 +50,5 @@ scripts/smoke.sh https://staging.thirstr.fun
 ## Known gaps (tracked in GitHub)
 - Single Postgres machine per env: no standby yet (EN-01 #160). Backups + PITR: pgBackRest → `thirstr-backups-<env>` (#141, [`db-backups.md`](db-backups.md)).
 - `ID_PEPPER` is a Fly secret; spec wants it in an EU KMS.
-- No SMTP provider yet: email magic links are not delivered on staging/prod.
+- No SMTP provider yet: email magic links are not delivered on staging/prod. Setup: [`email.md`](email.md) (#26). Classifier apps: [`classifier.md`](classifier.md).
 - Tigris EU-only placement to confirm.

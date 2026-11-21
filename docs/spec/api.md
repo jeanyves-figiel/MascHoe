@@ -1,10 +1,16 @@
 # API & realtime contract
 
-Base: `https://api.thirstr.fun/v1` (staging: `https://staging.thirstr.fun/v1`; DEV: `https://localhost:7443/v1`). JSON. Auth: short-lived access token (15 min) + refresh (30 d, device-bound) issued after passkey/OIDC/magic-link. Every request signed with device key + attestation token (iOS App Attest / Play Integrity) refreshed daily.
+Base: `https://api.thirstr.fun/v1` (staging: `https://staging.thirstr.fun/v1`; DEV: `https://localhost:7443/v1`). JSON. Auth: short-lived access token (15 min) + refresh (30 d, device-bound) issued after passkey/OIDC/magic-link. Devices attest once and re-assert daily (iOS App Attest; Android Play Integrity with the Android build), see security.md › Device attestation; beta does not block unattested clients.
 
 Errors: `{ "error": { "code": "rate_limited", "message": "...", "retry_after": 30 } }`. Codes: `unauthorized`, `forbidden`, `not_verified`, `rate_limited`, `not_found`, `conflict`, `validation`, `safe_mode_blocked`, `quarantined` (never returned to the quarantined client; it gets fake success).
 
 ## REST
+
+### App config, flags, minimum build (EN-13 #172, EN-14 #173)
+- `GET /v1/config` (no account) → `{min_build: {ios, android}, upgrade_required, store_url: {ios, android}, flags: {name: bool}}`. Cached 60 s by the client, kept on the phone for offline use; fetched at start and on every foreground.
+- Every request may send `x-thirstr-platform` and `x-thirstr-build` (native build number). A native build below `min_build` gets **426** `upgrade_required` on every endpoint except `/v1/config` and `/v1/health`; the app then shows the forced-update screen (chats stay on the phone). Requests without a build number (older builds, web) pass.
+- `POST /v1/client/errors` (no account, EN-05) `{platform: ios|android|web, build?, fatal?, message, stack?}` → 204; 422 if platform or message missing. Scrubbed, grouped by signature, kept 30 days after last seen. `POST /v1/client/sessions` `{platform}` → 204 (anonymous start ping, crash-free rate). Both limited to 120 per IP per hour.
+- Flags: unknown name = off; known name without a row = on (code defaults); a row with `enabled = false` is a kill switch. Rules: `platforms`, `min_build` per platform, `percent` (stable per install). No country targeting yet. Ops: `docs/runbooks/flags.md`.
 
 ### Auth (F-01)
 | Method | Path | Body → Response |
@@ -28,6 +34,10 @@ Errors: `{ "error": { "code": "rate_limited", "message": "...", "retry_after": 3
 | POST | /devices/link | → {code, expires_in: 120} |
 | GET | /devices/link/{code} | → {state: pending\|claimed\|confirmed, platform?} |
 | POST | /devices/link/{code}/confirm | → 204 (after app lock / Face ID on the old device) |
+| GET | /devices/attest | → {attested, has_key, attested_at} for the calling device (#25) |
+| POST | /devices/attest/challenge | → {challenge (base64url, 43 chars), expires_in: 300}; single use, bound to the device; 20/h |
+| POST | /devices/attest | {key_id, attestation (base64), challenge} → {attested: true}; iOS App Attest, once per install. 422 `attestation_invalid` / `challenge` |
+| POST | /devices/assert | {assertion (base64), challenge} → {attested: true}; at most daily. 409 `not_attested`, 422 `assertion_invalid` / `challenge` |
 | POST | /auth/device-link | no auth, 10/min/IP. {code, platform} → {claim}; {code, claim} → 202 {state} until confirmed, then Session |
 
 Sign-up calls (passkey register, OIDC, email verify) carry `age_confirmed: true` (R-01.12) and `platform`. Every request carries `x-thirstr-install` (random per install, hashed server-side) used only for the R-02.3 under-age flag. Session response: `{access_token, refresh_token, expires_in, account: Me}`.
@@ -184,7 +194,8 @@ Envelopes are opaque b64 ciphertext ≤ 64 KB (F-13 › Beta implementation). `r
 | POST | /checkin/{token}/ok | {oks?: [{relay, ciphertext}]} → 204 (check-in + held alerts deleted, R-13.10) |
 | POST | /checkin/{token}/panic | {alerts} → 204 (released now, check-in closed) |
 | POST | /checkin/panic | {alerts} → 204 (released now; no check-in needed) |
-| GET | /checkin | → {checkin: null \| {token, due_at, extensions}} |
+| GET | /checkin | → {checkin: null \| {due_at, extensions}} (the token is never returned; R-13.21 uses this to spot a check-in the phone lost) |
+| DELETE | /checkin | {oks?: [{relay, ciphertext}]} → 204 (#127, R-13.21: ends the account's check-in without its token, held alerts deleted, `oks` delivered now); none running → 404 |
 
 Contact side (no account; `rid` from the link fragment; 60 req/min per IP):
 | GET | /relay/{rid} | → {accepted, intro, vapid_key} (404 when removed) |
@@ -206,6 +217,18 @@ Contact side (no account; `rid` from the link fragment; 60 req/min per IP):
 | GET | /share/{slug} | → {profile_id} (signed in; then GET /profiles/{id}) |
 Public page `GET /p/{slug}` (HTML, no scripts) — I-02.
 | POST · DELETE | /profiles/{id}/vouch | vouch / withdraw. Verified, account ≥ 30 d (403, AC-18.1), ≥ 10 messages each way with that profile, ≤ 5 per 30 d. Profile view adds `vouches` (weighted, anonymous), `vouched`, `can_vouch` |
+
+### Moments (F-21, #212)
+| POST | /moments/uploads | {content_type} → 201 {moment_id, put_url, thumb_put_url} (presigned PUTs, 5 min; verified only, 403 `not_verified`; 409 at 10 live) |
+| POST | /moments/{id}/publish | {audience: everyone\|chats\|favorites, audience_ids: [profile ids] (chats / favorites, resolved on the phone, ≤ 2 000), ttl_s: 3600\|21600\|86400, intents: [hookup\|friends\|sport], caption ≤ 80, caption_style: clean\|pill\|pop} → {id, status: live\|review\|rejected, expires_at, …}. Rejected → files deleted. 429 after 20 / 24 h (3 for accounts < 24 h). Hidden or Safe Mode posters: `everyone` → 422 |
+| GET | /moments/mine | → {moments: [{id, url, thumb_url, caption, caption_style, audience, audience_count, intents, status, main_ok, created_at, expires_at, seen_count, tap_count, quiet_count, screenshots, viewers: [{profile_id, display_name, age, at, tapped, screenshot, photo}]}]} (viewers empty when I watch quietly) |
+| GET | /profiles/{id}/moments?mode= | → {moments: [{id, url, thumb_url, caption, caption_style, created_at, expires_at, spicy, seen}]}; 404 when none or not allowed (same answer). URLs signed for 5 min |
+| POST | /moments/views | {ids ≤ 100} → {recorded} |
+| POST | /moments/{id}/tap | Tap with the Moment → {mutual} |
+| POST | /moments/{id}/screenshot | → 204 (poster notified, `moment.screenshot`) |
+| DELETE | /moments/{id} | → 204 |
+| PUT · DELETE | /moments/mutes/{profile_id} | mute / unmute his Moments → 204 |
+Explore cards (`grid`, `tray`, `map` pins and avatars) and `GET /profiles/{id}` gain `moments: {live, unseen, thumb?} \| null`. `PATCH /me/settings` gains `moments_quiet`.
 
 ## Realtime (Phoenix Channels, WSS)
 Connect: `wss://<api host>/socket/websocket?token=<access token>&vsn=2.0.0`, then join `user:me` (beta: one private topic per account; the server maps it).
