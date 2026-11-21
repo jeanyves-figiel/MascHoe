@@ -50,7 +50,8 @@ Tab bar (4): **Explore** S-10 · **Tonight** S-13 · **Chats** S-40 · **Me** S-
 | S-19 | Club page | F-11 R-11.6 | header, events, members count, join | join/request | pending |
 
 ## Venues
-| S-17 | Venue here-now [Venue] | F-12 | stats, here grid, visibility toggle, check out | tap profile; go invisible | not checked in → venue info + Check in |
+| S-17 | Venue here-now [Venue] | F-12 | stats, here grid, visibility toggle, check out; "Added by a member" pill; "Remove this place" for the creator while alone (R-12.11) | tap profile; go invisible | not checked in → venue info + Check in |
+| S-17a | Add a place [AddPlace] (#191) | F-12 R-12.11 | still map at the exact fix + accuracy, name, kind chips, coral exact-location card, "I understand, add & check in" | add → S-17 checked in; duplicate → "Check in there" | no location / accuracy > 100 m → banner + retry; not verified → Verify; Safe Mode → off |
 
 ## Chats & media
 | S-40 | Inbox [v2 Chats, #115] | F-07 | 34 pt title, search (names, messages, own notes/tags, R-07.34), segmented All / Unread / Favorites / Friends (R-07.33), favorites strip (All), Taps row (flame), rows (56 pt avatar, online dot, sunflower star = favorite, violet Friend badge, note line, bold preview + coral count when unread), Friends: requests row + Online / Friends sections, Parties & groups, E2EE footer (teal) | swipe: archive/mute; long-press favorite / pin (groups) | empty → "Say hi to someone nearby" |

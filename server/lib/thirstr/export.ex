@@ -40,6 +40,8 @@ defmodule Thirstr.Export do
       "SELECT club_id, profile_id, role, state, created_at FROM club_members WHERE profile_id IN #{@mine}",
     venue_checkin:
       "SELECT venue_id, profile_id, visible, zone, checked_in_at FROM venue_checkins WHERE profile_id IN #{@mine}",
+    places_added:
+      "SELECT id, name, kind, lat, lng, hidden, created_at FROM venues WHERE created_by = $1",
     reports_filed:
       "SELECT reason, context, note, state, created_at FROM reports WHERE reporter_account = $1",
     notices:

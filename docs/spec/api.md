@@ -123,11 +123,13 @@ Party: `{id, title, host: card, starts_at, ends_at, capacity, seats_taken, rules
 | POST | /clubs/{id}/join · /leave · /members/{profile_id}/approve\|remove\|promote | admin actions for admins |
 
 ### Venues (F-12)
-| GET | /venues/nearby?mode | → {venues: [{id, name, kind, here: "0"\|"a_few"\|n, distance}]}; kinds by mode (gym only in Sport) |
+| GET | /venues/nearby?mode | → {venues: [{id, name, kind, here: "0"\|"a_few"\|n, distance, member}]}; kinds by mode (gym only in Sport); hidden venues left out |
+| POST | /venues?mode | F-12 R-12.11 add a place: {name 2–60, kind club\|bar\|sauna\|gym\|other, lat, lng, visible?, zone?} (verified, not Safe Mode, ≤ 1.5 km from the caller's cell, 3 per 24 h) → here (caller checked in). 409 `place_exists` {error: {code, message, existing: {id, name, kind}}} when a similar name is listed within 75 m |
+| DELETE | /venues/{id} | creator only, while nobody else is checked in (403 / 409 otherwise) → 204 |
 | POST | /venues/{id}/checkin?mode | {visible, zone? ≤ 40} (verified, not Safe Mode, ≤ 1.5 km from the venue cell) → here; one check-in per account, auto check-out after 4 h |
 | PATCH | /venues/{id}/checkin | {visible?, zone?} |
 | POST | /venues/checkout | |
-| GET | /venues/{id}/here | 403 unless checked in here; invisible callers see nobody. → {venue, me, stats: {total, visible_to_you, tapped_you}, people: [{profile, zone, since, tapped_me}]} |
+| GET | /venues/{id}/here | 403 unless checked in here; invisible callers see nobody. → {venue: {id, name, kind, member, mine, removable}, me, stats: {total, visible_to_you, tapped_you}, people: [{profile, zone, since, tapped_me}]} |
 
 ### Group chats (parties, activities, clubs)
 MLS groups like 1:1 chats. `context` = `party:{id}` \| `activity:{id}` \| `club:{id}` on `/mls/keypackages/claim` and `/mls/messages` lets members of the same party, activity or club reach each other without first-contact rules and without counting as new contacts. The host (party host, activity host, first club admin) adds and removes members with MLS commits when the member list changes. Welcome wire: `sha256(kp) ‖ '{"ctx":"…"}\n' ‖ Welcome`. Sender name and group title travel inside the E2EE payload.

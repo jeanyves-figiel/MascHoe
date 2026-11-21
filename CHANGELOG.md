@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- **Add a place** (server + app, #191, F-12 R-12.11): not listed? Tonight › Venues nearby › "Add a place" pins a club, bar, sauna, gym or other place at your exact position and checks you in. A clear warning says this shares your exact location and that everyone will see the place. No review before: it is on the map and in Tonight for everyone at once, labelled "Added by a member" (the creator is never shown). Similar name within 75 m → "Check in there" instead. 3 per day. The creator can remove it while nobody else is checked in. Admin console › Places › Added by members lists them with Hide / Delete. Places you added are in your data export.
+
+### Fixed
+- **Hidden venues stay hidden in Tonight** (server, #191): Venues nearby listed venues the team had hidden, and they could still be checked into. Venue counts now ignore expired check-ins. New coordinates index for the map's place query.
+
 ### Changed
 - **Post your plan and Host a party, redone** (app, #189, F-09 R-09.9, F-10 R-10.1, [mockup option A](https://claude.ai/artifact/Vra2UhUrQeLyytnkqGrHYD)): no more walls of time and number chips. Both forms use one **timeline scrubber** for start and end: drag an end, or slide the whole window; 15 min steps with a haptic tick. Plan types and audiences are one row of icons; house rules are 8 icon tiles plus up to 3 of your own typed inline; guests are a − / + stepper (hold to repeat, or drag the number). A live preview shows what others will see. Smart defaults: last plan type, now → +4 h; parties 22:00 for 4 h, 6 guests, Safer sex.
 
