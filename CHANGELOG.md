@@ -5,6 +5,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+- **Safety check-in stuck after reinstall or wipe** (server + app, #127, F-13 R-13.21): when the phone lost its copy of a running check-in, the app showed none, a new one was refused ("A check-in is already running") and the held alert still fired to your trusted contacts at due + 15 min: a false alarm. Me › Safety now shows "A check-in is still running … Tap to end it", and starting one (sheet or meetup card) opens the "Check-in still running" screen instead of an error. **I'm OK** there (same PIN / Face ID / duress PIN rules) ends it on the server by account (`DELETE /v1/checkin`), deletes the held alert and tells the contacts this phone still knows. If ending fails you see an error, never "All good".
+
 ### Changed
 - **Calmer Explore map** (app, #223, F-04 R-04.2/R-04.20, F-19 G8): the hexagon area zones are gone from the map. People who share their Area still appear at a random spot inside their zone (same as before), so nothing becomes more precise; viewers who only get counts still see the count bubbles. **Clubs and Saunas are off by default** (Parties stays on, Gyms unchanged); everyone gets the new defaults once. **Active now** opens with the **smallest tiles** (4 per row); a size picked by pinching or in Filters is still remembered.
 

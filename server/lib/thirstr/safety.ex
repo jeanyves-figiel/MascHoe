@@ -168,6 +168,24 @@ defmodule Thirstr.Safety do
     end
   end
 
+  @doc """
+  #127, R-13.21: end the account's running check-in without its token, for a phone that lost its
+  local copy (reinstall, wipe). Held alerts go with it (FK cascade); optional `ok` envelopes go to
+  the contacts whose keys the phone still has.
+  """
+  def cancel(%Account{} = a, p) do
+    with {:ok, oks} <- envs(a, p["oks"] || []) do
+      case q!("DELETE FROM checkins WHERE account_id = $1 RETURNING id", [uuid(a.id)]) do
+        [] ->
+          {:error, :not_found}
+
+        _ ->
+          release(oks, "ok")
+          :ok
+      end
+    end
+  end
+
   @doc "Panic during a check-in (or duress PIN): release now and close the check-in."
   def panic(%Account{} = a, token, p) do
     with {:ok, id, _} <- checkin(a, token),

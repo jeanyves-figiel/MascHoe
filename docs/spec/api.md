@@ -184,7 +184,8 @@ Envelopes are opaque b64 ciphertext ≤ 64 KB (F-13 › Beta implementation). `r
 | POST | /checkin/{token}/ok | {oks?: [{relay, ciphertext}]} → 204 (check-in + held alerts deleted, R-13.10) |
 | POST | /checkin/{token}/panic | {alerts} → 204 (released now, check-in closed) |
 | POST | /checkin/panic | {alerts} → 204 (released now; no check-in needed) |
-| GET | /checkin | → {checkin: null \| {token, due_at, extensions}} |
+| GET | /checkin | → {checkin: null \| {due_at, extensions}} (the token is never returned; R-13.21 uses this to spot a check-in the phone lost) |
+| DELETE | /checkin | {oks?: [{relay, ciphertext}]} → 204 (#127, R-13.21: ends the account's check-in without its token, held alerts deleted, `oks` delivered now); none running → 404 |
 
 Contact side (no account; `rid` from the link fragment; 60 req/min per IP):
 | GET | /relay/{rid} | → {accepted, intro, vapid_key} (404 when removed) |
