@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Dimensions, FlatList, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, FlatList, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { tx } from '../i18n/app';
 import { v2 } from '../i18n/v2';
 import { color, radius, space, tileFor, type } from '../theme/tokens';
@@ -7,6 +7,7 @@ import { Banner, Button, EmptyState, Field, Icon, ListRow, Loading, Scrim, Secti
 import * as A from './albums';
 import { getConv } from './engine';
 import { useTopics } from './hooks';
+import { PhotoViewer } from '../ui/PhotoViewer';
 import { decryptToUri } from './media';
 
 type Nav = { navigate: (s: string, p?: object) => void; goBack: () => void };
@@ -33,22 +34,26 @@ function Thumb({ item, size, onPress, h, r = radius.sm }: { item: { blob: string
   );
 }
 
-function Viewer({ item, onClose, onRemove }: { item: { blob: string; key: string; iv: string; mime: string } | null; onClose: () => void; onRemove?: () => void }) {
-  const [uri, setUri] = useState<string | null>(null);
-  useEffect(() => {
-    if (item) decryptToUri(item).then(setUri, () => {});
-  }, [item]);
+type Item = { blob: string; key: string; iv: string; mime: string };
+
+/** F-19 G13: album photos full screen; swipe between them, pinch to zoom, swipe down to close. */
+function Viewer({ items, item, onClose, onRemove }: { items: Item[]; item: Item | null; onClose: () => void; onRemove?: (it: Item) => void }) {
   return (
-    <Modal visible={!!item} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable onPress={onClose} accessibilityLabel={tx.common.close} style={{ flex: 1, backgroundColor: color.bgBase, alignItems: 'center', justifyContent: 'center' }}>
-        {uri && item ? <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="contain" /> : null}
-      </Pressable>
-      {onRemove ? (
-        <Pressable accessibilityRole="button" onPress={onRemove} style={{ position: 'absolute', bottom: space.huge, alignSelf: 'center', paddingHorizontal: space.xl, height: 44, justifyContent: 'center', borderRadius: radius.pill, backgroundColor: color.danger }}>
-          <Text style={{ ...type.headline, color: color.fgPrimary }}>{tx.albums.remove}</Text>
-        </Pressable>
-      ) : null}
-    </Modal>
+    <PhotoViewer
+      items={item ? items : null}
+      index={item ? Math.max(0, items.indexOf(item)) : 0}
+      src={(it: Item) => () => decryptToUri(it)}
+      onClose={onClose}
+      footer={
+        onRemove
+          ? (it: Item) => (
+              <Pressable accessibilityRole="button" onPress={() => onRemove(it)} style={{ paddingHorizontal: space.xl, height: 44, justifyContent: 'center', borderRadius: radius.pill, backgroundColor: color.danger }}>
+                <Text style={{ ...type.headline, color: color.fgPrimary }}>{tx.albums.remove}</Text>
+              </Pressable>
+            )
+          : undefined
+      }
+    />
   );
 }
 
@@ -182,12 +187,12 @@ export function AlbumEditScreen({ navigation, route }: { navigation: Nav; route:
         <ListRow title={tx.albums.delete} danger onPress={() => run('del', () => A.deleteAlbum(a.id)).then(() => navigation.goBack())} />
       </Section>
       <Viewer
+        items={a.items}
         item={view}
         onClose={() => setView(null)}
-        onRemove={() => {
-          const b = view!.blob;
+        onRemove={(it) => {
           setView(null);
-          run('rm', () => A.removeItem(a.id, b));
+          run('rm', () => A.removeItem(a.id, it.blob));
         }}
       />
     </ScrollView>
@@ -215,7 +220,7 @@ export function AlbumViewScreen({ route }: { route: { params: { cid: string; alb
         columnWrapperStyle={{ gap: space.s }}
         renderItem={({ item }) => <Thumb item={item} size={cell} r={16} onPress={() => setView(item)} />}
       />
-      <Viewer item={view} onClose={() => setView(null)} />
+      <Viewer items={g.items} item={view} onClose={() => setView(null)} />
     </View>
   );
 }

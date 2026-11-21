@@ -1,15 +1,20 @@
 import { privateStore as AsyncStorage } from '../app/privateStore';
 import { cellToLatLng } from 'h3-js';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import * as Haptics from 'expo-haptics';
-import { FlatList, Platform, Pressable, RefreshControl, Text, View, AppState } from 'react-native';
+import { FlatList, Pressable, RefreshControl, Text, View, AppState } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, ApiError } from '../api/client';
 import type { Card, ExploreSummary, MapData, Mode, Place } from '../api/types';
 import { useSession } from '../app/session';
 import { distanceLabel, tx } from '../i18n/app';
 import { mod } from '../i18n/mod';
-import { prefs } from '../me/prefs';
+import { feel } from '../ui/haptics';
+import { GestureDetector, usePinchGesture } from 'react-native-gesture-handler';
+import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
+import { colsAfterPinch, nearIds } from '../ui/gestureMath';
+import { settle } from '../ui/motion';
+import { setCols, useCols, type Cols } from './gridCols';
 import { SafetySheet, SheetRow } from '../trust/SafetySheet';
 import { toast } from '../ui/Toast';
 import { color, radius, space, type } from '../theme/tokens';
@@ -76,7 +81,7 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
     );
   }, []);
   const hold = useCallback((c: Card) => {
-    if (Platform.OS !== 'web' && prefs().haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    feel('tap');
     setQuick(c);
     setHoldSeen(true);
     AsyncStorage.setItem(HOLD_KEY, '1');
@@ -211,9 +216,32 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
       navigation.navigate('Profile', {
         id: c.id,
         mode: intents.find((m) => (c.intents ?? ['hookup']).includes(m)) ?? intents[0],
+        // F-19 G10: grid order, so the profile can swipe to the next / previous person.
+        ids: nearIds(items, c.id),
       }),
-    [navigation, intents],
+    [navigation, intents, items],
   );
+  // F-19 G8: pinch the grid for 2, 3 or 4 per row (also in Filters › Grid size).
+  const cols = useCols();
+  const pinch = useSharedValue(1);
+  const pinched = useCallback((n: Cols) => {
+    feel('tick');
+    setCols(n);
+  }, []);
+  const gridGesture = usePinchGesture({
+    onUpdate: (e) => {
+      'worklet';
+      pinch.set(Math.min(1.12, Math.max(0.9, e.scale)));
+    },
+    onDeactivate: (e) => {
+      'worklet';
+      const n = colsAfterPinch(cols, e.scale);
+      pinch.set(settle(1, false));
+      if (n !== cols) scheduleOnRN(pinched, n);
+    },
+  });
+  const pinchStyle = useAnimatedStyle(() => ({ transform: [{ scale: pinch.get() }] }));
+
   // R-04.14: one tap on a pin opens the profile; holding it opens Hide / Block / Report (S-21).
   const selectPin = useCallback(
     (c: Card) => {
@@ -506,10 +534,13 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
             )
           }
         >
+          <GestureDetector gesture={gridGesture}>
+          <Animated.View style={[{ flex: 1 }, pinchStyle]}>
           <FlatList
+            key={`cols-${cols}`}
             ref={list}
             data={items}
-            numColumns={3}
+            numColumns={cols}
             keyExtractor={(c) => c.id}
             columnWrapperStyle={{ gap: space.s }}
             contentContainerStyle={{ gap: space.s, paddingHorizontal: space.l, paddingBottom: listPad }}
@@ -546,12 +577,14 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
               />
             }
             renderItem={({ item, index }) => (
-              <View style={{ flex: 1 / 3 }}>
+              <View style={{ flex: 1 / cols }}>
                 {index === furtherFrom && !quiet ? <Text style={{ ...type.caption, color: color.fgSecondary, marginBottom: 4 }}>{tx.explore.further}</Text> : null}
                 <ProfileTile card={item} selected={item.id === selected} onPress={() => open(item)} onLongPress={() => hold(item)} />
               </View>
             )}
           />
+          </Animated.View>
+          </GestureDetector>
         </GridSheet>
       </View>
     );
@@ -653,3 +686,4 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
     </View>
   );
 }
+

@@ -1,14 +1,13 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNavigationContainerRef, DarkTheme, NavigationContainer, StackActions, type NavigationState } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import * as Haptics from 'expo-haptics';
 import React from 'react';
 import { AppState, Linking, Platform, Pressable, Text, View } from 'react-native';
 import { SafeAreaProvider, useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '../api/client';
 import { AlbumEditScreen, AlbumsScreen, AlbumViewScreen } from '../chat/AlbumScreens';
 import { ChatScreen } from '../chat/ChatScreen';
-import { on, unreadTotal } from '../chat/engine';
+import { getConvs, on, unreadTotal } from '../chat/engine';
 import { useTopics } from '../chat/hooks';
 import { InboxScreen } from '../chat/InboxScreen';
 import { PushPrompt } from '../chat/PushPrompt';
@@ -17,7 +16,9 @@ import { tx } from '../i18n/app';
 import { DevicesScreen } from '../me/DevicesScreen';
 import { EditProfileScreen } from '../me/EditProfileScreen';
 import { MeScreen } from '../me/MeScreen';
-import { backOf, hiddenExpired } from '../me/hidden';
+import { backOf, hiddenExpired, stayOf, untilFor } from '../me/hidden';
+import { gx } from '../i18n/gestures';
+import { toast } from '../ui/Toast';
 import { quickLevel } from '../explore/level';
 import { LensPreviewScreen } from '../me/LensPreviewScreen';
 import { SettingsScreen } from '../me/SettingsScreen';
@@ -34,7 +35,8 @@ import { AppLockScreen } from '../safety/AppLockScreen';
 import { CheckinDueScreen, CheckinStartScreen } from '../safety/CheckinScreens';
 import { LockGate } from '../safety/LockGate';
 import { SafeModeAuto } from '../safety/SafeModeAuto';
-import { loadPrefs, prefs } from '../me/prefs';
+import { loadPrefs } from '../me/prefs';
+import { feel } from '../ui/haptics';
 import { dx } from '../i18n/date';
 import { LiveBar, SafetyQuickScreen, useCheckin } from '../safety/live';
 import { active as activeCheckin, CATEGORY, extendCheckin, refreshCheckin } from '../safety/safety';
@@ -68,13 +70,80 @@ const NO_BAR = new Set(['Verify']);
 // Pop bottom nav (App v2): white floating pill, icons; active tab grows, shows its label and fills with the mode colour.
 // #137: one bar for the whole app, drawn over every screen (pushed screens too); hidden while the keyboard is up.
 // The tab under the current screen stays lit; tapping any tab closes pushed screens and opens that tab.
+const MODES = ['hookup', 'friends', 'sport'] as const;
+
+// F-19 G16 (#187): holding a tab is a shortcut. Explore: lens picker; Me: Hidden on/off; Chats: first unread chat.
+const HOLD_HINT: Record<string, string | undefined> = { Explore: gx.holdExplore, Me: gx.holdMe, Chats: gx.holdChats };
+
 function PillBar({ active, onPick }: { active: string; onPick: (name: string) => void }) {
-  const { mode } = useSession();
+  const { mode, setMode, me, setMe } = useSession();
   const insets = useSafeAreaInsets();
+  const [lens, setLens] = React.useState(false);
   useTopics('convs');
   const unread = unreadTotal();
   const labels: Record<string, string> = { Explore: tx.tabs.explore, Tonight: tx.tabs.tonight, Chats: tx.tabs.chats, Me: tx.tabs.me };
+
+  const hold = (name: string) => {
+    if (name === 'Explore') {
+      feel('tap');
+      setLens(true);
+    } else if (name === 'Me') {
+      if (!me.verified && !me.hidden) {
+        feel('warning');
+        toast(gx.hiddenVerify);
+        return;
+      }
+      feel('tap');
+      const go = me.hidden ? quickLevel(backOf(me)) : quickLevel('hidden', { until: untilFor(stayOf(me)), return_level: backOf(me) });
+      go.then(
+        (m) => {
+          if (!m) return toast(tx.common.error);
+          setMe(m);
+          toast(m.hidden ? gx.hiddenOn : gx.hiddenOff);
+        },
+        () => toast(tx.common.error),
+      );
+    } else if (name === 'Chats') {
+      const c = getConvs().find((x) => x.unread > 0 && !x.archived && !x.muted);
+      if (!c) return toast(gx.noUnread);
+      feel('tap');
+      onPick('Chats');
+      if (nav.isReady()) nav.navigate('Chat', { cid: c.id });
+    }
+  };
+
   return (
+    <>
+    {lens ? (
+      <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}>
+        <Pressable style={{ flex: 1 }} onPress={() => setLens(false)} accessibilityRole="button" accessibilityLabel={tx.common.close} />
+        <View
+          testID="tab-lens-picker"
+          accessibilityRole="menu"
+          accessibilityLabel={gx.lens}
+          style={{ position: 'absolute', left: space.l, bottom: insets.bottom + space.s + 64 + space.s, backgroundColor: color.bgInverse, borderRadius: radius.md, padding: 6, gap: 6, minWidth: 180, shadowColor: color.bgBase, shadowOpacity: 0.4, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 14 }}
+        >
+          {MODES.map((m) => (
+            <Pressable
+              key={m}
+              testID={`tab-lens-${m}`}
+              accessibilityRole="menuitem"
+              accessibilityState={{ selected: m === mode }}
+              onPress={() => {
+                feel('tick');
+                setMode(m);
+                setLens(false);
+                onPick('Explore');
+              }}
+              style={{ height: 44, borderRadius: radius.pill, paddingHorizontal: space.l, flexDirection: 'row', alignItems: 'center', gap: space.s, backgroundColor: m === mode ? modeColor[m] : 'transparent' }}
+            >
+              <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: modeColor[m] }} />
+              <Text style={{ ...type.headline, fontSize: 15, color: color.onAccent }}>{tx.modes[m]}</Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+    ) : null}
     <View
       accessibilityRole="tablist"
       style={{ position: 'absolute', left: space.l, right: space.l, bottom: insets.bottom + space.s, flexDirection: 'row', backgroundColor: color.bgInverse, borderRadius: radius.pill, padding: 6, gap: 4, maxWidth: 520, shadowColor: color.bgBase, shadowOpacity: 0.4, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 12, alignSelf: 'center' }}
@@ -90,9 +159,14 @@ function PillBar({ active, onPick }: { active: string; onPick: (name: string) =>
             accessibilityState={{ selected: on }}
             accessibilityLabel={labels[r.name]}
             onPress={() => {
-              if (Platform.OS !== 'web' && prefs().haptics) Haptics.selectionAsync().catch(() => {});
+              feel('tick');
               onPick(r.name);
             }}
+            onLongPress={HOLD_HINT[r.name] ? () => hold(r.name) : undefined}
+            delayLongPress={400}
+            accessibilityHint={HOLD_HINT[r.name]}
+            accessibilityActions={HOLD_HINT[r.name] ? [{ name: 'longpress', label: HOLD_HINT[r.name] }] : undefined}
+            onAccessibilityAction={(e) => e.nativeEvent.actionName === 'longpress' && hold(r.name)}
             style={{ flex: on ? 1.6 : 1, height: 52, borderRadius: radius.pill, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? modeColor[mode] : 'transparent' }}
           >
             {TAB_ICON[r.name]?.(on ? color.onAccent : color.navInactive)}
@@ -106,6 +180,7 @@ function PillBar({ active, onPick }: { active: string; onPick: (name: string) =>
         );
       })}
     </View>
+    </>
   );
 }
 
@@ -227,6 +302,8 @@ const sub = ({ navigation }: { navigation: { goBack: () => void } }) => ({
   ),
 });
 
+const edgeOnly = { fullScreenGestureEnabled: false };
+
 // S-51 v2 / S-57: sheets drawn by SheetFrame over the current screen.
 const sheet = { presentation: 'transparentModal' as const, animation: 'none' as const, contentStyle: { backgroundColor: 'transparent' } };
 
@@ -274,9 +351,10 @@ export function Main() {
       <LockGate>
       <LiveFrame>
       <NavigationContainer ref={nav} theme={navTheme} onReady={() => setNavState(nav.getRootState() as NavigationState)} onStateChange={(st) => setNavState(st as NavigationState | undefined)}>
-        <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: color.bgBase } }}>
+        {/* F-19 G14 (#187): iOS swipe back from anywhere; off where the screen has its own sideways gestures (only the edge works there). */}
+        <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: color.bgBase }, fullScreenGestureEnabled: true }}>
           <Stack.Screen name="Tabs" component={Tabs} />
-          <Stack.Screen name="Profile" component={ProfileScreen as React.ComponentType} />
+          <Stack.Screen name="Profile" component={ProfileScreen as React.ComponentType} options={edgeOnly} />
           <Stack.Screen name="EditProfile" component={EditProfileScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="Settings" component={SettingsScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="PrivacySettings" component={PrivacySettings} options={sub} />
@@ -289,7 +367,7 @@ export function Main() {
           <Stack.Screen name="Blocked" component={HiddenBlockedScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="Taps" component={TapsScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="Verify" component={VerifyRoute as React.ComponentType} />
-          <Stack.Screen name="Chat" component={ChatScreen as React.ComponentType} />
+          <Stack.Screen name="Chat" component={ChatScreen as React.ComponentType} options={edgeOnly} />
           <Stack.Screen name="Albums" component={AlbumsScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="AlbumEdit" component={AlbumEditScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="Album" component={AlbumViewScreen as React.ComponentType} options={sub} />

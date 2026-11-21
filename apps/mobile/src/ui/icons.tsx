@@ -66,6 +66,36 @@ export const Icon = {
       <Path d="M15 18l-6-6 6-6" {...base(c, w)} />
     </Svg>
   ),
+  Reply: ({ size = 18, c = color.fgPrimary, w = 2.4 }: P) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M9 14L4 9l5-5M4 9h10.5a5.5 5.5 0 010 11H11" {...base(c, w)} />
+    </Svg>
+  ),
+  Expand: ({ size = 20, c = color.fgPrimary, w = 2.2 }: P) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" {...base(c, w)} />
+    </Svg>
+  ),
+  Copy: ({ size = 20, c = color.fgPrimary, w = 2.1 }: P) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M9 9h10v10H9zM5 15V5h10" {...base(c, w)} />
+    </Svg>
+  ),
+  Trash: ({ size = 20, c = color.fgPrimary, w = 2.1 }: P) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" {...base(c, w)} />
+    </Svg>
+  ),
+  Archive: ({ size = 20, c = color.fgPrimary, w = 2.1 }: P) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M3 4h18v4H3zM5 8v12h14V8M10 12h4" {...base(c, w)} />
+    </Svg>
+  ),
+  Mute: ({ size = 20, c = color.fgPrimary, w = 2.1 }: P) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M18 8a6 6 0 00-9.3-5M6 8c0 7-3 9-3 9h14M13.7 21a2 2 0 01-3.4 0M3 3l18 18" {...base(c, w)} />
+    </Svg>
+  ),
   Next: ({ size = 16, c = color.fgMuted, w = 2.2 }: P) => (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Path d="M9 6l6 6-6 6" {...base(c, w)} />

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, SectionList, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '../api/client';
@@ -8,7 +8,12 @@ import { ppl } from '../i18n/people';
 import { color, font, radius, space, type } from '../theme/tokens';
 import { EmptyState, Icon, ListRow, Photo, Segmented, Sheet, VerifiedTick } from '../ui';
 import { v2 } from '../i18n/v2';
-import { answerFriend, Conv, deleteConv, getConvs, refreshPeer, setConv } from './engine';
+import { answerFriend, Conv, deleteConv, getConvs, pull, refreshPeer, setConv } from './engine';
+import { usePull } from '../ui/pull';
+import { SwipeRow, type SwipeAction } from '../ui/SwipeRow';
+import { toast } from '../ui/Toast';
+import { gx } from '../i18n/gestures';
+
 import { useTopics } from './hooks';
 import * as P from './people';
 import { SafetySheet, SheetRow } from '../trust/SafetySheet';
@@ -40,11 +45,18 @@ export function InboxScreen({ navigation }: { navigation: Nav }) {
   const [tab, setTab] = useState<Tab>('all');
   const [q, setQ] = useState('');
 
+  const loadTaps = useCallback(
+    () =>
+      api<{ taps: Tap[] }>('GET', '/taps')
+        .then((r) => setTaps(r.taps.filter((t) => !t.seen).length))
+        .catch(() => setTaps(0)),
+    [],
+  );
   useEffect(() => {
-    api<{ taps: Tap[] }>('GET', '/taps')
-      .then((r) => setTaps(r.taps.filter((t) => !t.seen).length))
-      .catch(() => setTaps(0));
-  }, [tapsTick]);
+    loadTaps();
+  }, [tapsTick, loadTaps]);
+  // F-19 G6 (#187): pull = fetch waiting messages + Taps now.
+  const refresh = usePull(useCallback(() => Promise.all([pull(), loadTaps()]), [loadTaps]));
 
   const all = getConvs().filter((c) => c.last || c.groups.length);
   const byPeer = useMemo(() => new Map(all.filter((c) => !c.ctx).map((c) => [c.peer, c])), [all]);
@@ -155,6 +167,7 @@ export function InboxScreen({ navigation }: { navigation: Nav }) {
         />
       </View>
       <SectionList keyboardDismissMode="on-drag"
+        refreshControl={refresh}
         sections={sections}
         keyExtractor={(r) => (r.kind === 'fav' ? 'f:' + r.peer : (r.kind === 'request' ? 'r:' : '') + r.c.id)}
         contentContainerStyle={{ paddingBottom: 120 }}
@@ -240,7 +253,37 @@ export function InboxScreen({ navigation }: { navigation: Nav }) {
           const c = r.c;
           const fav = !c.ctx && P.isFav(c.peer);
           const friend = !c.ctx && P.friendOf(c.peer) === 'yes';
+          // F-19 G5: swipe right = Favorite (Pin for groups); swipe left = Archive (long swipe) and Mute.
+          const starOn = c.ctx ? !!c.starred : fav;
+          const lead: SwipeAction[] = c.gone
+            ? []
+            : [
+                {
+                  key: 'fav',
+                  label: c.ctx ? (starOn ? ppl.unpin : ppl.pin) : starOn ? ppl.removeFav : ppl.favorite,
+                  icon: <Icon.Star size={20} c={color.onAccent} fill={starOn ? 'none' : color.onAccent} />,
+                  fill: color.personal,
+                  on: () =>
+                    c.ctx
+                      ? setConv(c.id, { starred: !starOn })
+                      : P.setFav(c.peer, !starOn, { name: c.name, photo: c.photo }).then(() => toast(starOn ? gx.favOff : gx.favOn)),
+                },
+              ];
+          const trail: SwipeAction[] = [
+            {
+              key: 'archive',
+              label: c.archived ? tx.chat.unarchive : tx.chat.archive,
+              icon: <Icon.Archive c={color.onAccent} />,
+              fill: color.friends,
+              on: () =>
+                setConv(c.id, { archived: !c.archived }).then(() => {
+                  if (!c.archived) toast(gx.archived, { label: gx.undo, on: () => setConv(c.id, { archived: false }) });
+                }),
+            },
+            { key: 'mute', label: c.muted ? tx.chat.unmute : tx.chat.mute, icon: <Icon.Mute c={color.onAccent} />, fill: color.fgMuted, on: () => setConv(c.id, { muted: !c.muted }) },
+          ];
           return (
+            <SwipeRow testID={`swipe-row-${c.peer}`} left={lead} right={trail}>
             <Pressable
               testID={`conv-${c.peer}`}
               accessibilityRole="button"
@@ -280,6 +323,7 @@ export function InboxScreen({ navigation }: { navigation: Nav }) {
                 ) : null}
               </View>
             </Pressable>
+            </SwipeRow>
           );
         }}
         ListFooterComponent={

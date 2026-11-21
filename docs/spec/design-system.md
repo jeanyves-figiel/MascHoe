@@ -72,6 +72,7 @@ Generated to TS (RN theme) by Style Dictionary in CI. Hard-coded colours/sizes i
 - `elevation`: 0 flat, 1 card, 2 sheet, 3 modal (shadow + `bg` step).
 - `motion.fast` 120 ms, `motion.base` 220 ms, `motion.slow` 360 ms; easing `standard` cubic-bezier(0.2,0,0,1). Sheets use spring (damping 20). Mode switch cross-fades accent colours over `motion.base`. Reduce Motion ⇒ cross-fade only.
 - Touch targets ≥ 44×44 pt.
+- Gestures ([F-19](features/F19-gestures.md), #187): one spring for everything a finger lets go of (damping 22, stiffness 220, carries the fling velocity); Reduce Motion ⇒ 150 ms timing. Rubber band past any limit. Swipe action buttons 76 pt wide, colour fill + ink icon and label (Favorite sunflower, Archive violet, Mute muted). Reaction bar: white pill 260×52 over a dimmed chat, emoji under the finger grows 1.45×. Haptics only `tick` / `tap` / `success` / `warning`.
 
 ### Key component rules (Pop)
 - Bottom nav: floating `bg.inverse` pill (16 pt side inset, 8 pt above the home-indicator inset, 64 pt high); active tab is a filled pill in the current mode colour with `fg.onColor`; inactive tabs #4A4570. Unread badge `mode.hookup` with count.
