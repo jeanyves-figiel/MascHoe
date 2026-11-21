@@ -226,6 +226,8 @@ const sub = ({ navigation }: { navigation: { goBack: () => void } }) => ({
   ),
 });
 
+const edgeOnly = { fullScreenGestureEnabled: false };
+
 // S-51 v2 / S-57: sheets drawn by SheetFrame over the current screen.
 const sheet = { presentation: 'transparentModal' as const, animation: 'none' as const, contentStyle: { backgroundColor: 'transparent' } };
 
@@ -273,9 +275,10 @@ export function Main() {
       <LockGate>
       <LiveFrame>
       <NavigationContainer ref={nav} theme={navTheme} onReady={() => setNavState(nav.getRootState() as NavigationState)} onStateChange={(st) => setNavState(st as NavigationState | undefined)}>
-        <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: color.bgBase } }}>
+        {/* F-19 G14 (#187): iOS swipe back from anywhere; off where the screen has its own sideways gestures (only the edge works there). */}
+        <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: color.bgBase }, fullScreenGestureEnabled: true }}>
           <Stack.Screen name="Tabs" component={Tabs} />
-          <Stack.Screen name="Profile" component={ProfileScreen as React.ComponentType} />
+          <Stack.Screen name="Profile" component={ProfileScreen as React.ComponentType} options={edgeOnly} />
           <Stack.Screen name="EditProfile" component={EditProfileScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="Settings" component={SettingsScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="PrivacySettings" component={PrivacySettings} options={sub} />
@@ -288,7 +291,7 @@ export function Main() {
           <Stack.Screen name="Blocked" component={HiddenBlockedScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="Taps" component={TapsScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="Verify" component={VerifyRoute as React.ComponentType} />
-          <Stack.Screen name="Chat" component={ChatScreen as React.ComponentType} />
+          <Stack.Screen name="Chat" component={ChatScreen as React.ComponentType} options={edgeOnly} />
           <Stack.Screen name="Albums" component={AlbumsScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="AlbumEdit" component={AlbumEditScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="Album" component={AlbumViewScreen as React.ComponentType} options={sub} />
