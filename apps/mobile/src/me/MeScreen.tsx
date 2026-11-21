@@ -16,6 +16,8 @@ import { contacts } from '../safety/safety';
 import { color, font, modeColor, radius, space, touch, type } from '../theme/tokens';
 import type { Notice } from '../trust/NoticesScreen';
 import { afterSheet, Banner, Button, ErrorText, Icon, Photo, Sheet, VerifiedTick } from '../ui';
+import { loadTrips, Plane } from '../travel/travel';
+import { tr } from '../i18n/travel';
 import { NowSheet } from './NowSheet';
 import { prefs, setPrefs } from './prefs';
 import { Qr } from './Qr';
@@ -47,6 +49,7 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
   const [notices, setNotices] = useState<Notice[]>([]);
   const [albums, setAlbums] = useState(0);
   const [trusted, setTrusted] = useState(0);
+  const [trips, setTrips] = useState(0);
 
   useEffect(() => {
     api<{ notices: Notice[] }>('GET', '/me/notices').then((r) => setNotices(r.notices), () => {});
@@ -57,6 +60,7 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
   useFocusEffect(
     useCallback(() => {
       contacts().then((c) => setTrusted(c.filter((x) => x.accepted).length), () => {});
+      loadTrips().then((r) => setTrips(r.trips.length), () => {});
     }, []),
   );
 
@@ -198,6 +202,18 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
                 <Text style={rowSub}>{v3.me.nowSub}</Text>
               </View>
               <Text style={rowValue}>{me.now ? tx.now[me.now.status] : v3.me.off}</Text>
+              <Icon.Next />
+            </Row>
+            {/* F-20 R-20.1: Trips under How you show up right now */}
+            <Row testID="me-trips" onPress={() => navigation.navigate('Trips')} label={tr.trips}>
+              <IconTile tone={color.travel}>
+                <Plane size={18} c={color.travel} />
+              </IconTile>
+              <View style={{ flex: 1 }}>
+                <Text style={rowTitle}>{tr.trips}</Text>
+                <Text style={rowSub}>{tr.rowSub}</Text>
+              </View>
+              <Text style={rowValue}>{tr.tripsRow(trips)}</Text>
               <Icon.Next />
             </Row>
           </View>

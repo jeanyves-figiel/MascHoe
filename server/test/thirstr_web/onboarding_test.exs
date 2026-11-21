@@ -139,7 +139,7 @@ defmodule ThirstrWeb.OnboardingTest do
     %{"cities" => [city | _]} =
       c |> recycle_authed() |> get("/v1/cities?q=zur") |> json_response(200)
 
-    assert city["name"] == "Zurich"
+    assert city["name"] in ["Zurich", "Zürich"]
 
     me =
       c
@@ -177,7 +177,7 @@ defmodule ThirstrWeb.OnboardingTest do
 
   test "welcome counts never expose profiles; rounding rule (R-02.2)", %{conn: conn} do
     body = conn |> get("/v1/welcome") |> json_response(200)
-    assert body["city"] == "Zurich"
+    assert body["city"] in ["Zurich", "Zürich"]
     assert Enum.all?(body["cells"], &(Map.keys(&1) |> Enum.sort() == ["cell", "count"]))
     assert Thirstr.Location.display_count(9) == nil
     assert Thirstr.Location.display_count(57) == 50

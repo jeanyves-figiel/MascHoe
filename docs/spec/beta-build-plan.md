@@ -67,4 +67,4 @@ Every F-01…F-18 / I-01…I-03 rule in beta scope ships before the closed beta 
 Scores 0.4–0.6 → `pending_review` (A-03 queue), auto-hidden until reviewed (R-15.13).
 
 ## Out of beta (unchanged "Later")
-Video calls, travel planner, Plus billing, open protocol, web client for end users (web build stays a DEV tool).
+Video calls, Plus billing, open protocol, web client for end users (web build stays a DEV tool).

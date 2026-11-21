@@ -5,12 +5,17 @@ import { distanceLabel, tx } from '../i18n/app';
 import { color, radius, space, type } from '../theme/tokens';
 import { Photo, Scrim, useAccent, VerifiedTick } from '../ui';
 import { IntentBar } from './IntentRing';
+import { a11yLabel, dayLabel, rangeLabel, tileTag, TravelLabel } from '../travel/travel';
+import { tr } from '../i18n/travel';
 
 // R-04.5 grid card / R-04.4 tray card: photo, name, tick, online dot, distance, Now/Exact badge.
 export function ProfileTile({ card, onPress, onLongPress, tray, selected }: { card: Card; onPress: () => void; onLongPress?: () => void; tray?: boolean; selected?: boolean }) {
   const accent = useAccent();
   const hot = !!card.now || card.exact;
-  const label = `${card.display_name}, ${card.age}${card.verified ? ', verified' : ''}, ${distanceLabel(card.distance)}${card.now ? ', ' + tx.now[card.now.status] : ''}`;
+  // F-20 R-20.10: visitors (and travellers already here) carry a sky outline + reason.
+  const trip = card.trip ?? null;
+  const where = trip ? (trip.here ? tr.visitingUntil(dayLabel(trip.last_day)) : `${tr.visiting} ${rangeLabel(trip.first_day, trip.last_day)}`) : distanceLabel(card.distance);
+  const label = `${card.display_name}, ${card.age}${card.verified ? ', verified' : ''}, ${trip ? a11yLabel(trip) : distanceLabel(card.distance)}${card.now ? ', ' + tx.now[card.now.status] : ''}`;
   return (
     <Pressable
       testID={`tile-${card.id}`}
@@ -29,10 +34,15 @@ export function ProfileTile({ card, onPress, onLongPress, tray, selected }: { ca
     >
       <Photo uri={card.photo} id={card.id} label={`${card.display_name}'s photo`} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
       <Scrim height="60%" max={tray ? 0.92 : 0.85} />
+      {trip ? <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 18, borderWidth: 2.5, borderColor: color.travel }} /> : null}
       {card.online ? (
         <View accessible accessibilityLabel="Online" style={{ position: 'absolute', top: 8, right: 8, width: 12, height: 12, borderRadius: 6, backgroundColor: color.sport, borderWidth: 2, borderColor: color.bgBase }} />
       ) : null}
-      {card.now || card.exact ? (
+      {trip ? (
+        <View style={{ position: 'absolute', top: space.s - 2, left: space.s - 2 }}>
+          <TravelLabel small text={tileTag(trip)} />
+        </View>
+      ) : card.now || card.exact ? (
         <View style={{ position: 'absolute', top: space.s, left: space.s, paddingHorizontal: space.s, paddingVertical: 3, borderRadius: radius.pill, backgroundColor: card.exact ? color.trust : accent }}>
           <Text style={{ ...type.caption, fontSize: 10, color: color.onAccent }}>{card.now ? tx.now[card.now.status] : 'Exact'}</Text>
         </View>
@@ -48,7 +58,7 @@ export function ProfileTile({ card, onPress, onLongPress, tray, selected }: { ca
           {card.verified ? <VerifiedTick size={13} /> : null}
         </View>
         <Text numberOfLines={1} style={{ ...type.meta, fontSize: 11, color: color.fgSecondary }}>
-          {[distanceLabel(card.distance), card.now?.text].filter(Boolean).join(' · ')}
+          {[where, card.now?.text].filter(Boolean).join(' · ')}
         </Text>
       </View>
       {/* R-04.19: his intents along the bottom edge */}
