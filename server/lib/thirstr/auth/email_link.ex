@@ -60,7 +60,7 @@ defmodule Thirstr.Auth.EmailLink do
 
     new()
     |> to(email)
-    |> from({"Thirstr", "hello@thirstr.app"})
+    |> from({"Thirstr", Application.get_env(:thirstr, :mail_from, "hello@thirstr.fun")})
     |> subject(subject)
     |> text_body("""
     #{intro}

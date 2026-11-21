@@ -699,7 +699,7 @@ export const fr: Partialize<AppStrings> = {
     languageSub: 'Utilise la langue de ton téléphone. Change-la dans les réglages du système.',
     privacy: 'Politique de confidentialité',
     licenses: 'Licences open source',
-    licensesBody: 'Thirstr est construit avec des logiciels open source : React Native, Expo, MapLibre, ts-mls, noble cryptography, Phoenix, Elixir, PostgreSQL, H3 et d’autres, sous licences MIT, Apache-2.0, BSD et ISC.',
+    licensesBody: 'Thirstr est construit avec des logiciels open source : React Native, Expo, MapLibre, ts-mls, noble cryptography, Phoenix, Elixir, PostgreSQL, H3 et d’autres, sous licences MIT, Apache-2.0, BSD et ISC. Ville d’après l’adresse IP : IP Geolocation by DB-IP (db-ip.com), CC BY 4.0, déterminée sur nos propres serveurs.',
     autoDelete: 'Supprimer les photos reçues après les avoir vues',
     verification: 'Vérification',
     verified: (d: string) => `Vérifié depuis le ${d}`,

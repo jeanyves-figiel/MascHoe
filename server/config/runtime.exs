@@ -79,8 +79,16 @@ config :thirstr,
     region: env.("S3_REGION", "eu-central-1")
   ]
 
+# R-02.2 (#26): offline DB-IP city file baked into the image; GEO_DB=static keeps the stand-in.
+if config_env() == :prod and System.get_env("GEO_DB") != "static" do
+  config :thirstr, :ip_geo, Thirstr.Geo.GeoDb
+  if path = System.get_env("GEO_DB_PATH"), do: config(:thirstr, :geo_db_path, path)
+end
+
+# F-15 R-15.10 (#26): self-hosted NudeNet service, private network (docs/runbooks/classifier.md).
 if System.get_env("CLASSIFIER_URL") not in [nil, ""] do
   config :thirstr, :photo_classifier, Thirstr.Moderation.NudeNetClassifier
+  config :thirstr, :classifier_token, System.get_env("CLASSIFIER_TOKEN")
 end
 
 s3 = URI.parse(env.("S3_ENDPOINT", "http://localhost:9000"))
@@ -135,6 +143,10 @@ if config_env() == :prod do
     http: [ip: {0, 0, 0, 0, 0, 0, 0, 0}, port: String.to_integer(env.("PORT", "4000"))],
     secret_key_base: secret_key_base
 
+  # Sign-in links (F-01 R-01.3, #26): EU SMTP relay, STARTTLS with full certificate checks.
+  # Runbook: docs/runbooks/email.md. Without SMTP_HOST, email sign-in is off on this env.
+  config :thirstr, :mail_from, env.("MAIL_FROM", "hello@thirstr.fun")
+
   if smtp = System.get_env("SMTP_HOST") do
     config :thirstr, Thirstr.Mailer,
       adapter: Swoosh.Adapters.SMTP,
@@ -143,6 +155,18 @@ if config_env() == :prod do
       username: System.get_env("SMTP_USER"),
       password: System.get_env("SMTP_PASSWORD"),
       tls: :always,
-      auth: :always
+      auth: :always,
+      no_mx_lookups: true,
+      retries: 2,
+      tls_options: [
+        verify: :verify_peer,
+        cacerts: :public_key.cacerts_get(),
+        server_name_indication: String.to_charlist(smtp),
+        depth: 4,
+        versions: [:"tlsv1.2", :"tlsv1.3"],
+        customize_hostname_check: [
+          match_fun: :public_key.pkix_verify_hostname_match_fun(:https)
+        ]
+      ]
   end
 end
