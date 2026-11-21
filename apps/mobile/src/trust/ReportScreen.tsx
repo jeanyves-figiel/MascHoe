@@ -61,7 +61,7 @@ export function ReportScreen({ navigation, route }: { navigation: Nav; route: { 
 
   return (
     <View style={{ flex: 1, backgroundColor: color.bgBase }}>
-    <ScrollView contentContainerStyle={{ padding: space.l, paddingTop: space.s, gap: space.l, paddingBottom: 140 }}>
+    <ScrollView keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: space.l, paddingTop: space.s, gap: space.l, paddingBottom: 220 }}>
       <Text accessibilityRole="header" style={{ ...type.display, color: color.fgPrimary }}>
         {tx.report.title}
       </Text>

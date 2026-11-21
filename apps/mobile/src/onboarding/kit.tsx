@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { o } from '../i18n/onboarding';
 import { color, font, motion, radius, space, touch } from '../theme/tokens';
+import { useKeyboardShown } from '../ui';
 
 // Onboarding v2 building blocks (F-02 R-02.1, issue 54). Pop tokens only.
 export const STEPS = 7;
@@ -113,6 +114,7 @@ export function StepShell({
   scroll?: boolean;
 }) {
   const insets = useSafeAreaInsets();
+  const kb = useKeyboardShown();
   const Body = scroll ? ScrollView : View;
   return (
     <KeyboardAvoidingView style={k.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -120,7 +122,7 @@ export function StepShell({
         {onBack ? <BackButton onPress={onBack} /> : <View style={{ width: touch }} />}
         {step ? <StepBar step={step} /> : <View style={{ flex: 1 }} />}
       </View>
-      <Body style={k.flex} contentContainerStyle={scroll ? k.bodyScroll : undefined} keyboardShouldPersistTaps="handled">
+      <Body style={k.flex} contentContainerStyle={scroll ? k.bodyScroll : undefined} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
         <Enter style={scroll ? undefined : k.flex}>
           <View style={k.body}>
             <Text style={k.title} accessibilityRole="header">
@@ -132,7 +134,7 @@ export function StepShell({
         </Enter>
       </Body>
       {cta || below ? (
-        <View style={[k.foot, { paddingBottom: Math.max(insets.bottom, space.l) + space.xs }]}>
+        <View style={[k.foot, { paddingBottom: (kb ? space.m : Math.max(insets.bottom, space.l)) + space.xs }]}>
           {cta ? <BigButton {...cta} /> : null}
           {below}
         </View>

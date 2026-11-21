@@ -30,7 +30,7 @@ export function TapsScreen({ navigation }: { navigation: Nav }) {
         <FlatList
           data={list}
           keyExtractor={(t) => t.profile.id + t.at}
-          contentContainerStyle={{ padding: space.l, gap: space.s, paddingBottom: space.huge }}
+          contentContainerStyle={{ padding: space.l, gap: space.s, paddingBottom: 140 }}
           renderItem={({ item }) => {
             const mutual = item.mutual || back[item.profile.id];
             return (

@@ -89,7 +89,7 @@ export function AlbumsScreen({ navigation }: { navigation: Nav }) {
   const [adding, setAdding] = useState(false);
   if (!list) return <Loading />;
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: color.bgBase }} contentContainerStyle={{ padding: space.l, paddingTop: space.s, gap: space.l, paddingBottom: 120 }}>
+    <ScrollView keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets style={{ flex: 1, backgroundColor: color.bgBase }} contentContainerStyle={{ padding: space.l, paddingTop: space.s, gap: space.l, paddingBottom: 120 }}>
       <View style={{ gap: space.xs }}>
         <Text accessibilityRole="header" style={{ ...type.display, color: color.fgPrimary }}>
           {tx.albums.title}
@@ -146,7 +146,7 @@ export function AlbumEditScreen({ navigation, route }: { navigation: Nav; route:
     }
   };
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: color.bgBase }} contentContainerStyle={{ padding: space.l, paddingTop: space.s, gap: space.l, paddingBottom: 120 }}>
+    <ScrollView keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets style={{ flex: 1, backgroundColor: color.bgBase }} contentContainerStyle={{ padding: space.l, paddingTop: space.s, gap: space.l, paddingBottom: 120 }}>
       <Text accessibilityRole="header" style={{ ...type.display, color: color.fgPrimary }}>
         {a.name}
       </Text>
