@@ -182,19 +182,40 @@ defmodule Thirstr.TestBot do
   end
 
   @doc """
-  Applies the persona and, unless `"new_session" => false`, starts a new session. Earlier
-  devices of that bot are removed first (their key packages and queued ciphertext go with
-  them), so peers never claim keys nobody holds.
+  Applies the persona, then:
+  - `"new_session" => false`: nothing else (bot restart with its tokens);
+  - `"resume" => true`: new tokens for the bot's latest device (its refresh token was lost),
+    so the device, its queue and its chats are kept;
+  - otherwise a new session. Earlier devices of that bot are removed first (their key packages
+    and queued ciphertext go with them), so peers never claim keys nobody holds.
   """
   def session(persona) when is_map(persona) do
     with {:ok, {a, p}} <- ensure(persona) do
-      if persona["new_session"] == false do
-        {:ok, %{profile_id: p.id}}
-      else
-        Repo.delete_all(from(d in Device, where: d.account_id == ^a.id))
-        {:ok, tokens} = Accounts.start_session(a, "web")
-        {:ok, Map.put(tokens, :profile_id, p.id)}
+      cond do
+        persona["new_session"] == false -> {:ok, %{profile_id: p.id}}
+        persona["resume"] == true -> resume(a, p)
+        true -> fresh(a, p)
       end
     end
+  end
+
+  defp resume(a, p) do
+    latest =
+      from(d in Device, where: d.account_id == ^a.id, order_by: [desc: d.inserted_at], limit: 1)
+
+    case Repo.one(latest) do
+      %Device{} = d ->
+        {:ok, tokens} = Accounts.reissue_tokens(a, d)
+        {:ok, Map.put(tokens, :profile_id, p.id)}
+
+      nil ->
+        fresh(a, p)
+    end
+  end
+
+  defp fresh(a, p) do
+    Repo.delete_all(from(d in Device, where: d.account_id == ^a.id))
+    {:ok, tokens} = Accounts.start_session(a, "web")
+    {:ok, Map.put(tokens, :profile_id, p.id)}
   end
 end

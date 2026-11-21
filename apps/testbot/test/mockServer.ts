@@ -43,9 +43,13 @@ export function start(key: string) {
       const profile = 'BOT-' + h.toUpperCase();
       calls.push({ route, who: profile, body });
       if (body.new_session === false) return send(200, { profile_id: profile });
-      users['bot-' + h] = { profile, device: 'D-' + profile, name: body.name };
-      return send(200, { access_token: 'bot-' + h, refresh_token: 'r', expires_in: 900, profile_id: profile });
+      // resume keeps the device (same D-<profile> here either way), new token each time
+      const token = `bot-${h}-${seq++}`;
+      users[token] = { profile, device: 'D-' + profile, name: body.name };
+      return send(200, { access_token: token, refresh_token: 'r', expires_in: 900, profile_id: profile });
     }
+    // refresh tokens are never valid here: a bot whose access token is gone must resume
+    if (route === 'POST /v1/auth/refresh') return send(401, {});
     const u = users[(req.headers.authorization ?? '').replace('Bearer ', '')];
     if (!u) return send(401, {});
     calls.push({ route, who: u.profile, body });
@@ -133,11 +137,13 @@ export function start(key: string) {
         return send(404, { route });
     }
   });
-  return new Promise<{ url: string; close: () => void; calls: typeof calls; parties: typeof parties; blobs: typeof blobs }>((resolve) =>
+  return new Promise<{ url: string; close: () => void; calls: typeof calls; parties: typeof parties; blobs: typeof blobs; expire: (profile: string) => void }>((resolve) =>
     server.listen(0, '127.0.0.1', () => {
       const a = server.address() as { port: number };
       url = `http://127.0.0.1:${a.port}`;
-      resolve({ url, close: () => server.close(), calls, parties, blobs });
+      // drop a bot's access tokens, as if they expired and the refresh token was lost
+      const expire = (profile: string) => Object.keys(users).forEach((t) => users[t].profile === profile && t !== 'peer' && delete users[t]);
+      resolve({ url, close: () => server.close(), calls, parties, blobs, expire });
     }),
   );
 }

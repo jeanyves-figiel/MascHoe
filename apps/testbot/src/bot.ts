@@ -102,22 +102,34 @@ export class Bot {
     };
   }
 
-  async newSession() {
+  /**
+   * New tokens from the test bot endpoint. `resume`: the bot still holds its MLS state, so the
+   * server keeps its device (queue, key packages, chats); without it the device is replaced
+   * and the local state is dropped.
+   */
+  async newSession(resume = false) {
     if (!KEY) throw new Error('TESTBOT_KEY missing');
-    const s = await http('POST', '/testbot/session', this.persona(), { 'x-testbot-key': KEY });
-    await kv.delPrefix(this.k(''));
+    const s = await http('POST', '/testbot/session', { ...this.persona(), resume }, { 'x-testbot-key': KEY });
+    if (!resume) await kv.delPrefix(this.k(''));
     this.auth = { access: s.access_token, refresh: s.refresh_token, profile: s.profile_id };
     await this.set('auth', this.auth);
-    this.say('new session, profile', this.auth.profile);
+    this.say(resume ? 'resumed session, profile' : 'new session, profile', this.auth.profile);
   }
 
-  async refresh() {
+  private refreshing?: Promise<void>;
+
+  /** One refresh at a time: parallel 401s share it (a spent refresh token is a theft signal). */
+  refresh() {
+    return (this.refreshing ??= this.doRefresh().finally(() => (this.refreshing = undefined)));
+  }
+
+  private async doRefresh() {
     try {
       const s = await http('POST', '/auth/refresh', { refresh: this.auth!.refresh });
       this.auth = { ...this.auth!, access: s.access_token, refresh: s.refresh_token };
       await this.set('auth', this.auth);
     } catch (e) {
-      if (e instanceof HttpError && (e.status === 401 || e.status === 403)) await this.newSession();
+      if (e instanceof HttpError && (e.status === 401 || e.status === 403)) await this.newSession(true);
       else throw e;
     }
   }

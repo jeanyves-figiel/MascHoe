@@ -83,6 +83,14 @@ test('Testbot: Delivered + Read, German, then Portuguese, quick reply with k', a
   assert.ok(lines.some((l) => l.got === 'quick_reply' && Number.isInteger(l.k)), 'quick reply with k');
 });
 
+test('lost tokens: the bot resumes the same device and the chat keeps working', async () => {
+  srv.expire('BOT-TESTBOT');
+  const lines = await peer({ BOT_PROFILE: 'BOT-TESTBOT', TEXTS: 'status' });
+  assert.ok(lines.some((l) => l.got === 'text'), JSON.stringify(lines));
+  const s = srv.calls.filter((c) => c.route === 'POST /v1/testbot/session' && c.body.handle === 'testbot');
+  assert.equal(s.at(-1)!.body.resume, true, 'resumed, not a new device');
+});
+
 test('Luca: Italian, photo, view-once photo, private album and live location the peer can open', async () => {
   const lines = await peer({ BOT_PROFILE: 'BOT-LUCA', TEXTS: 'ciao|photo|once|album|location' });
   assert.match(lines.find((l) => l.got === 'text')!.text, /Ciao|Altstetten|bello|bere|bot|Zurigo/);

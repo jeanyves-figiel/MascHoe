@@ -1,5 +1,6 @@
 defmodule ThirstrWeb.TestBotTest do
   use ThirstrWeb.ConnCase, async: false
+  import Ecto.Query
 
   # testing.md › Chat test bot (#109)
   @key "test-bot-key-0123456789abcdef"
@@ -116,6 +117,18 @@ defmodule ThirstrWeb.TestBotTest do
     again = build_conn() |> session(@key, keep) |> json_response(200)
     assert again == %{"profile_id" => s["profile_id"]}
     assert authed(build_conn(), s["access_token"]) |> get("/v1/me") |> json_response(200)
+
+    # lost refresh token: resume keeps the same device (chats survive)
+    aid = Thirstr.Repo.get!(Thirstr.Profiles.Profile, s["profile_id"]).account_id
+    q = from(d in Thirstr.Accounts.Device, where: d.account_id == ^aid)
+    devices = fn -> Thirstr.Repo.all(q) end
+    [dev] = devices.()
+    Thirstr.Accounts.revoke_device(dev.id)
+    r = build_conn() |> session(@key, Map.put(luca, :resume, true)) |> json_response(200)
+    assert r["profile_id"] == s["profile_id"]
+    assert authed(build_conn(), r["access_token"]) |> get("/v1/me") |> json_response(200)
+    assert [%{id: id, revoked_at: nil}] = devices.()
+    assert id == dev.id
 
     assert build_conn() |> session(@key, %{handle: "Bad Handle!"}) |> json_response(422)
   end
