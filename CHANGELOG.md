@@ -5,6 +5,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+- **Duplicate migration version** (server, #200): test bot handles migration renamed to `20261121160001` (clashed with precise distance `20261121150001`, broke `mix test` on main).
+
 ### Changed
 - **App version 0.9.0** (app, #198): first v1 release candidate; was 0.1.0. Shown in TestFlight and the App Store as 0.9.0. Build numbers unchanged (CI run number + offset), so TestFlight keeps accepting every build.
 
