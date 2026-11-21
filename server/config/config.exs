@@ -20,9 +20,17 @@ config :thirstr, Oban,
     {Oban.Plugins.Cron,
      crontab: [
        {"*/15 * * * *", Thirstr.Jobs.ExpirySweep},
-       {"* * * * *", Thirstr.Jobs.Minutely}
+       {"* * * * *", Thirstr.Jobs.Minutely},
+       # F-12 R-12.9: weekly OSM venue import (no-op unless :places osm_import is on)
+       {"30 3 * * 1", Thirstr.Jobs.PlaceImport}
      ]}
   ]
+
+# F-12 R-12.9 (#113): OSM import. Gym countries are chosen by the team, never derived from users.
+config :thirstr, :places,
+  osm_import: false,
+  overpass_url: "https://overpass-api.de/api/interpreter",
+  gym_regions: ~w(CH DE AT FR BE NL LU GB ES IT PT)
 
 # Product rules (spec references inline)
 config :thirstr, :auth,

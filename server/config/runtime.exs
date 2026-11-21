@@ -104,6 +104,12 @@ if config_env() == :dev do
 end
 
 if config_env() == :prod do
+  # F-12 R-12.9: staging + prod import OSM venues weekly unless PLACES_OSM_IMPORT=false.
+  config :thirstr, :places,
+    osm_import: System.get_env("PLACES_OSM_IMPORT") != "false",
+    overpass_url: System.get_env("OSM_OVERPASS_URL") || "https://overpass-api.de/api/interpreter",
+    gym_regions: ~w(CH DE AT FR BE NL LU GB ES IT PT)
+
   secret_key_base =
     System.get_env("SECRET_KEY_BASE") || raise "environment variable SECRET_KEY_BASE is missing"
 

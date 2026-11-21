@@ -22,10 +22,15 @@ defmodule ThirstrWeb.ExploreController do
   end
 
   def summary(conn, params) do
-    mode = params["mode"] || "hookup"
+    intents = Explore.parse_intents(params["intents"])
+    mode = if intents, do: hd(intents), else: params["mode"] || "hookup"
 
     if mode in @modes,
-      do: json(conn, Explore.summary(conn.assigns.account, mode, Explore.parse_filters(params))),
+      do:
+        json(
+          conn,
+          Explore.summary(conn.assigns.account, mode, Explore.parse_filters(params), intents)
+        ),
       else: {:error, {:validation, %{mode: ["hookup, sport or friends"]}}}
   end
 
@@ -36,11 +41,13 @@ defmodule ThirstrWeb.ExploreController do
     end
   end
 
+  # R-04.18 (#113): `intents` (merged map) wins over the legacy single `mode`.
   defp viewer(conn, params) do
-    mode = params["mode"] || "hookup"
+    intents = Explore.parse_intents(params["intents"])
+    mode = if intents, do: hd(intents), else: params["mode"] || "hookup"
 
     if mode in @modes,
-      do: {:ok, Explore.viewer(conn.assigns.account, mode)},
+      do: {:ok, Explore.viewer(conn.assigns.account, mode, intents)},
       else: {:error, {:validation, %{mode: ["hookup, sport or friends"]}}}
   end
 

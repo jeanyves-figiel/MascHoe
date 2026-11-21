@@ -15,7 +15,7 @@
 | Notifications | No previews, generic title "Reminder" |
 | Media | Received media auto-delete after viewing; save disabled |
 | Duress PIN | Offered at activation |
-| Parties/venues | Creation and check-in disabled |
+| Parties/venues | Creation and check-in disabled; no place layers on the Explore map (#113) |
 | Entrapment warnings | Banner on chats with accounts < 30 d, unverified, or pushing to meet quickly (heuristic: meet request within 5 messages) |
 | Resources | International NGOs only in beta (Rainbow Railroad, ILGA World, Front Line Defenders); local groups need vetting first (fake help lines are an entrapment method) |
 | Onboarding | F-02 R-02.10 variant |

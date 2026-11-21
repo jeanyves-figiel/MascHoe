@@ -105,6 +105,10 @@ defmodule ThirstrWeb.SceneController do
     do: Activities.admin(sport(conn), id, pid, action) |> reply(conn)
 
   # --- Venues
+  @doc "GET /places (#113, F-04 R-04.20): place layers for the viewport."
+  def places(conn, p),
+    do: Thirstr.Places.list(hookup(conn), p["bbox"], p["kinds"]) |> reply(conn)
+
   def venues(conn, p), do: with({:ok, c} <- ctx(conn, p), do: Venues.nearby(c) |> reply(conn))
 
   def checkin(conn, %{"id" => id} = p),
