@@ -1,6 +1,6 @@
 # F-21 Moments (temporary photos)
 
-Issue #212 (owner request 2026-11-21: "temporary pics, a little bit like Instagram stories"). [Mockup](https://claude.ai/artifact/Ctum8QhK6cBFwWytjziZu1). Decision D-21: placement D-21a **B picked 2026-11-21**; viewer list D-21b **pending owner pick**.
+Issue #212 (owner request 2026-11-21: "temporary pics, a little bit like Instagram stories"). [Mockup](https://claude.ai/artifact/Ctum8QhK6cBFwWytjziZu1). Decision D-21: placement D-21a **B picked 2026-11-21**; viewer list D-21b **C picked 2026-11-21**.
 
 ## Purpose
 Show what you look like **right now**, tonight, at the gym, getting ready, without touching your profile photos. A Moment is a photo that disappears on its own (1 h / 6 h / 24 h), shown to an audience you choose. It is the fastest way to say "I'm up for it" with a face, and the best answer to stale profile photos (a top complaint about competitor apps). Free (R-17.1).
@@ -29,7 +29,7 @@ Show what you look like **right now**, tonight, at the gym, getting ready, witho
 
 ### Where Moments show (placement: D-21a)
 - R-21.9 **Rings** (base of D-21a B; A "rings only" rejected): a 2.5 pt ring around the person wherever his face appears: grid tile (inset border), map pin / avatar, profile photo (S-20), chat header and inbox row (S-40/41), Tonight cards. Ring = Pop gradient (coral → violet → lime, token `moment`) when unseen, `line` (#39346A) when all seen. Tap the ring area / the small "▶ Moments" tag on the profile photo → viewer. On grid tiles a tap still opens the profile (the ring only marks); the profile opens on the Moment first when unseen, with a "Profile ↓" handle to skip.
-- R-21.10 **Moments row (D-21a B, picked 2026-11-21)**: everything in A, plus a horizontal **Moments row** at the top of the grid sheet (above "Active now"): 64 pt circles, own first ("＋ You"), then people with unseen Moments nearest first (same order as the grid, R-04.5), seen ones at the end; max 30; hidden when empty or in peek snap. Tap → viewer that auto-advances person to person in row order.
+- R-21.10 **Moments row (D-21a B, picked 2026-11-21)**: the rings of R-21.9, plus a horizontal **Moments row** at the top of the grid sheet (above "Active now"): 64 pt circles, own first ("＋ You"), then people with unseen Moments nearest first (same order as the grid, R-04.5), seen ones at the end; max 30; hidden when empty or in peek snap. Tap → viewer that auto-advances person to person in row order.
 - R-21.11 **Viewer** (S-75): full screen, segmented progress bars on top (one per Moment, 6 s each, tap right/left = next/previous, hold = pause, swipe left = next person in row order, swipe down = close). Header: avatar, name, age, distance bucket (as in Explore), "2 h ago", ⋯ menu (Mute Moments from him, Hide, Block, Report). Bottom: reply field "Reply to ‹name›…" + 🔥 (sends a Tap with the Moment attached) + ✈︎ (opens chat). Reply sends a normal E2EE chat message with a quoted thumbnail of the Moment (thumb shows until the Moment expires, then "Moment expired").
 - R-21.12 Receiver safety: explicit-but-allowed Moments (passed the permissive check, failed `main_ok`) are blurred with "Tap to view" when the viewer's Settings › Chats & media › "Blur spicy photos" is on (R-08.7 setting reused). Viewer's own **Mute Moments** (per person) removes the ring for that person without telling him.
 
@@ -38,9 +38,9 @@ Show what you look like **right now**, tonight, at the gym, getting ready, witho
 - R-21.14 Me shows "Live Moments · 3" row with time left of the next to expire. Expiry notifications: none (no nagging).
 
 ### Who viewed (D-21b)
-- R-21.15 **Option A, Names**: Seen by list (avatar, name, "12 min ago", 🔥 if tapped). Viewers who are Hidden appear as "Someone hidden".
-- R-21.16 **Option B, Count only**: "Seen by 34 · 🔥 5". No names ever.
-- R-21.17 **Option C, Names unless they watch quietly (recommended)**: Settings › Privacy › **Watch Moments quietly** (default off). On: your views count but your name never shows; reciprocal: you also see only counts on your own Moments. Hidden viewers always count as quiet.
+- R-21.15 (rejected option A, names always): Seen by list (avatar, name, "12 min ago", 🔥 if tapped). Viewers who are Hidden appear as "Someone hidden".
+- R-21.16 (rejected option B, count only): "Seen by 34 · 🔥 5". No names ever.
+- R-21.17 **Names unless they watch quietly (D-21b C, picked 2026-11-21)**: Seen by list as in R-21.15 (avatar, name, time, 🔥), plus Settings › Privacy › **Watch Moments quietly** (default off). On: your views count but your name never shows; reciprocal: you also see only counts on your own Moments. Hidden viewers always count as quiet.
 
 ### Privacy & anti-leak
 - R-21.18 Screenshots: Android FLAG_SECURE on composer and viewer (no capture at all). iOS: screenshot or screen recording detected → poster gets "‹name› took a screenshot of your Moment" in the viewers list (and as a quiet notification); screen recording → the viewer content is replaced by a blurred frame while recording (UIScreen.isCaptured).
