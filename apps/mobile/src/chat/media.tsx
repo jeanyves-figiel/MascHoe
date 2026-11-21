@@ -6,6 +6,7 @@ import { Image, Platform, Pressable, Text, View } from 'react-native';
 import { api } from '../api/client';
 import { useSession } from '../app/session';
 import { tx } from '../i18n/app';
+import { mmss, mx } from '../i18n/media';
 import { color, radius, space, type } from '../theme/tokens';
 import { fromB64, rand, toB64 } from './bytes';
 import * as E from './engine';
@@ -15,6 +16,8 @@ import * as Recent from './recent';
 import * as Lib from './library';
 import * as MediaCache from './mediaCache';
 import { PhotoViewer } from '../ui/PhotoViewer';
+import * as Video from './video';
+import { VideoMark, VideoPlayer } from './VideoPlayer';
 
 export type SendOpts = { once: boolean; expiry: '1h' | '24h' | '7d' | 'keep'; save: boolean };
 const EXPIRY_S = { '1h': 3600, '24h': 86400, '7d': 7 * 86400, keep: null } as const;
@@ -64,7 +67,12 @@ export async function decryptToUri(ref: { blob: string; key: string; iv: string;
   return uri;
 }
 
-export type Source = { kind: 'recent'; r: Recent.Recent } | { kind: 'uri'; uri: string; w?: number; h?: number } | { kind: 'roll'; shot: Lib.Shot };
+export type Source =
+  | { kind: 'recent'; r: Recent.Recent }
+  | { kind: 'uri'; uri: string; w?: number; h?: number }
+  | { kind: 'roll'; shot: Lib.Shot }
+  /** #138: a video from the picker or the camera (already exported by the system); `dur` in s. */
+  | { kind: 'video'; uri: string; w?: number; h?: number; dur?: number };
 
 /** Re-encodes a photo on the phone: JPEG 0.85, max 2560 px, no EXIF/GPS (R-08.1, R-08.13). */
 export async function reencode(uri: string, w?: number, h?: number) {
@@ -77,7 +85,30 @@ export async function reencode(uri: string, w?: number, h?: number) {
   return { bytes: await readBytes(out.uri), w: out.width, h: out.height, mime: 'image/jpeg' };
 }
 
+/** R-08.17: a video file → checked, metadata removed (location, device, dates). */
+async function videoFrom(src: Source) {
+  if (src.kind === 'video') return { ...Video.prepare(await readBytes(src.uri), src.dur), w: src.w, h: src.h };
+  if (src.kind === 'roll' && src.shot.video) {
+    if (src.shot.dur && src.shot.dur > Video.MAX_S + 1) throw new Video.VideoError('long');
+    return { ...Video.prepare(await readBytes(await Lib.fileUri(src.shot)), src.shot.dur), w: src.shot.w, h: src.shot.h };
+  }
+  return null;
+}
+
+async function sendVideo(conv: E.Conv, v: { bytes: Uint8Array; mime: string; dur?: number; w?: number; h?: number }, opts: SendOpts) {
+  const exp = EXPIRY_S[opts.expiry];
+  const ref = await uploadEncrypted(v.bytes, { ttl_s: exp ?? undefined });
+  // Videos are not kept in Sent recently (R-08.14).
+  await E.send(conv.id, {
+    t: 'media',
+    media: { ...ref, mime: v.mime, w: v.w, h: v.h, dur: v.dur, once: opts.once || undefined, exp: exp ? Date.now() + exp * 1000 : undefined, save: opts.save || undefined },
+  });
+}
+
 async function sendOne(conv: E.Conv, src: Source, opts: SendOpts) {
+  const v = await videoFrom(src);
+  if (v) return sendVideo(conv, v, opts);
+  if (src.kind === 'video') return;
   let photo: { bytes: Uint8Array; w?: number; h?: number; mime: string };
   if (src.kind === 'recent') {
     const b = await Recent.bytes(src.r);
@@ -100,34 +131,49 @@ async function sendOne(conv: E.Conv, src: Source, opts: SendOpts) {
   else await Recent.keep(photo.bytes, { mime: photo.mime, w: photo.w, h: photo.h }, conv.id).catch(() => {});
 }
 
-/** R-08.13: each item becomes its own media message, in order; returns how many failed. */
+/** R-08.13: each item becomes its own media message, in order. `video` = why a video was refused. */
 export async function sendPhotos(conv: E.Conv, items: Source[], opts: SendOpts) {
   let failed = 0;
+  let video: Video.VideoError['kind'] | undefined;
   for (const it of items) {
     try {
       await sendOne(conv, it, opts);
-    } catch {
+    } catch (e) {
       failed++;
+      if (e instanceof Video.VideoError) video = e.kind;
     }
   }
-  return failed;
+  return { failed, video };
 }
 
-/** System picker (no library access needed), up to `limit` photos. */
+/** Message for a refused video (#138). */
+export function videoProblem(kind: Video.VideoError['kind']) {
+  return kind === 'large' ? mx.tooLarge : kind === 'long' ? mx.tooLong : mx.videoError;
+}
+
+// iOS: the system exports picked videos at 1080p H.265 (R-08.17). Android keeps the file;
+// the 50 MB cap still applies.
+const VIDEO_PICK = { videoMaxDuration: Video.MAX_S, videoExportPreset: ImagePicker.VideoExportPreset.HEVC_1920x1080 } as const;
+const asSource = (a: ImagePicker.ImagePickerAsset): Source =>
+  a.type === 'video' ? { kind: 'video', uri: a.uri, w: a.width, h: a.height, dur: a.duration ? a.duration / 1000 : undefined } : { kind: 'uri', uri: a.uri, w: a.width, h: a.height };
+
+/** System picker (no library access needed), up to `limit` photos and videos (#138). */
 export async function pickPhotos(limit = 10): Promise<Source[]> {
-  const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1, exif: false, allowsMultipleSelection: true, selectionLimit: limit, orderedSelection: true });
+  const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images', 'videos'], quality: 1, exif: false, allowsMultipleSelection: true, selectionLimit: limit, orderedSelection: true, ...VIDEO_PICK });
   if (r.canceled) return [];
-  return r.assets.map((a) => ({ kind: 'uri', uri: a.uri, w: a.width, h: a.height }));
+  return r.assets.map(asSource);
 }
 
-/** System camera, one photo. */
+/**
+ * System camera, one photo. Recording a video needs the microphone, which the app does not ask for
+ * (privacy; video check records without sound), so chat videos come from the library (#231).
+ */
 export async function takePhoto(): Promise<Source | null> {
   const p = await ImagePicker.requestCameraPermissionsAsync();
   if (!p.granted) return null;
   const r = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 1, exif: false });
   if (r.canceled || !r.assets[0]) return null;
-  const a = r.assets[0];
-  return { kind: 'uri', uri: a.uri, w: a.width, h: a.height };
+  return asSource(r.assets[0]);
 }
 
 const OPTS_K = 'media.opts';
@@ -157,17 +203,47 @@ export function MediaBubble({ m, media, mine, cid, conv }: { m: E.Msg; media: E.
   const gone = expired || (once && m.opened);
   const autoload = !gone && !once && policy !== 'block';
 
+  const video = Video.isVideo(media);
   useEffect(() => {
-    if (!autoload) return;
+    if (!autoload || video) return;
     decryptToUri(media).then(setUri, () => setFailed(true));
-  }, [autoload, media]);
+  }, [autoload, media, video]);
 
   if (policy === 'block') return <Text style={{ ...type.meta, color: fg }}>{tx.chat.mediaBlocked}</Text>;
-  if (gone) return <Text style={{ ...type.meta, color: fg }}>📷 {expired ? tx.chat.mediaExpired : tx.chat.viewedOnce}</Text>;
+  if (gone) return <Text style={{ ...type.meta, color: fg }}>{video ? '🎬' : '📷'} {expired ? tx.chat.mediaExpired : tx.chat.viewedOnce}</Text>;
   if (failed) return <Text style={{ ...type.meta, color: fg }}>📷 {tx.common.error}</Text>;
 
   const w = 220;
   const h = media.w && media.h ? Math.min(320, Math.round((w * media.h) / media.w)) : 220;
+
+  if (video) {
+    // R-08.17: dark tile with ▶ and length; nothing is downloaded until it is played.
+    return (
+      <>
+        <Pressable
+          testID="video-bubble"
+          accessibilityRole="button"
+          accessibilityLabel={`${once ? tx.chat.viewOnce : mx.play}${media.dur != null ? ', ' + mmss(media.dur) : ''}`}
+          onPress={() => setFull(true)}
+          style={{ width: w, height: once ? 120 : h, borderRadius: radius.sm, overflow: 'hidden', backgroundColor: color.bgOverlay }}
+        >
+          <VideoMark dur={media.dur} />
+          {once ? (
+            <View pointerEvents="none" style={{ position: 'absolute', left: 10, top: 8 }}>
+              <Text style={{ ...type.meta, color: color.fgPrimary }}>👁 {tx.chat.viewOnce}</Text>
+            </View>
+          ) : null}
+        </Pressable>
+        <VideoPlayer
+          item={full ? media : null}
+          onClose={() => {
+            setFull(false);
+            if (once) E.markOpened(cid, m.id);
+          }}
+        />
+      </>
+    );
+  }
 
   if (once) {
     return (
