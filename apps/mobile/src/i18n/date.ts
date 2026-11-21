@@ -36,6 +36,14 @@ const en = {
   cueNote: 'Spotted on your phone. Nothing is sent to Thirstr.',
   actOk: 'I’m OK',
   actMore: '+30 min',
+  // #119 R-13.20: Live Activity + app-icon quick actions. Lock screen: no names (privacy).
+  laTitle: 'Safety check-in',
+  laSub: (t: string, n: number) => (n ? `Due ${t} · ${n} ${n === 1 ? 'contact' : 'contacts'} in the loop` : `Due ${t}`),
+  laLate: 'Late',
+  sos: 'SOS',
+  qaStart: 'Start check-in',
+  qaStartSub: 'Your contacts step in only if you don’t',
+  qaSosSub: 'Alert your trusted contacts',
 };
 type V = typeof en;
 type P<T> = { [K in keyof T]?: T[K] extends (...a: never[]) => unknown ? T[K] : T[K] extends object ? P<T[K]> : T[K] };
@@ -72,6 +80,12 @@ const fr: P<V> = {
   cueLater: 'Plus tard',
   cueNote: 'Repéré sur ton téléphone. Rien n’est envoyé à Thirstr.',
   actOk: 'Tout va bien',
+  laTitle: 'Check-in sécurité',
+  laSub: (t: string, n: number) => (n ? `Prévu à ${t} · ${n} contact${n === 1 ? '' : 's'} en veille` : `Prévu à ${t}`),
+  laLate: 'En retard',
+  qaStart: 'Lancer un check-in',
+  qaStartSub: 'Tes contacts n’interviennent que si tu ne confirmes pas',
+  qaSosSub: 'Alerter tes contacts de confiance',
 };
 
 const de: P<V> = {
@@ -106,6 +120,12 @@ const de: P<V> = {
   cueLater: 'Nicht jetzt',
   cueNote: 'Auf deinem Handy erkannt. Nichts geht an Thirstr.',
   actOk: 'Mir geht’s gut',
+  laTitle: 'Sicherheits-Check-in',
+  laSub: (t: string, n: number) => (n ? `Bis ${t} · ${n} ${n === 1 ? 'Kontakt' : 'Kontakte'} im Bild` : `Bis ${t}`),
+  laLate: 'Überfällig',
+  qaStart: 'Check-in starten',
+  qaStartSub: 'Deine Kontakte greifen nur ein, wenn du dich nicht meldest',
+  qaSosSub: 'Vertrauenspersonen alarmieren',
 };
 
 function merge<T>(base: T, over: P<T> | undefined): T {

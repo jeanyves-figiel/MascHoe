@@ -3,6 +3,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { api, Me } from '../api/client';
 import * as chat from '../chat/engine';
 import type { Mode } from '../api/types';
+import { capMapCache, clearMapCache } from '../explore/mapCache';
 
 type Session = {
   me: Me;
@@ -39,9 +40,15 @@ export function SessionProvider({ me: initial, onSignedOut, children }: { me: Me
   }, [initial]);
   useEffect(() => chat.updateMe(me), [me]);
 
+  // SR-16: capped tile cache; cleared when Safe Mode turns on.
+  useEffect(() => void capMapCache(), []);
+  useEffect(() => {
+    if (me.safe_mode_active) void clearMapCache();
+  }, [me.safe_mode_active]);
+
   // Sign-out / delete wipes device-only data (data-model.md › Device-only).
   const signOut = useCallback(() => {
-    chat.wipe().finally(onSignedOut);
+    Promise.all([chat.wipe(), clearMapCache()]).finally(onSignedOut);
   }, [onSignedOut]);
 
   const refresh = useCallback(async () => {

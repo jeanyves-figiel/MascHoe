@@ -3,6 +3,7 @@
   "version": "0.9.0",
   "main": "index.ts",
   "dependencies": {
+    "@bacons/apple-targets": "^5.0.0",
     "@expo-google-fonts/bricolage-grotesque": "^0.4.1",
     "@expo/app-integrity": "^58.0.2",
     "@expo/metro-runtime": "~58.0.17",

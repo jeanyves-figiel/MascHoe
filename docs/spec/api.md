@@ -241,10 +241,12 @@ Connect: `wss://<api host>/socket/websocket?token=<access token>&vsn=2.0.0`, the
 
 | Topic | Events (server → client) | Client → server |
 |---|---|---|
-| `user:{account_token}` | `message.new` (ciphertext), `tap.new`, `party.request`, `party.accepted`, `photo.status`, `verification.done`, `checkin.due`, `moderation.notice` | `typing`, `read` (if enabled) |
+| `user:{account_token}` | `message.new` (content-free: "pull now"), `tap.new`, `party.request`, `party.accepted`, `photo.status`, `verification.done`, `checkin.due`, `moderation.notice` | `typing`, `read` (if enabled) |
 | `cell:{cell_r7}` | `presence.diff` (counts per r9/r8), `pin.add/remove`, `now.add/remove` | — (join/leave by viewport) |
 | `party:{id}` | `seat.update`, `status` | — |
 | `venue:{id}` | `here.diff` (checked-in, visible) | — |
+
+**Envelopes over the socket (SR-13, #153).** Join `user:me` with `{env: true}`: this device's new envelopes come as `message.env {messages: [...]}` (same objects as `GET /mls/messages`) when one send's envelopes for the device total ≤ 48 KB, else `message.pull` (content-free); the account-wide `message.new` is not sent to that socket. The client stores each message (or its pending copy) before acking with `ack {ids}` (≤ 500) → reply `{acked: n}`; same rule and deletion as `POST /mls/messages/ack`. Nothing changes for durability: envelopes stay on the server until acked, and the app still pulls over REST at start, on foreground, on reconnect and when a socket step fails. Saves the GET (and the REST ack) per message while the app is open.
 
 Rate limits (beta defaults, per account): messages to new contacts 30/h (unverified: 0), taps 100/day, location updates 1/30 s, pin set 6/h, party create 3/day, report 20/day.
 

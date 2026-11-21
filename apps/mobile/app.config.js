@@ -12,6 +12,8 @@ module.exports = ({ config }) => {
       // CI sets IOS_BUILD_NUMBER (run number + offset); TestFlight needs it to grow.
       ...(process.env.IOS_BUILD_NUMBER ? { buildNumber: process.env.IOS_BUILD_NUMBER } : {}),
       associatedDomains: host ? [`webcredentials:${host}`, `applinks:${site}`] : [],
+      // #119: the Live Activity extension (targets/safety-live) signs with the same team; CI has APPLE_TEAM_ID.
+      ...(process.env.APPLE_TEAM_ID ? { appleTeamId: process.env.APPLE_TEAM_ID } : {}),
     },
   };
 };
