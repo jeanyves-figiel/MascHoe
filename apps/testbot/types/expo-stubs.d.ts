@@ -11,6 +11,7 @@ declare module 'expo-sqlite' {
     runAsync(sql: string, ...a: unknown[]): Promise<unknown>;
     getFirstAsync<T>(sql: string, ...a: unknown[]): Promise<T | null>;
     getAllAsync<T>(sql: string, ...a: unknown[]): Promise<T[]>;
+    closeAsync(): Promise<void>;
   }
   export function openDatabaseAsync(name: string): Promise<SQLiteDatabase>;
 }
