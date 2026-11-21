@@ -8,12 +8,15 @@ import { distanceLabel, tx } from '../i18n/app';
 import { color, font, modeColor, radius, space, type } from '../theme/tokens';
 import { v3 } from '../i18n/v3';
 import { AUDIENCES, allowedFor, cycle } from '../me/look';
-import { Badge, Banner, Button, ErrorState, Icon, Loading, Photo, Scrim, Section, Sheet, useAccent, VerifiedTick } from '../ui';
+import { Badge, Banner, Button, ErrorState, Icon, Loading, Photo, Scrim, useAccent, VerifiedTick } from '../ui';
 import { getLocal } from '../me/localFields';
 import { FieldList } from './FieldList';
 import { PrivateNote } from './PrivateNote';
-import { getConvs } from '../chat/engine';
+import { convWith, dropFriend, answerFriend, getConvs, requestFriend } from '../chat/engine';
+import * as People from '../chat/people';
+import { ppl } from '../i18n/people';
 import { LENSES, lensFields, lensPhoto } from './lens';
+import { SafetySheet, SheetRow } from '../trust/SafetySheet';
 
 type Nav = { navigate: (s: string, p?: object) => void; goBack: () => void; setParams?: (p: Partial<Params>) => void };
 type Params = { id: string; preview?: 'stranger' | 'verified' | 'chats'; mode?: Mode };
@@ -59,11 +62,11 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
   const mode = route.params.mode ?? appMode;
   const accent = useAccent();
   const insets = useSafeAreaInsets();
+  People.usePeople();
   const [remote, setP] = useState<ProfileView | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [gone, setGone] = useState(false);
   const [menu, setMenu] = useState(false);
-  const [confirmBlock, setConfirmBlock] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const width = Math.min(Dimensions.get('window').width, 560);
@@ -121,6 +124,20 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
   if (!p) return <Loading />;
 
   const photos = p.photos.length ? p.photos : [null];
+  // #115: favorite (private) and friends (R-07.36, only once a chat exists).
+  const fav = People.isFav(p.id);
+  const fstate = People.friendOf(p.id);
+  const chat = convWith(p.id);
+  const friendRows: { label: string; icon: typeof Icon.UserPlus; tint: string; on: () => void; danger?: boolean }[] =
+    p.self || !chat || (!chat.iWrote && !chat.theyWrote)
+      ? []
+      : fstate === 'in'
+        ? [{ label: ppl.acceptFriend, icon: Icon.UserPlus, tint: color.friends, on: () => { setMenu(false); answerFriend(chat.id, true); } }]
+        : fstate
+          ? [{ label: fstate === 'out' ? ppl.cancelRequest : ppl.removeFriend, icon: Icon.UserPlus, tint: color.friends, on: () => { setMenu(false); dropFriend(chat.id); } }]
+          : People.canAsk(p.id) && me.verified
+            ? [{ label: ppl.addFriend, icon: Icon.UserPlus, tint: color.friends, on: () => { setMenu(false); requestFriend(chat.id); } }]
+            : [];
   const years = Math.floor((nowTs - new Date(p.member_since).getTime()) / (365.25 * 86400000));
 
   return (
@@ -241,9 +258,19 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
             accessibilityLabel={p.tapped ? tx.profile.tapped : tx.profile.tap}
             accessibilityState={{ disabled: p.tapped, busy }}
             onPress={p.tapped || busy ? undefined : () => act(() => api('POST', `/profiles/${p.id}/tap`), () => setP({ ...p, tapped: true }))}
-            style={({ pressed }) => [{ width: 58, height: 58, borderRadius: 29, alignItems: 'center', justifyContent: 'center', backgroundColor: p.tapped ? color.personal : color.bgRaised }, pressed && { transform: [{ scale: 0.95 }] }]}
+            style={({ pressed }) => [{ width: 58, height: 58, borderRadius: 29, alignItems: 'center', justifyContent: 'center', backgroundColor: p.tapped ? color.hookup : color.bgRaised }, pressed && { transform: [{ scale: 0.95 }] }]}
           >
-            <Icon.Star c={p.tapped ? color.onAccent : color.fgPrimary} fill={p.tapped ? color.onAccent : 'none'} />
+            <Icon.Flame c={p.tapped ? color.onAccent : color.fgPrimary} fill={p.tapped ? color.onAccent : 'none'} />
+          </Pressable>
+          <Pressable
+            testID="fav-btn"
+            accessibilityRole="button"
+            accessibilityLabel={fav ? ppl.removeFav : ppl.addFav}
+            accessibilityState={{ selected: fav }}
+            onPress={() => People.setFav(p.id, !fav, { name: p.display_name, photo: p.photos[0] ?? null })}
+            style={({ pressed }) => [{ width: 58, height: 58, borderRadius: 29, alignItems: 'center', justifyContent: 'center', backgroundColor: fav ? color.personal : color.bgRaised }, pressed && { transform: [{ scale: 0.95 }] }]}
+          >
+            <Icon.Star c={fav ? color.onAccent : color.fgPrimary} fill={fav ? color.onAccent : 'none'} />
           </Pressable>
           <View style={{ flex: 1 }}>
             <Button
@@ -261,39 +288,21 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
         </View>
       ) : null}
 
-      <Sheet visible={menu} onClose={() => { setMenu(false); setConfirmBlock(false); }} title={p.display_name} closeLabel={tx.common.close}>
-        {confirmBlock ? (
-          <View style={{ gap: space.m }}>
-            <Text style={{ ...type.body, color: color.fgPrimary }}>{tx.profile.blockConfirm}</Text>
-            <Button
-              testID="block-confirm"
-              kind="danger"
-              title={tx.profile.block}
-              busy={busy}
-              onPress={() => act(() => api('POST', `/profiles/${p.id}/block`), () => { setMenu(false); navigation.goBack(); })}
-            />
-          </View>
-        ) : (
-          <Section>
-            {[
-              { label: tx.profile.share, icon: Icon.Share, tint: color.friends, on: () => Share.share({ message: `https://thirstr.fun/p/${p.id}` }).catch(() => {}) },
-              ...(p.vouched || p.can_vouch
-                ? [{ label: p.vouched ? tx.profile.unvouch : tx.profile.vouch, icon: Icon.Shield, tint: color.trust, on: () => act(() => api(p.vouched ? 'DELETE' : 'POST', `/profiles/${p.id}/vouch`), () => { setMenu(false); load(); }) }]
-                : []),
-              { label: tx.profile.hide, icon: Icon.EyeOff, tint: color.fgSecondary, on: () => act(() => api('POST', `/profiles/${p.id}/hide`), () => { setMenu(false); navigation.goBack(); }) },
-              { label: tx.profile.report, icon: Icon.Flag, tint: color.warn, on: () => { setMenu(false); navigation.navigate('Report', { profileId: p.id }); } },
-              { label: tx.profile.block, icon: Icon.Ban, tint: color.danger, on: () => setConfirmBlock(true), danger: true },
-            ].map((r) => (
-              <Pressable key={r.label} accessibilityRole="button" onPress={r.on} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: space.m, minHeight: 58, opacity: pressed ? 0.7 : 1 })}>
-                <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: `${r.tint}26`, alignItems: 'center', justifyContent: 'center' }}>
-                  <r.icon size={19} c={r.tint} />
-                </View>
-                <Text style={{ ...type.headline, color: r.danger ? color.danger : color.fgPrimary, flex: 1 }}>{r.label}</Text>
-              </Pressable>
-            ))}
-          </Section>
-        )}
-      </Sheet>
+      <SafetySheet
+        visible={menu}
+        target={{ id: p.id, name: p.display_name, age: p.age }}
+        onClose={() => setMenu(false)}
+        onReport={(t) => navigation.navigate('Report', { profileId: t.id })}
+        onGone={() => navigation.goBack()}
+      >
+        {friendRows.map((r) => (
+          <SheetRow key={r.label} testID="profile-friend" title={r.label} onPress={r.on} />
+        ))}
+        <SheetRow title={tx.profile.share} onPress={() => Share.share({ message: `https://thirstr.fun/p/${p.id}` }).catch(() => {})} last={!(p.vouched || p.can_vouch)} />
+        {p.vouched || p.can_vouch ? (
+          <SheetRow last title={p.vouched ? tx.profile.unvouch : tx.profile.vouch} onPress={() => act(() => api(p.vouched ? 'DELETE' : 'POST', `/profiles/${p.id}/vouch`), () => { setMenu(false); load(); })} />
+        ) : null}
+      </SafetySheet>
     </View>
   );
 }

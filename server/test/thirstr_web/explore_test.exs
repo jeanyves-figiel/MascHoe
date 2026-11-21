@@ -180,6 +180,25 @@ defmodule ThirstrWeb.ExploreTest do
     v.c |> recycle_authed() |> post("/v1/profiles/#{o.pid}/hide") |> response(204)
     refute o.pid in ids(grid(v.c)["items"])
     assert v.pid in ids(grid(o.c)["items"])
+
+    # #111 Settings › Hidden & blocked: list, then unhide brings it back.
+    assert [%{"profile_id" => pid, "display_name" => _, "at" => _}] =
+             v.c
+             |> recycle_authed()
+             |> get("/v1/me/hidden")
+             |> json_response(200)
+             |> Map.get("hidden")
+
+    assert pid == o.pid
+    v.c |> recycle_authed() |> delete("/v1/profiles/#{o.pid}/hide") |> response(204)
+
+    assert v.c
+           |> recycle_authed()
+           |> get("/v1/me/hidden")
+           |> json_response(200)
+           |> Map.get("hidden") == []
+
+    assert o.pid in ids(grid(v.c)["items"])
   end
 
   test "taps: verified only, mutual detection, inbox", %{viewer: v, other: o, conn: conn} do
@@ -549,5 +568,24 @@ defmodule ThirstrWeb.ExploreTest do
     assert sum.("hookup")["counts"]["hookup"] == before - 1
 
     assert v.c |> recycle_authed() |> get("/v1/explore/summary?mode=nope") |> json_response(422)
+  end
+
+  test "profile view shows online, symmetric with the online setting (#115, R-07.33)", %{
+    viewer: v,
+    other: o
+  } do
+    # `o` made requests during onboarding, so its seen:<account> key is fresh.
+    view = fn -> v.c |> recycle_authed() |> get("/v1/profiles/#{o.pid}") |> json_response(200) end
+    assert view.()["online"] == true
+
+    Thirstr.Repo.query!(
+      "UPDATE accounts SET settings = COALESCE(settings, '{}'::jsonb) || '{\"online_visible\": false}' WHERE id = (SELECT account_id FROM profiles WHERE id = $1)",
+      [Ecto.UUID.dump!(o.pid)]
+    )
+
+    assert view.()["online"] == false
+
+    own = v.c |> recycle_authed() |> get("/v1/profiles/#{v.pid}") |> json_response(200)
+    assert own["online"] == false
   end
 end
