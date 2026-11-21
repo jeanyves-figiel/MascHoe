@@ -14,6 +14,7 @@ import { PushPrompt } from '../chat/PushPrompt';
 import { ExploreScreen } from '../explore/ExploreScreen';
 import { tx } from '../i18n/app';
 import { DevicesScreen } from '../me/DevicesScreen';
+import { ensureAttested } from '../auth/attest';
 import { EditProfileScreen } from '../me/EditProfileScreen';
 import { EditSectionScreen } from '../me/EditSectionScreen';
 import { MeScreen } from '../me/MeScreen';
@@ -238,6 +239,15 @@ function useHiddenReturn() {
   }, [me, setMe]);
 }
 
+/** #25 App Attest: on start and when the app comes back (at most daily, see auth/attest). */
+function useAttestation() {
+  React.useEffect(() => {
+    ensureAttested();
+    const s = AppState.addEventListener('change', (st) => st === 'active' && ensureAttested());
+    return () => s.remove();
+  }, []);
+}
+
 /** F-13: open "All good?" once a check-in is due; keep the held alert's location fresh (5 min). */
 function useCheckinWatch() {
   React.useEffect(() => {
@@ -339,6 +349,7 @@ export function Main() {
     });
   }, []);
   useCheckinWatch();
+  useAttestation();
   useHiddenReturn();
   useShareLinks();
   const kb = useKeyboardShown();

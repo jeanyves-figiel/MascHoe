@@ -54,6 +54,8 @@ config :thirstr,
        team ->
          Enum.map(String.split(env.("IOS_BUNDLE_IDS", "app.thirstr"), ","), &"#{team}.#{&1}")
      end),
+  # #25 App Attest: keys from Xcode debug builds ("development" aaguid) are refused in prod.
+  app_attest_allow_dev: System.get_env("DEPLOY_ENV") not in ["prod", "production"],
   # Admin console (admin-console.md, R-AD.12): owner account ids; empty = console off (404).
   admin_account_ids: String.split(System.get_env("ADMIN_ACCOUNT_IDS") || "", ",", trim: true),
   # testing.md › Chat test bot: shared key for the bot service; unset = feature off (404).
