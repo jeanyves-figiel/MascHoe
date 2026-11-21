@@ -1,0 +1,48 @@
+# Compiles the app's own Android native modules (Kotlin) so they don't rot while there is no
+# Play Store pipeline yet (#107). Runs only when Android-relevant files change, or by hand.
+name: Android compile
+
+on:
+  pull_request:
+    paths:
+      - apps/mobile/modules/*/android/**
+      - apps/mobile/modules/*/expo-module.config.json
+      - apps/mobile/package-lock.json
+      - .github/workflows/android-compile.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  modules:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci
+      - run: npx expo prebuild --platform android --no-install
+      - name: Compile local modules (Kotlin)
+        run: |
+          cd android
+          mods=$(./gradlew -q projects | grep -oE "':thirstr-[a-z-]+'" | tr -d "'" | sort -u)  # e.g. :thirstr-translate
+          echo "Modules: $mods"
+          [ -n "$mods" ] || { echo "::error::no local Android modules found"; exit 1; }
+          ./gradlew --no-daemon $(for m in $mods; do echo "$m:compileReleaseKotlin"; done)

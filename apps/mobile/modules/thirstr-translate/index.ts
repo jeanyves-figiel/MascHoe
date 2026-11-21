@@ -1,6 +1,6 @@
 import { requireOptionalNativeModule } from 'expo';
 
-/** On-device translation (F-07 R-07.25). iOS: Apple Translation (iOS 18+) + NaturalLanguage. Text never leaves the phone. */
+/** On-device translation (F-07 R-07.25). iOS: Apple Translation (iOS 18+) + NaturalLanguage. Android (#107): ML Kit Translation + Language ID. Text never leaves the phone. */
 export type PackStatus = 'installed' | 'supported' | 'unsupported';
 
 type Native = {
