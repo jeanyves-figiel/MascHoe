@@ -183,14 +183,14 @@ export function Segmented<T extends string>({
   );
 }
 
-export function Field(props: TextInputProps & { label: string; error?: string; hint?: string }) {
-  const { label, error, hint, onFocus, onBlur, ...rest } = props;
+export function Field(props: TextInputProps & { label: string; error?: string; hint?: string; bare?: boolean }) {
+  const { label, error, hint, onFocus, onBlur, bare, ...rest } = props;
   const accent = useAccent();
   const inCard = useContext(CardContext);
   const [focus, setFocus] = React.useState(false);
   return (
     <View style={s.field}>
-      <Text style={s.sectionTitle}>{label}</Text>
+      {bare ? null : <Text style={s.sectionTitle}>{label}</Text>}
       <TextInput
         placeholderTextColor={color.fgMuted}
         style={[s.input, inCard && { backgroundColor: color.bgOverlay, borderColor: color.bgOverlay }, rest.multiline && s.inputMulti, focus && { borderColor: accent }, error ? s.inputErr : null, WEB_NO_OUTLINE]}
