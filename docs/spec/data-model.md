@@ -97,7 +97,7 @@ Address/door code: E2EE message to accepted guests, never in DB.
 | venue_checkins: venue_id · profile_id (PK) · visible bool · zone (40) null · checked_in_at · auto_out_at (4 h); row deleted at check-out |
 
 ### taps (from_profile_id, to_profile_id, seen, created_at; unique pair; swept after 7 d)
-### profile_hides (account_id, profile_id) — hidden from the viewer's Explore
+### profile_hides (account_id, profile_id, created_at) — hidden from the viewer's Explore; listed in S-71 (#111)
 ### contacts (profile_a, profile_b, a_sent, b_sent) — who has messaged whom (pin audience "my chats", who-can-message)
 ### blocks (account_from, account_to) — account-level: blocks all profiles both ways
 ### vouches (from_account, to_profile, created_at; unique pair) — weight computed by SQL `vouch_count(profile)`: 1 for 6 months, linear to 0 at 12, reciprocal pairs × 0.5, max 20 (F-18)
@@ -140,7 +140,7 @@ Address/door code: E2EE message to accepted guests, never in DB.
 - `blob/{random}` — E2EE media (ciphertext), deleted on all-recipients-ack or 30 d.
 
 ## Device-only (SQLCipher)
-Chats, private notes & tags, trusted contacts list, health reminders, received media, albums keys, MLS state, recovery phrase (never stored, shown once).
+Chats, private notes & tags, favorites, friends (F-07 R-07.32–36), trusted contacts list, health reminders, received media, albums keys, MLS state, recovery phrase (never stored, shown once).
 
 Beta store: one encrypted key-value table (`expo-sqlite` + SQLCipher, key in Keychain). Keys: `convs`, `msg` table (one row per message, R-07.21), `outbox` table (R-07.17), `pending` (undecrypted ciphertext ≤ 24 h, R-07.20), `grp:{group}` (MLS state), `g2c:{group}`, `kp:{sha256}` (private key packages), `kp:lastresort:{profile}`, `albums`, `grant:{conv}:{album}`, `note:{profile}`, `quick:custom`, `tr:{conv}␁{message id}` (on-device translation cache, F-07 R-07.30). Wiped on sign-out and account delete.
 

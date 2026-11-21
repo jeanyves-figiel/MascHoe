@@ -175,6 +175,7 @@ defmodule ThirstrWeb.Router do
       post "/profiles/:id/block", ProfileController, :block
       post "/profiles/:id/hide", ProfileController, :hide
       delete "/profiles/:id/hide", ProfileController, :unhide
+      get "/me/hidden", ProfileController, :hidden
       get "/me/blocks", ProfileController, :blocks
       delete "/me/blocks/:id", ProfileController, :unblock
       get "/taps", ProfileController, :taps

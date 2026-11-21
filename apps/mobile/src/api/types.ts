@@ -75,6 +75,8 @@ export type Grid = { items: Card[]; next: string | null; further_from: number | 
 export type MapData = { cells: { cell: string; res: number; count: number }[]; pins: Card[]; avatars: Card[] };
 
 export type ProfileView = {
+  /** #115: online now (symmetric with the online setting, R-17.5). */
+  online?: boolean;
   id: string;
   kind: Kind;
   display_name: string;

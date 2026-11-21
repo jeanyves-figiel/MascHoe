@@ -56,10 +56,10 @@ Top (#113, option B of the [merged map mockup](https://claude.ai/artifact/JiM6ad
 | Tap intent chip | Toggle that intent; reload map, grid, counts (R-04.18) |
 | Tap place chip | Show / hide that place layer (R-04.20) |
 | Tap place marker | Place card (R-04.20) |
-| Tap pin | Select it: bigger pin + name chip, tile highlighted in the sheet (R-04.14) |
+| Tap pin | Select it: bigger pin + name chip, tile highlighted in the sheet, **peek card** above the sheet edge (photo, name, tick, distance · Online, ⋯ → S-21 safety sheet; tap card → profile) (R-04.14, #111). Second tap on the selected pin opens the profile |
 | Tap name chip / tile | Profile S-20 |
 | Drag / tap sheet handle | Sheet snaps peek · half · full (R-04.14) |
-| Long-press card | Quick actions: tap, message, hide this profile, block |
+| Long-press card | Medium haptic, safety sheet S-21 (F-15 R-15.17): Open profile, Tap, Message, then Hide / Block / Report tiles (#111) |
 | Tap location pill | Location sheet S-30 |
 | Tap Filters | Filters sheet S-12 |
 | Map pan/zoom | Join/leave `cell:{r7}` topics for viewport (max 12) |

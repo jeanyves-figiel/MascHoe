@@ -17,7 +17,7 @@ Beta: passkey, Apple, Google, email magic link, device link by QR, recovery phra
 - R-01.2 OIDC: store only `SHA-256(provider‖sub‖server_pepper)`. Never email/name from the provider. Apple "Hide My Email" accepted.
 - R-01.3 Email magic link: email stored hashed; link valid 15 min, single use; response is always 202 (no account enumeration). An account made with Apple/Google/passkey can add a sign-in email later (`POST /me/email`, [RF-7](../required-fields.md)).
 - R-01.4 One account per verified human (enforced at F-03, not here).
-- R-01.5 Access token 15 min; refresh 30 d, bound to device key; rotate on use; revoke all on "Log out everywhere".
+- R-01.5 Access token 15 min; refresh 30 d, bound to device key; rotate on use (re-use > 60 s after use revokes the device; within 60 s is a client race → 409, #116; the app runs one refresh at a time and signs out only on 401/403); revoke all on "Log out everywhere".
 - R-01.6 Device link: old device shows QR (expires 120 s) → new device scans → old device confirms with biometrics → MLS adds new device to the user's groups.
 - R-01.7 Recovery phrase (12 words, BIP-39) offered after verification, optional, shown once, never stored server-side. Used to re-derive the account key if all devices are lost; chats are not recoverable without encrypted backup.
 - R-01.8 Max 5 devices per account.

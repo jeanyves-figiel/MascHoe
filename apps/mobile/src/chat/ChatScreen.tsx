@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { api, ApiError } from '../api/client';
+import { ApiError } from '../api/client';
 import { useSession } from '../app/session';
 import { tx } from '../i18n/app';
+import { SafetySheet, SheetRow } from '../trust/SafetySheet';
 import { color, font, radius, space, type } from '../theme/tokens';
 import { Banner, Button, Icon, ListRow, Loading, Photo, Segmented, Sheet, Toggle, useAccent, VerifiedTick } from '../ui';
 import * as E from './engine';
@@ -14,6 +15,10 @@ import { trx } from '../i18n/translate';
 import { prefs } from '../me/prefs';
 import { TranslatedText } from './TranslatedText';
 import { langName, modeFor, targetLang, translateAvailable } from './translate';
+import { ppl } from '../i18n/people';
+import * as P from './people';
+import { NoteSheet, NoteStrip } from '../profile/PrivateNote';
+import { findHits, Marked } from './find';
 
 type Nav = { navigate: (s: string, p?: object) => void; goBack: () => void; setOptions: (o: object) => void };
 type Params = { cid?: string; profileId?: string; name?: string };
@@ -68,6 +73,12 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
   const [msgMenu, setMsgMenu] = useState<E.Msg | null>(null);
   const [custom, setCustom] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [noteOpen, setNoteOpen] = useState(false);
+  // R-07.39 search in this chat (null = off).
+  const [find, setFind] = useState<string | null>(null);
+  const [hitAt, setHitAt] = useState(0);
+  const listRef = useRef<FlatList<{ m: E.Msg; r: string[] }>>(null);
+  P.usePeople();
   const [mediaSheet, setMediaSheet] = useState(false);
   const [albums, setAlbums] = useState<Albums.Album[]>([]);
   useEffect(() => {
@@ -139,6 +150,14 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
   }, [list]);
 
   const lastMine = visible.find((x) => x.m.from === 'me')?.m.id;
+  // R-07.36: only the latest request row is live (Accept / Pending); older ones are a plain line.
+  const lastReq = visible.find((x) => x.m.p.t === 'friend' && x.m.p.op === 'request')?.m.id;
+  const hits = useMemo(() => findHits(visible, find), [visible, find]);
+  const hitSet = useMemo(() => new Set(hits), [hits]);
+  const cur = hits[Math.min(hitAt, hits.length - 1)];
+  useEffect(() => {
+    if (cur !== undefined) listRef.current?.scrollToIndex({ index: cur, viewPosition: 0.5, animated: true });
+  }, [cur]);
 
   const send = useCallback(
     async (p: E.Payload) => {
@@ -176,70 +195,106 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
   const trCan = translateAvailable() && prefs().translate !== 'off';
   // Group chats (party / activity / club): no single peer, sender names from the E2EE payload.
   const group = !!conv.ctx;
+  const fav = !group && P.isFav(conv.peer);
+  const friend = group ? null : P.friendOf(conv.peer);
+  const askFriend = () => {
+    if (!me.verified) {
+      setProblem(tx.chat.unverified);
+      return;
+    }
+    E.requestFriend(conv.id).catch((e) => setProblem(errorText(e)));
+  };
   const who = (m: E.Msg) => (m.from === 'me' ? tx.chat.you : group ? (m.by && conv.names?.[m.by]) || '…' : conv.name);
 
-  return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: color.bgBase }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <View style={{ paddingTop: insets.top + space.xs, paddingHorizontal: space.l, paddingBottom: space.s, flexDirection: 'row', alignItems: 'center', gap: space.m, borderBottomWidth: 1, borderColor: color.lineSubtle }}>
-        <Pressable accessibilityRole="button" accessibilityLabel={tx.common.back} onPress={() => navigation.goBack()} hitSlop={12}>
-          <Icon.Back />
-        </Pressable>
-        <Pressable style={{ flexDirection: 'row', alignItems: 'center', gap: space.s, flex: 1 }} accessibilityRole="button" onPress={() => !conv.gone && !group && navigation.navigate('Profile', { id: conv.peer })}>
-          <Photo uri={conv.photo} id={conv.peer || conv.id} label="" style={{ width: 42, height: 42, borderRadius: 21 }} />
-          <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Text numberOfLines={1} style={{ ...type.headline, color: color.fgPrimary, flexShrink: 1 }}>
-                {conv.gone ? tx.chat.gone : conv.name}
-              </Text>
-              {conv.verified ? <VerifiedTick size={13} /> : null}
-            </View>
-            {offline ? (
-              <View testID="chat-offline" style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: color.fgMuted }} />
-                <Text style={{ ...type.meta, color: color.fgMuted }}>{tx.chat.waiting}</Text>
-              </View>
-            ) : typing ? (
-              <Text style={{ ...type.meta, color: accent }}>{tx.chat.typing}</Text>
-            ) : null}
-          </View>
-        </Pressable>
-        {conv.ttl !== 'never' ? (
-          <Pressable accessibilityRole="button" accessibilityLabel={tx.chat.disappearing} onPress={() => setMenu(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, height: 28, borderRadius: radius.pill, backgroundColor: color.personal }}>
-            <Icon.Timer />
-            <Text style={{ ...type.caption, color: color.onAccent }}>{ttlLabel}</Text>
-          </Pressable>
-        ) : null}
-        <Pressable testID="chat-menu" accessibilityRole="button" accessibilityLabel="More" onPress={() => setMenu(true)} hitSlop={12}>
-          <Icon.More />
-        </Pressable>
-      </View>
-
-      <FlatList
-        inverted
-        data={visible}
-        keyExtractor={(x) => x.m.id}
-        contentContainerStyle={{ padding: space.l, gap: space.xs }}
-        ListFooterComponent={
-          <View style={{ alignItems: 'center', gap: space.s, marginBottom: space.l }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: space.m, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: color.bgRaised }}>
-              <Icon.Lock />
-              <Text style={{ ...type.caption, color: color.trust }}>{group ? tx.group.e2ee : tx.chat.e2ee}</Text>
-            </View>
-            {trFrom ? (
-              <View testID="tr-note" style={{ flexDirection: 'row', alignItems: 'center', gap: space.s, maxWidth: 300, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 16, backgroundColor: `${color.trust}1F` }}>
-                <Icon.Translate size={18} w={2} />
-                <Text style={{ ...type.caption, fontSize: 12, lineHeight: 16, fontFamily: font.medium, color: color.fgSoft, flexShrink: 1 }}>{trx.note(langName(trFrom), langName(targetLang()))}</Text>
-              </View>
-            ) : null}
-          </View>
-        }
-
-        renderItem={({ item: { m, r } }) => {
+  const chatSettings = (
+    <>
+      <ListRow testID="menu-find" title={ppl.find} onPress={() => { setMenu(false); setHitAt(0); setFind(''); }} />
+        <View style={{ gap: space.s }}>
+          <Text style={{ ...type.meta, color: color.fgSecondary }}>{tx.chat.disappearing}</Text>
+          <Segmented
+            label={tx.chat.disappearing}
+            value={conv.ttl}
+            options={(['24h', '7d', 'never'] as E.Ttl[]).map((v) => ({ value: v, label: tx.chat.ttl[v] }))}
+            onChange={(v) => {
+              if (v !== conv.ttl) send({ t: 'disappearing', ttl: v });
+            }}
+          />
+        </View>
+        <View>
+          {trCan ? (
+            <Toggle
+              label={trx.chat}
+              sub={trFrom ? trx.chatSub(langName(trFrom), langName(targetLang())) : trx.chatSubAny}
+              value={conv.translate !== 'off'}
+              onChange={(v) => E.setConv(conv.id, { translate: v ? undefined : 'off' })}
+            />
+          ) : null}
+          <Toggle
+            label={tx.chat.chatReceipts}
+            sub={me.settings?.read_receipts === false ? tx.chat.chatReceiptsGlobalOff : tx.chat.chatReceiptsSub}
+            value={me.settings?.read_receipts !== false && conv.receipts !== 'off'}
+            disabled={me.settings?.read_receipts === false}
+            onChange={(v) => E.setConv(conv.id, { receipts: v ? undefined : 'off' })}
+          />
+          <ListRow title={conv.muted ? tx.chat.unmute : tx.chat.mute} onPress={() => E.setConv(conv.id, { muted: !conv.muted })} />
+          {!group && conv.gone ? (
+            <ListRow
+              title={tx.chat.report}
+              danger
+              onPress={() => {
+                setMenu(false);
+                navigation.navigate('Report', { profileId: conv.peer, cid: conv.id });
+              }}
+            />
+          ) : null}
+          <ListRow
+            title={tx.chat.deleteChat}
+            danger
+            onPress={() => E.deleteConv(conv.id).then(() => { setMenu(false); navigation.goBack(); })}
+          />
+        </View>
+    </>
+  );
+  const q = hits.length ? find : null;
+  const renderRow = ({ m, r }: { m: E.Msg; r: string[] }, ring: boolean) => {
           if (m.p.t === 'notice') {
             return (
               <View testID={`notice-${m.p.kind}`} style={{ alignSelf: 'center', maxWidth: '86%', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: space.m, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: color.bgRaised, marginVertical: space.s }}>
                 <Icon.Lock />
                 <Text style={{ ...type.caption, color: color.fgSecondary, flexShrink: 1 }}>{m.p.kind === 'expired' ? tx.chat.expired(m.p.n ?? 1) : tx.chat.undecryptable}</Text>
+              </View>
+            );
+          }
+          if (m.p.t === 'friend') {
+            // R-07.36 friend request / accepted.
+            if (m.p.op === 'accept') {
+              return (
+                <View testID="friend-yes" style={{ alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: space.s, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: `${color.friends}24`, marginVertical: space.s }}>
+                  <Icon.Check size={14} c={color.friends} />
+                  <Text style={{ ...type.meta, fontFamily: font.heavy, color: color.friends }}>{ppl.nowFriends(conv.name)}</Text>
+                </View>
+              );
+            }
+            const live = m.id === lastReq && ((m.from === 'me' && friend === 'out') || (m.from === 'them' && friend === 'in'));
+            if (!live) {
+              return <Text style={{ ...type.meta, color: color.fgMuted, textAlign: 'center', marginVertical: space.s }}>{ppl.oldRequest}</Text>;
+            }
+            return (
+              <View testID={m.from === 'me' ? 'friend-pending' : 'friend-ask'} style={{ alignSelf: 'stretch', marginVertical: space.s, padding: space.l, borderRadius: radius.md, backgroundColor: `${color.friends}1F`, alignItems: 'center', gap: space.s }}>
+                <Icon.UserPlus size={26} />
+                <Text style={{ ...type.headline, fontSize: 15, color: color.friends, textAlign: 'center' }}>{m.from === 'me' ? ppl.youAsked(conv.name) : ppl.askedYou(conv.name)}</Text>
+                {m.from === 'me' ? (
+                  <Text style={{ ...type.meta, color: color.fgSecondary, textAlign: 'center' }}>{ppl.pending}</Text>
+                ) : (
+                  <View style={{ flexDirection: 'row', gap: space.s, marginTop: space.xs }}>
+                    <Pressable testID="friend-no" accessibilityRole="button" onPress={() => E.answerFriend(conv.id, false)} style={{ height: 40, paddingHorizontal: 18, borderRadius: radius.pill, backgroundColor: color.bgOverlay, justifyContent: 'center' }}>
+                      <Text style={{ ...type.meta, fontFamily: font.heavy, color: color.fgPrimary }}>{ppl.notNow}</Text>
+                    </Pressable>
+                    <Pressable testID="friend-accept" accessibilityRole="button" onPress={() => E.answerFriend(conv.id, true)} style={{ height: 40, paddingHorizontal: 18, borderRadius: radius.pill, backgroundColor: color.friends, justifyContent: 'center' }}>
+                      <Text style={{ ...type.meta, fontFamily: font.heavy, color: color.onAccent }}>{ppl.accept}</Text>
+                    </Pressable>
+                  </View>
+                )}
               </View>
             );
           }
@@ -264,13 +319,15 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
                 reactions={r}
                 onLongPress={() => setMsgMenu(m)}
                 onTranslated={onTranslated}
+                mark={q}
+                ring={ring}
               />
             );
           }
           return (
             <View style={{ alignItems: mine ? 'flex-end' : 'flex-start' }}>
               <Pressable
-                testID={`msg-${m.id}`}
+                testID={ring ? 'find-current' : `msg-${m.id}`}
                 onLongPress={() => setMsgMenu(m)}
                 onPress={() => {
                   if (m.status === 'failed') E.retry(cid, m.id).catch((e) => setProblem(errorText(e)));
@@ -284,11 +341,13 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
                   borderBottomRightRadius: mine ? 6 : 20,
                   borderBottomLeftRadius: mine ? 20 : 6,
                   backgroundColor: mine ? accent : color.bgRaised,
+                  borderWidth: ring ? 2 : 0,
+                  borderColor: color.personal,
                   opacity: m.status === 'sending' ? 0.7 : 1,
                 }}
               >
                 {group && !mine ? <Text style={{ ...type.caption, color: accent }}>{who(m)}</Text> : null}
-                <Bubble m={m} mine={mine} cid={cid} conv={conv} />
+                <Bubble m={m} mine={mine} cid={cid} conv={conv} mark={q} />
               </Pressable>
               {r.length ? <Text style={{ ...type.meta, marginTop: -4 }}>{r.join('')}</Text> : null}
               {mine && (m.id === lastMine || m.status === 'failed') ? (
@@ -298,7 +357,123 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
               ) : null}
             </View>
           );
-        }}
+  };
+  // R-07.39: while searching, non-matches dim and the current match gets a sunflower ring.
+  const findWrap = (index: number, el: React.ReactNode) => {
+    if (find === null || !hits.length) return el;
+    const hit = hitSet.has(index);
+    return (
+      <View style={{ opacity: hit ? 1 : 0.35 }}>
+        {el}
+      </View>
+    );
+  };
+
+  return (
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: color.bgBase }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {find !== null ? (
+        <View style={{ paddingTop: insets.top + space.xs, paddingHorizontal: space.m, paddingBottom: space.s, flexDirection: 'row', alignItems: 'center', gap: space.s, borderBottomWidth: 1, borderColor: color.lineSubtle }}>
+          <View style={{ flex: 1, height: 44, borderRadius: radius.pill, backgroundColor: color.bgRaised, borderWidth: 2, borderColor: color.personal, flexDirection: 'row', alignItems: 'center', gap: space.s, paddingHorizontal: 14 }}>
+            <Icon.Search c={color.personal} />
+            <TextInput
+              testID="find-input"
+              autoFocus
+              value={find}
+              onChangeText={(v) => {
+                setFind(v);
+                setHitAt(0);
+              }}
+              placeholder={ppl.findPh}
+              placeholderTextColor={color.fgMuted}
+              accessibilityLabel={ppl.findPh}
+              autoCorrect={false}
+              returnKeyType="search"
+              onSubmitEditing={() => setHitAt((i) => (hits.length ? (i + 1) % hits.length : 0))}
+              style={{ flex: 1, color: color.fgPrimary, fontFamily: font.regular, fontSize: 15, paddingVertical: 0, outlineStyle: 'none' as never }}
+            />
+          </View>
+          <Pressable testID="find-done" accessibilityRole="button" onPress={() => setFind(null)} hitSlop={8} style={{ height: 44, justifyContent: 'center', paddingHorizontal: 6 }}>
+            <Text style={{ ...type.headline, fontSize: 15, color: color.fgPrimary }}>{tx.common.done}</Text>
+          </Pressable>
+        </View>
+      ) : (
+      <View style={{ paddingTop: insets.top + space.xs, paddingHorizontal: space.l, paddingBottom: space.s, flexDirection: 'row', alignItems: 'center', gap: space.m, borderBottomWidth: 1, borderColor: color.lineSubtle }}>
+        <Pressable accessibilityRole="button" accessibilityLabel={tx.common.back} onPress={() => navigation.goBack()} hitSlop={12}>
+          <Icon.Back />
+        </Pressable>
+        <Pressable style={{ flexDirection: 'row', alignItems: 'center', gap: space.s, flex: 1 }} accessibilityRole="button" onPress={() => !conv.gone && !group && navigation.navigate('Profile', { id: conv.peer })}>
+          <Photo uri={conv.photo} id={conv.peer || conv.id} label="" style={{ width: 42, height: 42, borderRadius: 21 }} />
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Text numberOfLines={1} style={{ ...type.headline, color: color.fgPrimary, flexShrink: 1 }}>
+                {conv.gone ? tx.chat.gone : conv.name}
+              </Text>
+              {conv.verified ? <VerifiedTick size={13} /> : null}
+              {!group && P.friendOf(conv.peer) === 'yes' ? (
+                <View style={{ paddingHorizontal: 7, paddingVertical: 1, borderRadius: radius.pill, backgroundColor: color.friends }}>
+                  <Text style={{ ...type.caption, color: color.onAccent }}>{ppl.friend}</Text>
+                </View>
+              ) : null}
+            </View>
+            {offline ? (
+              <View testID="chat-offline" style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: color.fgMuted }} />
+                <Text numberOfLines={1} style={{ ...type.meta, color: color.fgMuted, flexShrink: 1 }}>{tx.chat.waiting}</Text>
+              </View>
+            ) : typing ? (
+              <Text style={{ ...type.meta, color: accent }}>{tx.chat.typing}</Text>
+            ) : null}
+          </View>
+        </Pressable>
+        {conv.ttl !== 'never' ? (
+          <Pressable accessibilityRole="button" accessibilityLabel={tx.chat.disappearing} onPress={() => setMenu(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, height: 28, borderRadius: radius.pill, backgroundColor: color.personal }}>
+            <Icon.Timer />
+            {/* #115: compact (24h / 7d) so name, favorite and ⋯ fit the header. */}
+            <Text style={{ ...type.caption, color: color.onAccent }}>{group ? ttlLabel : conv.ttl}</Text>
+          </Pressable>
+        ) : null}
+        {!group && !conv.gone ? (
+          <Pressable
+            testID="chat-fav"
+            accessibilityRole="button"
+            accessibilityLabel={fav ? ppl.removeFav : ppl.addFav}
+            accessibilityState={{ selected: fav }}
+            onPress={() => P.setFav(conv.peer, !fav, { name: conv.name, photo: conv.photo })}
+            style={({ pressed }) => ({ width: 44, height: 44, borderRadius: 22, backgroundColor: fav ? color.personal : color.bgRaised, alignItems: 'center', justifyContent: 'center', transform: [{ scale: pressed ? 0.94 : 1 }] })}
+          >
+            <Icon.Star size={21} c={fav ? color.onAccent : color.fgPrimary} fill={fav ? color.onAccent : 'none'} />
+          </Pressable>
+        ) : null}
+        <Pressable testID="chat-menu" accessibilityRole="button" accessibilityLabel="More" onPress={() => setMenu(true)} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: color.bgRaised, alignItems: 'center', justifyContent: 'center' }}>
+          <Icon.More />
+        </Pressable>
+      </View>
+      )}
+      {!group && find === null ? <NoteStrip peer={conv.peer} onPress={() => setNoteOpen(true)} /> : null}
+
+      <FlatList
+        ref={listRef}
+        inverted
+        data={visible}
+        keyExtractor={(x) => x.m.id}
+        contentContainerStyle={{ padding: space.l, gap: space.xs }}
+        ListFooterComponent={
+          <View style={{ alignItems: 'center', gap: space.s, marginBottom: space.l }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: space.m, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: color.bgRaised }}>
+              <Icon.Lock />
+              <Text style={{ ...type.caption, color: color.trust }}>{group ? tx.group.e2ee : tx.chat.e2ee}</Text>
+            </View>
+            {trFrom ? (
+              <View testID="tr-note" style={{ flexDirection: 'row', alignItems: 'center', gap: space.s, maxWidth: 300, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 16, backgroundColor: `${color.trust}1F` }}>
+                <Icon.Translate size={18} w={2} />
+                <Text style={{ ...type.caption, fontSize: 12, lineHeight: 16, fontFamily: font.medium, color: color.fgSoft, flexShrink: 1 }}>{trx.note(langName(trFrom), langName(targetLang()))}</Text>
+              </View>
+            ) : null}
+          </View>
+        }
+
+        renderItem={({ item, index }) => findWrap(index, renderRow(item, find !== null && index === cur))}
+        onScrollToIndexFailed={(e) => setTimeout(() => listRef.current?.scrollToIndex({ index: e.index, viewPosition: 0.5, animated: true }), 200)}
       />
 
       {!group && (me.safe_mode_active || me.safe_mode === 'on') && list && careful(conv, list) ? (
@@ -317,7 +492,36 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
         </View>
       ) : null}
 
-      {!conv.gone ? (
+      {find !== null ? (
+        <View testID="find-bar" style={{ paddingHorizontal: space.m, paddingTop: 10, paddingBottom: insets.bottom + space.s, borderTopWidth: 1, borderColor: color.lineSubtle, backgroundColor: color.bgMap, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <View style={{ flex: 1 }}>
+            <Text testID="find-count" style={{ ...type.headline, color: color.fgPrimary }}>
+              {(find ?? '').trim().length < 2 ? ppl.findHint : hits.length ? ppl.findCount(Math.min(hitAt, hits.length - 1) + 1, hits.length) : ppl.findNone}
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <Icon.Lock size={11} />
+              <Text style={{ ...type.meta, fontSize: 12, color: color.fgMuted }}>{ppl.findLocal}</Text>
+            </View>
+          </View>
+          {(
+            [
+              { label: ppl.findOlder, d: 'M6 15l6-6 6 6', on: () => setHitAt((i) => Math.min(hits.length - 1, i + 1)), off: hitAt >= hits.length - 1 },
+              { label: ppl.findNewer, d: 'M6 9l6 6 6-6', on: () => setHitAt((i) => Math.max(0, i - 1)), off: hitAt <= 0 },
+            ] as const
+          ).map((b) => (
+            <Pressable
+              key={b.label}
+              accessibilityRole="button"
+              accessibilityLabel={b.label}
+              accessibilityState={{ disabled: b.off || !hits.length }}
+              onPress={b.off || !hits.length ? undefined : b.on}
+              style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: color.bgRaised, alignItems: 'center', justifyContent: 'center', opacity: b.off || !hits.length ? 0.4 : 1 }}
+            >
+              <Icon.Chevron d={b.d} />
+            </Pressable>
+          ))}
+        </View>
+      ) : !conv.gone ? (
         <>
           {!group ? (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: space.s, paddingHorizontal: space.l, paddingVertical: space.s }}>
@@ -379,78 +583,40 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
         <Text style={{ ...type.meta, color: color.fgMuted, textAlign: 'center', padding: space.l, paddingBottom: insets.bottom + space.l }}>{tx.chat.gone}</Text>
       )}
 
-      <Sheet visible={menu} onClose={() => setMenu(false)} title={conv.name} closeLabel={tx.common.close}>
-        {!conv.gone && !group ? <ListRow title={tx.chat.viewProfile} onPress={() => { setMenu(false); navigation.navigate('Profile', { id: conv.peer }); }} /> : null}
-        {!conv.gone && !group ? (
-          <ListRow
-            testID="chat-checkin"
-            title={tx.safety.checkin}
-            onPress={() => {
-              setMenu(false);
-              navigation.navigate('CheckinStart', { cid: conv.id });
-            }}
-          />
-        ) : null}
-        <View style={{ gap: space.s }}>
-          <Text style={{ ...type.meta, color: color.fgSecondary }}>{tx.chat.disappearing}</Text>
-          <Segmented
-            label={tx.chat.disappearing}
-            value={conv.ttl}
-            options={(['24h', '7d', 'never'] as E.Ttl[]).map((v) => ({ value: v, label: tx.chat.ttl[v] }))}
-            onChange={(v) => {
-              if (v !== conv.ttl) send({ t: 'disappearing', ttl: v });
-            }}
-          />
-        </View>
-        <View>
-          {trCan ? (
-            <Toggle
-              label={trx.chat}
-              sub={trFrom ? trx.chatSub(langName(trFrom), langName(targetLang())) : trx.chatSubAny}
-              value={conv.translate !== 'off'}
-              onChange={(v) => E.setConv(conv.id, { translate: v ? undefined : 'off' })}
-            />
-          ) : null}
-          <Toggle
-            label={tx.chat.chatReceipts}
-            sub={me.settings?.read_receipts === false ? tx.chat.chatReceiptsGlobalOff : tx.chat.chatReceiptsSub}
-            value={me.settings?.read_receipts !== false && conv.receipts !== 'off'}
-            disabled={me.settings?.read_receipts === false}
-            onChange={(v) => E.setConv(conv.id, { receipts: v ? undefined : 'off' })}
-          />
-          <ListRow title={conv.muted ? tx.chat.unmute : tx.chat.mute} onPress={() => E.setConv(conv.id, { muted: !conv.muted })} />
-          {!group ? (
+      {group || conv.gone ? (
+        <Sheet visible={menu} onClose={() => setMenu(false)} title={conv.name} closeLabel={tx.common.close}>
+          {chatSettings}
+        </Sheet>
+      ) : (
+        // #111 S-51: 1:1 chat ⋯ = shared Hide / Block / Report sheet, chat settings below.
+        <SafetySheet
+          visible={menu}
+          target={{ id: conv.peer, name: conv.name, age: conv.age }}
+          onClose={() => setMenu(false)}
+          onReport={(t) => navigation.navigate('Report', { profileId: t.id, cid: conv.id })}
+          onGone={(kind) => {
+            if (kind === 'block') E.setConv(conv.id, { archived: true }).finally(() => navigation.goBack());
+          }}
+          lead={
             <>
-              <ListRow
-                title={tx.chat.report}
-                danger
-                onPress={() => {
-                  setMenu(false);
-                  navigation.navigate('Report', { profileId: conv.peer, cid: conv.id });
-                }}
-              />
-              <ListRow
-                title={tx.chat.block}
-                danger
-                onPress={() =>
-                  api('POST', `/profiles/${conv.peer}/block`)
-                    .then(() => E.setConv(conv.id, { archived: true }))
-                    .then(() => {
-                      setMenu(false);
-                      navigation.goBack();
-                    })
-                    .catch((e) => setProblem(errorText(e)))
-                }
-              />
+              <SheetRow title={tx.chat.viewProfile} onPress={() => { setMenu(false); navigation.navigate('Profile', { id: conv.peer }); }} />
+              <SheetRow testID="menu-fav" title={fav ? ppl.removeFav : ppl.addFav} onPress={() => P.setFav(conv.peer, !fav, { name: conv.name, photo: conv.photo }).then(() => setMenu(false))} />
+              {friend === 'in' ? (
+                <SheetRow testID="menu-friend" title={ppl.acceptFriend} onPress={() => E.answerFriend(conv.id, true).then(() => setMenu(false))} />
+              ) : friend ? (
+                <SheetRow testID="menu-friend" title={friend === 'out' ? ppl.cancelRequest : ppl.removeFriend} onPress={() => E.dropFriend(conv.id).then(() => setMenu(false))} />
+              ) : P.canAsk(conv.peer) && (conv.iWrote || conv.theyWrote) ? (
+                <SheetRow testID="menu-friend" title={ppl.addFriend} onPress={() => { setMenu(false); askFriend(); }} />
+              ) : null}
+              <SheetRow testID="menu-note" title={P.noteFor(conv.peer) ? ppl.editNote : ppl.addNote} onPress={() => { setMenu(false); setNoteOpen(true); }} />
+              <SheetRow last testID="chat-checkin" title={tx.safety.checkin} onPress={() => { setMenu(false); navigation.navigate('CheckinStart', { cid: conv.id }); }} />
             </>
-          ) : null}
-          <ListRow
-            title={tx.chat.deleteChat}
-            danger
-            onPress={() => E.deleteConv(conv.id).then(() => { setMenu(false); navigation.goBack(); })}
-          />
-        </View>
-      </Sheet>
+          }
+          after={chatSettings}
+        />
+      )}
+
+      {!group ? <NoteSheet peer={conv.peer} visible={noteOpen} onClose={() => setNoteOpen(false)} /> : null}
 
       <Sheet visible={mediaSheet} onClose={() => setMediaSheet(false)} title={tx.chat.sendPhoto} closeLabel={tx.common.close}>
         <Toggle label={tx.chat.viewOnce} value={mopts.once} onChange={(v) => setMopts({ ...mopts, once: v })} />
@@ -531,14 +697,14 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
   );
 }
 
-function Bubble({ m, mine, cid, conv }: { m: E.Msg; mine: boolean; cid: string; conv: E.Conv }) {
+function Bubble({ m, mine, cid, conv, mark }: { m: E.Msg; mine: boolean; cid: string; conv: E.Conv; mark?: string | null }) {
   const fg = mine ? color.onAccent : color.fgPrimary;
   switch (m.p.t) {
     case 'text':
-      return <Text style={{ ...type.body, color: fg }} selectable>{m.p.text}</Text>;
+      return <Marked style={{ ...type.body, color: fg }} text={m.p.text} q={mark} onAccent={mine} />;
     case 'quick_reply':
       // R-07.31: built-in quick replies show in the reader's own language.
-      return <Text style={{ ...type.body, color: fg }} selectable>{(m.p.k !== undefined && tx.chat.quick[m.p.k]) || m.p.text}</Text>;
+      return <Marked style={{ ...type.body, color: fg }} text={(m.p.k !== undefined && tx.chat.quick[m.p.k]) || m.p.text} q={mark} onAccent={mine} />;
     case 'media':
       return <MediaBubble m={m} media={m.p.media} mine={mine} cid={cid} conv={conv} />;
     case 'album.grant':

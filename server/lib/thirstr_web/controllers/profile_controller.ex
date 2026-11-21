@@ -100,6 +100,8 @@ defmodule ThirstrWeb.ProfileController do
 
   def blocks(conn, _), do: json(conn, %{blocks: Social.blocks(a(conn))})
 
+  def hidden(conn, _), do: json(conn, %{hidden: Social.hidden(a(conn))})
+
   def hide(conn, %{"id" => id}) do
     with :ok <- Social.hide(a(conn), id), do: send_resp(conn, 204, "")
   end
