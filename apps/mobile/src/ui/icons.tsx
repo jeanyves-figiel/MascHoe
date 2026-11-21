@@ -83,6 +83,31 @@ export const Icon = {
       <Path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" fill={fill} stroke={c} strokeWidth={2} strokeLinejoin="round" />
     </Svg>
   ),
+  /** Tap (F-06, #115): flame, so the star means favorite everywhere. */
+  Flame: ({ size = 24, c = color.fgPrimary, fill = 'none' }: P) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M12 2.8c.6 3.2 4.8 5.6 4.8 10.4a4.8 4.8 0 01-9.6 0c0-2.2 1-3.6 2.2-4.6.1 1.8 1 2.9 2.1 3.2-.4-3.1-.2-6.1.5-9z" fill={fill} stroke={c} strokeWidth={2.1} strokeLinejoin="round" />
+    </Svg>
+  ),
+  /** Private note (R-07.35). */
+  Pen: ({ size = 16, c = color.personal, w = 2.4 }: P) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M4 20h4L19 9l-4-4L4 16v4z" {...base(c, w)} />
+    </Svg>
+  ),
+  Search: ({ size = 18, c = color.fgMuted, w = 2.2 }: P) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Circle cx={11} cy={11} r={6.5} {...base(c, w)} />
+      <Path d="M20 20l-4.2-4.2" {...base(c, w)} />
+    </Svg>
+  ),
+  /** Friends (R-07.36). */
+  UserPlus: ({ size = 22, c = color.friends, w = 2.2 }: P) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Circle cx={9} cy={8} r={3.6} {...base(c, w)} />
+      <Path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6M19 8v6M16 11h6" {...base(c, w)} />
+    </Svg>
+  ),
   /** Chat translation (F-07 R-07.28): glyph + letter A. */
   Translate: ({ size = 12, c = color.trust, w = 2.4 }: P) => (
     <Svg width={size} height={size} viewBox="0 0 24 24">

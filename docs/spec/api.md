@@ -61,7 +61,7 @@ Blind signature (R-03.4, Chaum RSA-FDH): client picks random `token` and `r`, se
 | POST | /me/profiles/{id}/photos/{photo_id}/check | inline classifier → {photo, account} (status ok_main / ok_public / pending / rejected) |
 | DELETE | /me/profiles/{id}/photos/{photo_id} | 204; main photo can't be removed |
 | PUT | /me/profiles/{id}/photos/order | {order:[photo_id]} → MyProfile; first must have `main_ok` |
-| GET | /profiles/{id}?mode | ProfileView through the viewer's lens (F-06 R-06.1b; default hookup) and audience (stranger: public; verified: public+verified). 404 when blocked/unavailable or mode not in the profile's `show_in`. 300 views/h |
+| GET | /profiles/{id}?mode | ProfileView through the viewer's lens (F-06 R-06.1b; default hookup) and audience (stranger: public; verified: public+verified). `online` (bool, #115): active in the last 5 min and both sides show online status (R-17.5); false for yourself. 404 when blocked/unavailable or mode not in the profile's `show_in`. 300 views/h |
 | POST | /profiles/{id}/tap | verified only; 100/day (50 for accounts < 7 days) → {mutual} |
 | POST | /profiles/{id}/block | account-level, silent |
 | POST · DELETE | /profiles/{id}/hide | hide from Explore |

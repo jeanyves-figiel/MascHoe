@@ -117,6 +117,7 @@ defmodule Thirstr.Social do
          verified_since: t.verified_at && Calendar.strftime(t.verified_at, "%Y-%m"),
          member_since: Calendar.strftime(t.inserted_at, "%Y-%m"),
          now: now_of(t.id),
+         online: online?(viewer, t),
          distance: distance_to(viewer, t),
          tapped: tapped?(mine, t.id),
          tapped_me: tapped_me?(mine, t.id),
@@ -130,6 +131,18 @@ defmodule Thirstr.Social do
          self: t.account_id == viewer.id
        }}
     end
+  end
+
+  # F-07 R-07.33 (#115): same rule as Explore (R-17.5, symmetric): both sides show online status,
+  # last request within 5 min (auth plug writes `seen:<account>`).
+  @online_s 300
+  defp online?(viewer, t) do
+    t.account_id != viewer.id and Settings.get(viewer, "online_visible") != false and
+      (t.settings || %{})["online_visible"] != false and
+      case Valkey.command!(["GET", "seen:" <> t.account_id]) do
+        nil -> false
+        v -> System.system_time(:second) - String.to_integer(v) < @online_s
+      end
   end
 
   defp distance_to(viewer, t) do

@@ -133,6 +133,7 @@ const devOf = (p: string) => (p === 'pa' ? 'da' : 'db');
 type Engine = typeof import('../src/chat/engine');
 type Mls = typeof import('../src/chat/mls');
 type Bytes = typeof import('../src/chat/bytes');
+type People = typeof import('../src/chat/people');
 
 let run = 0;
 const me = (receipts = true) => ({ id: 'acc-a', status: 'active', verified: true, profiles: [{ id: 'pa', kind: 'hookup', display_name: 'Alice' }], settings: { read_receipts: receipts } }) as never;
@@ -142,14 +143,16 @@ const alice = () => `alice${run}`;
 const settle = () => new Promise((r) => setTimeout(r, 30));
 
 /** Loads a fresh engine for Alice (a relaunch keeps her store). */
-async function launch(receipts = true): Promise<{ E: Engine }> {
+async function launch(receipts = true): Promise<{ E: Engine; P: People }> {
   g.__dev = alice();
   let E!: Engine;
+  let P!: People;
   jest.isolateModules(() => {
     E = require('../src/chat/engine');
+    P = require('../src/chat/people');
   });
   await E.start(me(receipts));
-  return { E };
+  return { E, P };
 }
 
 /** Bob is a raw MLS client on his own store; each call runs as Bob, then hands back to Alice. */
@@ -399,5 +402,58 @@ describe('R-07.21 local store', () => {
     // Concurrent writers to one chat don't lose each other's rows.
     await Promise.all(Array.from({ length: 50 }, (_, i) => store.lock('c:c2', () => store.put('c2', { id: `x${i}`, at: i }))));
     expect(await store.all('c2')).toHaveLength(50);
+  }, 60000);
+});
+
+describe('#115 friends travel only inside the E2EE chat (R-07.36)', () => {
+  it('AC-07.17: request → accept makes both friends; the server only sees ciphertext', async () => {
+    const { E, P, cid, bob } = await open1to1();
+    await E.send(cid, { t: 'text', text: 'hey' });
+    await bob.pull();
+    await E.requestFriend(cid);
+    expect(P.friendOf('pb')).toBe('out');
+    const got = await bob.pull();
+    expect(got.filter((x) => x.t === 'friend').map((x) => x.op)).toEqual(['request']);
+    for (const q of srv.queue) expect(JSON.stringify(q)).not.toMatch(/friend/);
+
+    const gid = E.getConv(cid)!.groups[0];
+    await bob.say(gid, { t: 'friend', op: 'accept' });
+    await E.pull();
+    expect(P.friendOf('pb')).toBe('yes');
+    const rows = (await E.messages(cid)).filter((m) => m.p.t === 'friend').map((m) => (m.p as { op: string }).op);
+    expect(rows).toEqual(['request', 'accept']);
+
+    // Remove is quiet: no row on either side, state gone.
+    await bob.say(gid, { t: 'friend', op: 'remove' });
+    await E.pull();
+    expect(P.friendOf('pb')).toBeNull();
+    expect((await E.messages(cid)).filter((m) => m.p.t === 'friend')).toHaveLength(2);
+  }, 60000);
+
+  it('incoming request: Not now sends a quiet decline; the asker can ask again after 7 days', async () => {
+    const { E, P, cid, bob } = await open1to1();
+    await E.send(cid, { t: 'text', text: 'hi' });
+    await bob.pull();
+    const gid = E.getConv(cid)!.groups[0];
+    await bob.say(gid, { t: 'friend', op: 'request' });
+    await E.pull();
+    expect(P.friendOf('pb')).toBe('in');
+    await E.answerFriend(cid, false);
+    expect(P.friendOf('pb')).toBeNull();
+    const got = await bob.pull();
+    expect(got.filter((x) => x.t === 'friend').map((x) => x.op)).toEqual(['decline']);
+    // The decline is not a visible row for Alice.
+    expect((await E.messages(cid)).filter((m) => m.p.t === 'friend').map((m) => (m.p as { op: string }).op)).toEqual(['request']);
+  }, 60000);
+
+  it('a starred 1:1 chat migrates to a favorite of its peer', async () => {
+    const { E, cid } = await open1to1();
+    await E.send(cid, { t: 'text', text: 'hey' });
+    await E.setConv(cid, { starred: true });
+    E.stop();
+    const again = await launch();
+    engines.push(again.E);
+    expect(again.P.isFav('pb')).toBe(true);
+    expect(again.E.getConv(cid)!.starred).toBeUndefined();
   }, 60000);
 });
