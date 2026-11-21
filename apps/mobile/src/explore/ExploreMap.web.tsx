@@ -5,6 +5,7 @@ import { View } from 'react-native';
 import type { Card, Place } from '../api/types';
 import { distanceLabel, tx } from '../i18n/app';
 import { pl } from '../i18n/places';
+import { tr } from '../i18n/travel';
 import { color } from '../theme/tokens';
 import { cellLabels, cellsGeoJSON, initial, MapProps, pinLabel, ringSegments, START_ZOOM, STYLE_URL } from './mapShared';
 import { partyTag } from './Places';
@@ -56,7 +57,7 @@ function ringEl(c: Card, on: boolean): HTMLElement {
 maplibregl.setWorkerUrl('/maplibre/maplibre-gl-worker.mjs');
 
 // S-10 map on the web build (DEV tool). Same data, maplibre-gl.
-export function ExploreMap({ center, me, data, accent, recenter, onRegion, onSelect, onHold, onClear, selected, places, onPlace, selectedPlace }: MapProps) {
+export function ExploreMap({ center, me, data, accent, recenter, onRegion, onSelect, onHold, onClear, selected, places, onPlace, selectedPlace, visiting, onVisiting }: MapProps) {
   const clear = useRef(onClear);
   useEffect(() => {
     clear.current = onClear;
@@ -127,6 +128,22 @@ export function ExploreMap({ center, me, data, accent, recenter, onRegion, onSel
       };
       add(p.lng, p.lat, el);
     }
+    // F-19 R-19.11: one sky "N visiting" bubble at the city centre, never pins.
+    if (visiting) {
+      const el = document.createElement('button');
+      el.setAttribute('aria-label', tr.visitingBubble(visiting.count));
+      el.setAttribute('data-testid', 'visiting-bubble');
+      el.style.cssText = `display:flex;align-items:center;gap:5px;padding:5px 10px 5px 5px;border:0;border-radius:999px;background:${color.travel};color:${color.onAccent};font:800 12px sans-serif;cursor:pointer;box-shadow:0 6px 18px -6px ${color.travel}`;
+      const faces = visiting.faces
+        .map((f, i) => `<span style="width:22px;height:22px;border-radius:11px;border:2px solid ${color.travel};margin-left:${i ? -7 : 0}px;background:${color.bgOverlay} ${f ? `url(&quot;${esc(f)}&quot;) center/cover` : ''}"></span>`)
+        .join('');
+      el.innerHTML = `${faces ? `<span style="display:flex">${faces}</span>` : `<svg width="14" height="14" viewBox="0 0 24 24"><path fill="${color.onAccent}" d="M21 15.5v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V8.5l-8 5v2l8-2.5V18l-2 1.5V21l3.5-1 3.5 1v-1.5L13 18v-5z"/></svg>`}<span>${esc(tr.visitingBubble(visiting.count))}</span>`;
+      el.onclick = (e) => {
+        e.stopPropagation();
+        onVisiting?.();
+      };
+      add(visiting.lng, visiting.lat, el);
+    }
     for (const c of people) {
       if (c.lat === undefined || c.lng === undefined) continue;
       const on = selected === c.id;
@@ -151,7 +168,7 @@ export function ExploreMap({ center, me, data, accent, recenter, onRegion, onSel
       }
       add(c.lng, c.lat, wrap);
     }
-  }, [data, me, accent, onSelect, onHold, selected, places, onPlace, selectedPlace]);
+  }, [data, me, accent, onSelect, onHold, selected, places, onPlace, selectedPlace, visiting, onVisiting]);
 
   // R-04.13: centre once when the first position arrives (unless the user moved), and on Locate me.
   useEffect(() => {

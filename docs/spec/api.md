@@ -42,7 +42,7 @@ Outside `/v1`: `GET /.well-known/apple-app-site-association` → `{webcredential
 | PUT | /me/basics | {display_name, birthdate, gender, gender_other?, here_for[]} → Me; under 18 → 403 `underage`, account deleted, install flagged 30 d |
 | POST | /me/onboarding/verify_later | → Me (step `verify` → `done`, browse-only) |
 | GET | /welcome | → {city, center, count, cells:[{cell r7, count}]} (no auth, approximate IP city, R-02.2) |
-| GET | /cities?q= | → {cities:[{id, name, country, cell_r5}]} (S-04b picker) |
+| GET | /cities?q= | → {cities:[{id, name, country, cell_r5}]} (S-04b picker, F-19 trip city). ≥ 2 letters, prefix match on `search_key` (lowercase, accents removed, so "zur" finds Zürich), biggest cities first, max 10 |
 | POST | /me/profiles/{id}/photos/{photo_id}/check | → {photo:{id, slot, status, reject_reason, url}, account: Me} (inline classifier result, R-02.7) |
 
 `PUT /me/location` (F-05) accepts `{level: area|exact, cell_r9}` or `{level: city, city_id | cell_r5}`; `hidden` requires verification. Onboarding step order: `basics → location → photo → verify → done`.
@@ -86,10 +86,23 @@ Common query: `mode=hookup|friends|sport`, `age_min`, `age_max`, `distance_max` 
 | GET | /places | ?bbox=w,s,e,n&kinds=clubs,saunas,parties,gyms (#113, R-04.20). → {places:[{id, type: venue\|event\|party, kind: club\|bar\|sauna\|gym\|official\|hosted, name, lat, lng, distance, here?, starts_at?, ends_at?, venue_name?, url?, source}]}. Venues and events at public coordinates; hosted parties at the r8 centroid (AC-10.1) and only those `GET /parties` would show. Safe Mode → []. bbox ≤ 0.5°×0.5° (bigger → []), max 150 nearest the bbox centre |
 | GET | /explore/tray | → {items:[Card]} up to 20 active (pin, Now, online) |
 
-Card: `{id, display_name, age, verified, photo, online, distance, now, exact, pin_expires_at, further, creator, intent, position, new, lat?, lng?}`; `distance` is `{kind: exact, m}` (pin and owner allows exact), `{kind: area, bucket}` (lt200 … 10k_plus; ≥ 1 km for unverified viewers) or `{kind: city, city}`.
+Card: `{id, display_name, age, verified, photo, online, distance, now, exact, pin_expires_at, further, creator, intent, position, new, lat?, lng?, visitor?, trip?}`; `visitor: true` + `trip: {city, country, first_day, last_day, here, from}` for travellers (F-19 R-19.13, `distance` null unless `here`); `distance` is `{kind: exact, m}` (pin and owner allows exact), `{kind: area, bucket}` (lt200 … 10k_plus; ≥ 1 km for unverified viewers) or `{kind: city, city}`.
+
+### Travel (F-19, #188)
+| Method | Path | Body → Response |
+|---|---|---|
+| GET | /trips | → {trips:[Trip], limits:{max: 3, ahead_days: 180, max_days: 30, creates_left}} own trips, soonest first |
+| POST | /trips | {city_id, first_day, last_day (ISO dates), show_days: null\|0\|3\|7\|14, say_from: bool, safe_mode_ack?, tz_offset_min} → Trip. 422 limits (R-19.3), 403 `not_verified` when show_days ≠ null and unverified, 409 `conflict` shown windows overlap, 429 6 creates / 30 d |
+| PATCH | /trips/:id | same fields, partial → Trip (city change counts as a create) |
+| DELETE | /trips/:id | → 204 |
+| GET | /explore/visitors | ?intents&filters&trip_id → {count, items:[Card]} visitors listed for the viewer's area (R-19.12), max 60; map bubble + "See all" |
+
+Trip: `{id, city:{id, name, country, lat, lng}, first_day, last_day, show_days, say_from, shown_from (date or null), safe_mode_country: bool}`.
+
+`trip_id` (own, unexpired trip) on `GET /explore/grid|map|tray|summary|visitors` and `GET /profiles/:id`: the viewer point becomes the trip city's centre (R-19.15); no Exact pins; locals with `show_to_remote` off or in Safe Mode are left out (R-19.17). Unknown or foreign trip → 404. `GET /explore/grid` interleaves visitors (R-19.10) unless `visitors=false`; `GET /profiles/:id` adds `trip` when the viewer point is in the trip city's area (R-19.7).
 
 ### Settings & Safe Mode (F-17, F-14)
-| GET · PATCH | /me/settings | server-enforced settings (hide_from_*, show_in_*, show_distance, online_visible, read_receipts, who_can_message, explicit_from_strangers, disappearing_default, push, quiet_hours) |
+| GET · PATCH | /me/settings | server-enforced settings (hide_from_*, show_in_*, show_to_remote (F-19, default true), show_distance, online_visible, read_receipts, who_can_message, explicit_from_strangers, disappearing_default, push, quiet_hours) |
 | PUT | /me/safe_mode | {setting: auto\|on\|off, active: bool} → Me (country detection stays on device) |
 | GET | /safe-mode/countries | public, `cache-control: public, max-age=21600` → {version, source, countries: [ISO alpha-2]}; same body for every caller (R-14.1a) |
 

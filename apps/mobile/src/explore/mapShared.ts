@@ -27,6 +27,9 @@ export type MapProps = {
   places?: Place[];
   onPlace?: (p: Place) => void;
   selectedPlace?: string | null;
+  /** F-19 R-19.11: one sky "N visiting" bubble at the trip city centre (faces only for verified viewers). */
+  visiting?: { lat: number; lng: number; count: number; faces: (string | null)[] } | null;
+  onVisiting?: () => void;
 };
 
 /** R-04.19 screen-reader label: "Sam, 31, looking for Hookup and Friends, 400 m". */

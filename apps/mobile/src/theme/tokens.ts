@@ -24,6 +24,9 @@ export const color = {
   trustSoft: '#3DD6C3',
   safety: '#3DD6C3',
   personal: '#FFC93C',
+  // F-19 (#188): travel plans only (Visiting labels, visitor tiles, trip cards, Look-around bar)
+  travel: '#7CC8FF',
+  travelSoft: 'rgba(124,200,255,0.14)',
   warn: '#FFC93C',
   danger: '#FF4D6D',
   scrim: 'rgba(23,20,46,0.72)',

@@ -192,6 +192,13 @@ defmodule ThirstrWeb.Router do
       get "/explore/map", ExploreController, :map
       get "/explore/tray", ExploreController, :tray
       get "/explore/summary", ExploreController, :summary
+      get "/explore/visitors", ExploreController, :visitors
+
+      # F-19 travel plans (#188)
+      get "/trips", TripController, :index
+      post "/trips", TripController, :create
+      patch "/trips/:id", TripController, :update
+      delete "/trips/:id", TripController, :delete
 
       # F-09 Now
       put "/me/now", ExploreController, :set_now

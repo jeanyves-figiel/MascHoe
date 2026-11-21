@@ -5,6 +5,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- **Travel plans** (server + app, F-19 #188, D-20): Me › Trips: plan up to 3 trips (city, 1–30 days, start within 180 days). **Look around** a trip city before going: Explore from the city centre (fixed point, no Exact pins, locals who turned off "Show me to people looking from afar" or are in Safe Mode are left out). Optionally **show yourself there** 14/7/3 days early or on arrival (verified only; Safe Mode countries need a second confirm): locals see you mixed into their grid (every 6th tile, sky outline + "In 12 d" tag, never a map pin; one "N visiting" bubble at the city centre), and everywhere you appear there is a "Visiting Berlin · 3–7 Dec" / "Arriving in N days" label (profile, chat header, inbox). Trips delete themselves the day after they end. Limits: 6 new trips per 30 days, 20 new chats a day with people far away. New setting "Show visitors" in Filters; new colour token `travel` (sky).
+- **Worldwide city catalogue** (server): 22,717 cities (≥15k people, plus travel spots) from GeoNames (CC BY 4.0), accent-insensitive search ranked by size. Explore place names now prefer the nearby big city over a district name.
+
 ### Fixed
 - **Location mode switches in one tap, everywhere** (app, #190, S-60, S-30, R-05.4, [mockup](https://claude.ai/artifact/TC8czvMyPo13hWdQKQFsTM)): on Me, tapping **Exact** opened a second "Your location" sheet that listed all four modes again; picking a mode there only marked it until **Save**, so closing the sheet kept the old mode. Now there is no second sheet and no Save: Hidden / City / Area apply on tap, and Exact shows its own panel under the switch (like Hidden): pin time, who sees it, and one **Share my pin** button (the explicit confirm, was Save + Confirm). While the pin is live, changing time or audience updates it right away and **Stop pin** goes back to Area. Safe Mode still asks a second time. Explore's location button and Settings › Privacy open a short sheet with the same control plus "Hide me from guys who are hidden".
 

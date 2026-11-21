@@ -78,7 +78,7 @@ defmodule Thirstr.Social do
   Friends/Sport show only `main_ok` photos and no hookup/health fields; 404 when the profile
   isn't shown in that mode (AC-06.4). D-09 cap 300 views/hour.
   """
-  def view(%Account{} = viewer, profile_id, mode \\ "hookup") do
+  def view(%Account{} = viewer, profile_id, mode \\ "hookup", point \\ nil) do
     lens = if mode in Fields.lenses(), do: mode, else: "hookup"
 
     with {:ok, _} <- limit(viewer, "views", @views_per_hour, 3600),
@@ -101,6 +101,9 @@ defmodule Thirstr.Social do
         |> Enum.map(&Storage.presigned_get/1)
 
       mine = own_profile_ids(viewer)
+      vp = if point, do: Map.take(point, [:lat, :lng, :res]), else: Location.viewer_point(viewer)
+      # F-19 R-19.7: the trip shows only to viewers in (or looking around) the trip city.
+      trip = if t.account_id != viewer.id, do: Thirstr.Trips.for_profile(vp, t.id)
 
       {:ok,
        %{
@@ -118,7 +121,9 @@ defmodule Thirstr.Social do
          member_since: Calendar.strftime(t.inserted_at, "%Y-%m"),
          now: now_of(t.id),
          online: online?(viewer, t),
-         distance: distance_to(viewer, t),
+         distance:
+           if(trip && not trip.here, do: nil, else: distance_to(viewer, t, vp, not is_nil(point))),
+         trip: trip,
          tapped: tapped?(mine, t.id),
          tapped_me: tapped_me?(mine, t.id),
          vouches: Thirstr.Trust.vouch_count(t.id),
@@ -145,8 +150,8 @@ defmodule Thirstr.Social do
       end
   end
 
-  defp distance_to(viewer, t) do
-    with %{} = vp <- Location.viewer_point(viewer),
+  defp distance_to(viewer, t, vp, remote?) do
+    with %{} = vp <- vp,
          %{rows: [[level, lat, lng, r5]]} <-
            Repo.query!(
              """
@@ -158,7 +163,8 @@ defmodule Thirstr.Social do
              """,
              [dump(t.id)]
            ) do
-      pin = Location.pins([t.id])[t.id]
+      # F-19 R-19.16: no Exact pins from afar
+      pin = unless remote?, do: Location.pins([t.id])[t.id]
       dist = haversine(vp, pin || %{lat: lat, lng: lng})
 
       Thirstr.Explore.distance(

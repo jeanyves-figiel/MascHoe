@@ -3,7 +3,8 @@ import { View } from 'react-native';
 import { useOptions } from '../api/options';
 import type { Mode } from '../api/types';
 import { opt, tx } from '../i18n/app';
-import { modeColor, space } from '../theme/tokens';
+import { color, modeColor, space } from '../theme/tokens';
+import { tr } from '../i18n/travel';
 import { Banner, Button, Chip, Chips, RangeSlider, Section, SectionLabel, Segmented, Sheet, Toggle } from '../ui';
 import { defaultFilters, Filters } from './explore';
 
@@ -75,6 +76,8 @@ export function FiltersSheet({
       {mode === 'hookup' ? <Toggle label={tx.filters.hasNow} value={f.has_now} onChange={(v) => set('has_now', v)} tone={fill} /> : null}
       <Toggle label={tx.filters.hideCreators} value={f.hide_creators} onChange={(v) => set('hide_creators', v)} tone={fill} />
       <Toggle label={tx.filters.newMembers} value={f.new_members} onChange={(v) => set('new_members', v)} tone={fill} />
+      {/* F-19 R-19.12 */}
+      <Toggle label={tr.showVisitors} sub={tr.showVisitorsSub} value={f.visitors !== false} onChange={(v) => set('visitors', v)} tone={color.travel} />
       </Section>
       {!verified && mode === 'hookup' ? <Banner tone="warn" text={tx.filters.verifiedHint} /> : null}
       {options

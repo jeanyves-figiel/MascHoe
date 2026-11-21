@@ -7,10 +7,12 @@ import { color, type } from '../theme/tokens';
 import { RingPin } from './IntentRing';
 import { cellLabels, cellsGeoJSON, MapProps, pinLabel, START_ZOOM, STYLE_URL } from './mapShared';
 import { PlaceMarker } from './Places';
+import { VisitingBubble } from '../travel/VisitingBubble';
+import { tr } from '../i18n/travel';
 
 // S-10 map (native, MapLibre). Avatars sit at server-chosen stable random points inside their
 // cell (R-05.3); exact pins are drawn only when the server returned them for this viewer.
-export function ExploreMap({ center, me, data, accent, recenter, onRegion, onSelect, onHold, onClear, selected, places, onPlace, selectedPlace }: MapProps) {
+export function ExploreMap({ center, me, data, accent, recenter, onRegion, onSelect, onHold, onClear, selected, places, onPlace, selectedPlace, visiting, onVisiting }: MapProps) {
   const people = [...(data?.avatars ?? []), ...(data?.pins ?? [])];
   const camera = useRef<CameraRef>(null);
   // R-04.13: initialViewState only applies at mount, so centre once when the first position
@@ -68,6 +70,14 @@ export function ExploreMap({ center, me, data, accent, recenter, onRegion, onSel
           </Pressable>
         </Marker>
       ))}
+      {/* F-19 R-19.11: visitors are never pinned; one bubble at the city centre */}
+      {visiting ? (
+        <Marker id="visiting" lngLat={[visiting.lng, visiting.lat]} anchor="center">
+          <Pressable testID="visiting-bubble" accessibilityRole="button" accessibilityLabel={tr.visitingBubble(visiting.count)} onPress={onVisiting}>
+            <VisitingBubble count={visiting.count} faces={visiting.faces} />
+          </Pressable>
+        </Marker>
+      ) : null}
       {people.map((c) => {
         if (c.lat === undefined || c.lng === undefined) return null;
         const on = selected === c.id;

@@ -144,8 +144,43 @@ defmodule Thirstr.Chat do
   defp first_contact_ok(%Account{} = a, from_pid, to_pid) do
     cond do
       replied_to?(from_pid, to_pid) -> :ok
-      Account.verified?(a) -> :ok
+      Account.verified?(a) -> far_contact_ok(a, from_pid, to_pid)
       true -> {:error, {:not_verified, "Verify to send the first message"}}
+    end
+  end
+
+  # F-19 R-19.18 (#188): at most 20 new chats a day with people far away (> 2 r5 rings, ~20 km).
+  @far_contacts_per_day 20
+  defp far_contact_ok(a, from_pid, to_pid) do
+    new? =
+      Repo.query!(
+        """
+        SELECT 1 FROM contacts WHERE (profile_a = $1 AND profile_b = $2) OR (profile_a = $2 AND profile_b = $1)
+        """,
+        [dump(from_pid), dump(to_pid)]
+      ).num_rows == 0
+
+    far? =
+      new? and
+        Repo.query!(
+          """
+          SELECT 1 FROM location_cells x, location_cells y
+          WHERE x.profile_id = $1 AND y.profile_id = $2
+            AND NOT (y.cell_r5 IN (SELECT h3_grid_disk(x.cell_r5::h3index, 2)::bigint))
+          """,
+          [dump(from_pid), dump(to_pid)]
+        ).num_rows > 0
+
+    if far? do
+      case Thirstr.Social.limit(a, "fc_far", @far_contacts_per_day, 86_400) do
+        {:ok, _} ->
+          :ok
+
+        {:error, {:rate_limited, retry}} ->
+          {:error, {:rate_limited, retry}}
+      end
+    else
+      :ok
     end
   end
 

@@ -19,6 +19,8 @@ defmodule Thirstr.Settings do
     "show_in_tonight" => true,
     "show_in_activities" => true,
     "show_in_venues" => true,
+    # F-19 R-17.14 (#188): travellers looking around from afar can see me
+    "show_to_remote" => true,
     # exact | range | none
     "show_distance" => "range",
     # R-17.5 symmetry

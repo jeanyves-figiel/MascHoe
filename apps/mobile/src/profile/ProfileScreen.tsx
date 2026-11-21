@@ -5,6 +5,8 @@ import { api, ApiError } from '../api/client';
 import type { Mode, MyProfile, ProfileView, Visibility } from '../api/types';
 import { useSession } from '../app/session';
 import { distanceLabel, tx } from '../i18n/app';
+import { TravelReason } from '../travel/travel';
+import { rememberTrip } from '../travel/peerTrips';
 import { color, font, modeColor, radius, space, type } from '../theme/tokens';
 import { v3 } from '../i18n/v3';
 import { AUDIENCES, allowedFor, cycle } from '../me/look';
@@ -20,7 +22,7 @@ import { SafetySheet, SheetRow } from '../trust/SafetySheet';
 import { setToastLift, toast } from '../ui/Toast';
 
 type Nav = { navigate: (s: string, p?: object) => void; goBack: () => void; setParams?: (p: Partial<Params>) => void };
-type Params = { id: string; preview?: 'stranger' | 'verified' | 'chats'; mode?: Mode };
+type Params = { id: string; preview?: 'stranger' | 'verified' | 'chats'; mode?: Mode; /** F-19: opened while looking around this trip city */ trip?: string };
 
 /** Preview-as (R-06.7): own profile filtered the way the chosen audience sees it through a lens. */
 export function previewOf(p: MyProfile, as: 'stranger' | 'verified' | 'chats', local: Record<string, unknown>, verified: boolean, mode: Mode = 'hookup'): ProfileView {
@@ -90,17 +92,18 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
     () =>
       preview
         ? getLocal(id).then(setLocal)
-        : api<ProfileView>('GET', `/profiles/${id}?mode=${mode}`).then(
+        : api<ProfileView>('GET', `/profiles/${id}?mode=${mode}${route.params.trip ? `&trip_id=${route.params.trip}` : ''}`).then(
             (v) => {
               setErr(null);
               setP(v);
+              if (!route.params.trip) rememberTrip(v.id, v.trip);
             },
             (e) => {
               if (e instanceof ApiError && (e.status === 404 || e.status === 403)) setGone(true);
               else setErr(e instanceof ApiError ? e.message : tx.common.error);
             },
           ),
-    [id, preview, mode],
+    [id, preview, mode, route.params.trip],
   );
 
   useEffect(() => {
@@ -200,6 +203,8 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
             </Text>
             {p.verified ? <VerifiedTick size={24} /> : null}
           </View>
+          {/* F-19 R-19.7: a visitor's distance is replaced by the reason he shows up here */}
+          {p.trip ? <TravelReason trip={p.trip} /> : null}
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
             {p.distance ? <Chip text={distanceLabel(p.distance)} fg={color.trust} /> : null}
             {p.fields.pronouns ? <Chip text={String(p.fields.pronouns)} /> : null}

@@ -1,7 +1,7 @@
 import React from "react";
 import { Image, Pressable, Text, View } from "react-native";
 import type { Me } from "../api/client";
-import type { ExploreSummary, Mode } from "../api/types";
+import type { ExploreSummary, Mode, Trip } from "../api/types";
 import { tx } from "../i18n/app";
 import { pl } from "../i18n/places";
 import { v3 } from "../i18n/v3";
@@ -9,6 +9,8 @@ import { color, font, modeColor, radius, space, type } from "../theme/tokens";
 import { Icon, Wordmark } from "../ui";
 import { countLabel } from "./explore";
 import { INTENTS } from "./mapShared";
+import { tr } from "../i18n/travel";
+import { Plane, rangeLabel } from "../travel/travel";
 
 const h = v3.header;
 const glass = color.glass;
@@ -24,6 +26,10 @@ type Props = {
   onLocation: () => void;
   onNow: () => void;
   banner?: React.ReactNode;
+  /** F-19 R-19.14: looking around this trip city (sky bar + Back). */
+  trip?: Trip | null;
+  home?: string | null;
+  onBack?: () => void;
 };
 
 // S-10 floating header over the full-bleed map (F-04 R-04.18, #113 option B):
@@ -39,6 +45,9 @@ export function LiveHeader({
   onLocation,
   onNow,
   banner,
+  trip,
+  home,
+  onBack,
 }: Props) {
   const accent = modeColor[intents[0] ?? "hookup"];
   const sportOnly = intents.length === 1 && intents[0] === "sport";
@@ -115,10 +124,12 @@ export function LiveHeader({
                 fontFamily: font.heavy,
                 fontSize: 10,
                 letterSpacing: 0.4,
-                color: color.trust,
+                color: trip ? color.travel : color.trust,
               }}
             >
-              {(h.level[level] ?? level).toUpperCase()}
+              {trip
+                ? tr.tripChip(rangeLabel(trip.first_day, trip.last_day)).toUpperCase()
+                : (h.level[level] ?? level).toUpperCase()}
             </Text>
           </View>
           <Text
@@ -252,6 +263,52 @@ export function LiveHeader({
         </Pressable>
       </View>
 
+      {trip ? (
+        <View
+          testID="look-around-bar"
+          accessibilityRole="summary"
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: space.s,
+            minHeight: 40,
+            paddingLeft: space.m,
+            paddingRight: 5,
+            paddingVertical: 4,
+            borderRadius: radius.pill,
+            backgroundColor: color.travel,
+            ...shadow,
+          }}
+        >
+          <Plane size={15} />
+          <Text
+            numberOfLines={1}
+            style={{ ...type.headline, fontSize: 13, color: color.onAccent, flex: 1 }}
+          >
+            {tr.fromAfar}
+          </Text>
+          <Pressable
+            testID="look-around-back"
+            accessibilityRole="button"
+            onPress={onBack}
+            hitSlop={6}
+            style={({ pressed }) => [
+              {
+                minHeight: 32,
+                paddingHorizontal: space.m,
+                borderRadius: radius.pill,
+                backgroundColor: color.bgBase,
+                justifyContent: "center",
+              },
+              pressed && { opacity: 0.85 },
+            ]}
+          >
+            <Text style={{ ...type.caption, fontSize: 12, color: color.fgPrimary }}>
+              {home ? tr.backTo(home) : tr.backHome}
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
       {/* R-04.18 intent chips: multi-select, the last one stays on */}
       <View
         accessibilityLabel={pl.intentsLabel}

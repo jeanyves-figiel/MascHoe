@@ -23,6 +23,7 @@ import { LensPreviewScreen } from '../me/LensPreviewScreen';
 import { SettingsScreen } from '../me/SettingsScreen';
 import { AccountSettings, ChatSettings, DeleteAccount, NotificationSettings, PrivacySettings, SafetySettings } from '../me/settings/screens';
 import { TapsScreen } from '../me/TapsScreen';
+import { TripsScreen } from '../travel/TripsScreen';
 import { ProfileScreen } from '../profile/ProfileScreen';
 import { VerifyScreen } from '../screens/Verify';
 import { PartyNewScreen } from '../scene/PartyNewScreen';
@@ -287,6 +288,7 @@ export function Main() {
           <Stack.Screen name="LensPreview" component={LensPreviewScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="Blocked" component={HiddenBlockedScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="Taps" component={TapsScreen as React.ComponentType} options={sub} />
+          <Stack.Screen name="Trips" component={TripsScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="Verify" component={VerifyRoute as React.ComponentType} />
           <Stack.Screen name="Chat" component={ChatScreen as React.ComponentType} />
           <Stack.Screen name="Albums" component={AlbumsScreen as React.ComponentType} options={sub} />
