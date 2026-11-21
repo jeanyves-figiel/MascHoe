@@ -16,35 +16,74 @@ public class ThirstrFaceModule: Module {
         promise.reject("E_IMAGE", "Could not read the image")
         return
       }
-      let orientation = ThirstrFaceModule.orientation(image.imageOrientation)
+      let declared = ThirstrFaceModule.orientation(image.imageOrientation)
       DispatchQueue.global(qos: .userInitiated).async {
-        let request = VNDetectFaceLandmarksRequest()
-        let handler = VNImageRequestHandler(cgImage: cg, orientation: orientation, options: [:])
         do {
-          try handler.perform([request])
-          let faces = request.results ?? []
-          guard let face = faces.first else {
-            promise.resolve(["faces": 0])
-            return
+          // #131: try the photo's own orientation first, then the others (raw front-camera
+          // stills can carry no or a wrong EXIF orientation; Vision finds no face sideways).
+          var tries: [CGImagePropertyOrientation] = [declared]
+          for o in [CGImagePropertyOrientation.leftMirrored, .right, .left, .up, .rightMirrored, .down] where o != declared {
+            tries.append(o)
           }
-          var out: [String: Any] = [
-            "faces": faces.count,
-            "yaw": face.yaw?.doubleValue ?? 0,
-            "roll": face.roll?.doubleValue ?? 0,
-            "pitch": face.pitch?.doubleValue ?? 0,
-            "size": Double(face.boundingBox.width),
-          ]
-          if let lm = face.landmarks {
-            out["leftEye"] = ThirstrFaceModule.openness(lm.leftEye)
-            out["rightEye"] = ThirstrFaceModule.openness(lm.rightEye)
-            out["mouth"] = ThirstrFaceModule.width(lm.outerLips)
+          for o in tries {
+            if let out = try ThirstrFaceModule.measure(cg, o) {
+              promise.resolve(out)
+              return
+            }
           }
-          promise.resolve(out)
+          promise.resolve(["faces": 0])
         } catch {
           promise.reject("E_VISION", error.localizedDescription)
         }
       }
     }
+  }
+
+  /// Face rectangles revision 3 (iOS 15+) gives continuous yaw and pitch; the landmarks request
+  /// alone runs the older detector (yaw in 45° steps, no pitch), which made turn / look up fail (#131).
+  static func measure(_ cg: CGImage, _ o: CGImagePropertyOrientation) throws -> [String: Any]? {
+    let handler = VNImageRequestHandler(cgImage: cg, orientation: o, options: [:])
+    let rects = VNDetectFaceRectanglesRequest()
+    rects.revision = VNDetectFaceRectanglesRequestRevision3
+    try handler.perform([rects])
+    let faces = rects.results ?? []
+    guard !faces.isEmpty else { return nil }
+    // Largest face is the user (closest to the phone).
+    let face = faces.max { $0.boundingBox.width < $1.boundingBox.width }!
+    let marks = VNDetectFaceLandmarksRequest()
+    marks.inputFaceObservations = [face]
+    try handler.perform([marks])
+    var out: [String: Any] = [
+      "faces": faces.filter { $0.boundingBox.width >= face.boundingBox.width * 0.5 }.count,
+      "yaw": face.yaw?.doubleValue ?? 0,
+      "roll": face.roll?.doubleValue ?? 0,
+      "size": Double(face.boundingBox.width),
+    ]
+    if let p = face.pitch { out["pitch"] = p.doubleValue }
+    if let lm = marks.results?.first?.landmarks {
+      out["leftEye"] = openness(lm.leftEye)
+      out["rightEye"] = openness(lm.rightEye)
+      out["mouth"] = width(lm.outerLips)
+      // Pose fallback from landmarks: nose tip relative to the eye/lip frame.
+      if let nose = centroid(lm.nose), let l = centroid(lm.leftEye), let r = centroid(lm.rightEye), let lip = centroid(lm.outerLips) {
+        let eyeW = abs(r.x - l.x)
+        let midX = (l.x + r.x) / 2
+        let eyeY = (l.y + r.y) / 2
+        let faceH = abs(eyeY - lip.y)
+        if eyeW > 0, faceH > 0 {
+          out["noseX"] = (nose.x - midX) / eyeW
+          out["noseY"] = (nose.y - lip.y) / faceH
+        }
+      }
+    }
+    return out
+  }
+
+  static func centroid(_ r: VNFaceLandmarkRegion2D?) -> (x: Double, y: Double)? {
+    guard let r = r, r.pointCount > 0 else { return nil }
+    let pts = r.normalizedPoints
+    let n = Double(pts.count)
+    return (pts.reduce(0) { $0 + Double($1.x) } / n, pts.reduce(0) { $0 + Double($1.y) } / n)
   }
 
   // Landmark points are normalised to the face bounding box.

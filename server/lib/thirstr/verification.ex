@@ -14,7 +14,8 @@ defmodule Thirstr.Verification do
   alias Thirstr.{Repo, Valkey}
   alias Thirstr.Accounts.Account
 
-  @steps ~w(turn_left turn_right blink smile look_up)
+  # #131: blink dropped from the pool (too short to catch on still photos; client still accepts it).
+  @steps ~w(turn_left turn_right smile look_up)
   @nonce_ttl 300
   @max_fails 3
   @cooldown 24 * 3600

@@ -11,9 +11,9 @@ import { STEP_OF } from '../onboarding/flow';
 import { BigButton, StepShell } from '../onboarding/kit';
 import { color, font, radius, space, type } from '../theme/tokens';
 import { blind, type IssuerKey } from '../trust/blind';
+import { passes, type Step } from '../trust/liveness';
 import { Banner } from '../ui';
 
-type Step = 'turn_left' | 'turn_right' | 'blink' | 'smile' | 'look_up';
 type Challenge = { nonce: string; steps: Step[]; key: IssuerKey };
 type Shot = { takePictureAsync: (o: object) => Promise<{ uri: string }> };
 
@@ -21,41 +21,29 @@ type Shot = { takePictureAsync: (o: object) => Promise<{ uri: string }> };
 const devSimulate = Platform.OS === 'web' && typeof location !== 'undefined' && location.hostname === 'localhost';
 const supported = (Platform.OS === 'ios' && faceAvailable) || devSimulate;
 
-const eyes = (r: FaceReading) => ((r.leftEye ?? 0) + (r.rightEye ?? 0)) / 2;
-
-/** R-03.1 step check against the neutral baseline (one face in every frame). */
-function passes(step: Step, base: FaceReading, r: FaceReading): boolean {
-  if (r.faces !== 1) return false;
-  switch (step) {
-    case 'turn_left':
-    case 'turn_right':
-      return Math.abs((r.yaw ?? 0) - (base.yaw ?? 0)) >= 0.3;
-    case 'look_up':
-      return Math.abs((r.pitch ?? 0) - (base.pitch ?? 0)) >= 0.2;
-    case 'blink':
-      return eyes(base) > 0 && eyes(r) < eyes(base) * 0.6;
-    case 'smile':
-      return (base.mouth ?? 0) > 0 && (r.mouth ?? 0) >= (base.mouth ?? 0) * 1.12;
+/** One still → numbers; the frame file is deleted as soon as it is measured (R-03.5). */
+async function frame(cam: Shot): Promise<FaceReading> {
+  const { File } = await import('expo-file-system');
+  const { uri } = await cam.takePictureAsync({ quality: 0.2, skipProcessing: true, shutterSound: false });
+  try {
+    return await analyzeFace(uri);
+  } finally {
+    try {
+      new File(uri).delete();
+    } catch {
+      /* already gone */
+    }
   }
 }
 
-async function burst(cam: Shot, n = 3): Promise<FaceReading[]> {
-  const out: FaceReading[] = [];
-  const { File } = await import('expo-file-system');
-  for (let i = 0; i < n; i++) {
-    const { uri } = await cam.takePictureAsync({ quality: 0.3, skipProcessing: true, shutterSound: false });
-    try {
-      out.push(await analyzeFace(uri));
-    } finally {
-      // R-03.5: the frame is deleted as soon as it is measured.
-      try {
-        new File(uri).delete();
-      } catch {
-        /* already gone */
-      }
-    }
-  }
-  return out;
+/** #131: sample continuously until `ok` or the time is up (a fixed 3-frame window missed most moves). */
+async function until(cam: Shot, ok: (r: FaceReading) => boolean, ms: number): Promise<FaceReading | null> {
+  const end = Date.now() + ms;
+  do {
+    const r = await frame(cam);
+    if (ok(r)) return r;
+  } while (Date.now() < end);
+  return null;
 }
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -101,23 +89,27 @@ export function VerifyScreen({ onDone }: { onDone: (me: Me) => void }) {
         return;
       }
       setPhase('camera');
-      await wait(1200);
+      await wait(1000);
       setPrompt(t.verify.steps.look);
-      await wait(1500);
-      const base = (await burst(cam.current!, 1))[0];
-      if (base.faces !== 1) {
-        await finish(ch, false);
+      await wait(800);
+      // Baseline: a face looking at the camera. None found → ask again, no try is spent (#131).
+      const base = await until(cam.current!, (r) => r.faces >= 1 && Math.abs(r.yaw ?? 0) < 0.35, 5000);
+      if (!base) {
+        setPrompt('');
+        setPhase('intro');
+        setErr(t.verify.noFace);
         return;
       }
       let ok = true;
       for (const s of ch.steps) {
         setPrompt(t.verify.steps[s]);
-        await wait(1500);
-        const frames = await burst(cam.current!);
-        if (!frames.some((f) => passes(s, base, f))) {
+        await wait(400);
+        if (!(await until(cam.current!, (r) => passes(s, base, r), 6000))) {
           ok = false;
           break;
         }
+        setPrompt('✓');
+        await wait(500);
       }
       setPrompt('');
       await finish(ch, ok);
