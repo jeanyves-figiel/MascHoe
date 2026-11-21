@@ -6,7 +6,7 @@ import type { MyProfile, NowStatus, Settings } from './types';
 // Web build is served by the API host (DEV: https://localhost:7443), so same-origin by default.
 const BASE = (process.env.EXPO_PUBLIC_API_URL ?? '') + '/v1';
 
-const K = { access: 'thirstr.access', refresh: 'thirstr.refresh', install: 'thirstr.install' };
+const K = { access: 'thirstr.access', refresh: 'thirstr.refresh', install: 'thirstr.install', device: 'thirstr.device', deviceSecret: 'thirstr.device.secret' };
 
 // Tokens live in Keychain/Keystore on native; web (DEV tool only) falls back to AsyncStorage.
 const native = Platform.OS === 'ios' || Platform.OS === 'android';
@@ -43,8 +43,9 @@ export type Me = {
   settings?: Settings;
 };
 
-export type Photo = { id: string; slot: number; status: string; reject_reason: string | null; url: string | null; main_ok?: boolean };
-export type Session = { access_token: string; refresh_token: string; expires_in: number; account: Me };
+export type Photo = { id: string; slot: number; status: string; reject_reason: string | null; url: string | null; thumb_url?: string | null; main_ok?: boolean };
+/** device_id / device_secret come with a sign-in (SR-04): kept to resume this device later. */
+export type Session = { access_token: string; refresh_token: string; expires_in: number; account: Me; device_id?: string; device_secret?: string };
 
 export class ApiError extends Error {
   constructor(
@@ -71,7 +72,19 @@ export async function installId(): Promise<string> {
 export async function saveSession(s: Session) {
   await secure.set(K.access, s.access_token);
   await secure.set(K.refresh, s.refresh_token);
+  if (s.device_id && s.device_secret) {
+    await secure.set(K.device, s.device_id);
+    await secure.set(K.deviceSecret, s.device_secret);
+  }
   return s.account;
+}
+
+/** SR-04 (#144): sign-ins name this install's previous device so the server can resume it
+ * (keeping the chat messages queued for it) instead of registering a new one. */
+async function resumeHeaders(path: string): Promise<Record<string, string>> {
+  if (!path.startsWith('/auth/') || path === '/auth/refresh') return {};
+  const [id, secret] = await Promise.all([secure.get(K.device), secure.get(K.deviceSecret)]);
+  return id && secret ? { 'x-thirstr-device': id, 'x-thirstr-device-secret': secret } : {};
 }
 
 export async function clearSession() {
@@ -133,6 +146,7 @@ export async function api<T = unknown>(method: string, path: string, body?: unkn
   };
   const access = await secure.get(K.access);
   if (access) headers.authorization = 'Bearer ' + access;
+  Object.assign(headers, await resumeHeaders(path));
 
   const ctl = timeoutMs ? new AbortController() : null;
   const timer = ctl ? setTimeout(() => ctl.abort(), timeoutMs) : null;

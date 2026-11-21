@@ -31,7 +31,7 @@ defmodule Thirstr.Venues do
           [Nearby.area(ctx, 2), Map.get(@kinds, ctx.mode, @kinds["hookup"])]
         ).rows
         |> Nearby.utc()
-        |> Nearby.utc()
+        |> tap(&Nearby.warm(Enum.map(&1, fn r -> Enum.at(r, 3) end)))
         |> Enum.map(fn [id, name, kind, cell, r, n] ->
           d = Nearby.dist_m(ctx, cell)
 

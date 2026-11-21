@@ -31,8 +31,15 @@ defmodule ThirstrWeb.MeJSON do
     }
   end
 
-  def session(%{access_token: at, refresh_token: rt, expires_in: exp, account: a}),
-    do: %{access_token: at, refresh_token: rt, expires_in: exp, account: me(a)}
+  # SR-04: device_id + device_secret only on sign-in (the install keeps them to resume later).
+  def session(%{access_token: at, refresh_token: rt, expires_in: exp, account: a} = s) do
+    %{access_token: at, refresh_token: rt, expires_in: exp, account: me(a)}
+    |> then(fn m ->
+      if s[:device_secret],
+        do: Map.merge(m, %{device_id: s.device_id, device_secret: s.device_secret}),
+        else: m
+    end)
+  end
 
   def photo(ph) do
     %{
@@ -42,7 +49,11 @@ defmodule ThirstrWeb.MeJSON do
       reject_reason: ph.reject_reason,
       main_ok: Map.get(ph.classifier_score || %{}, "main_ok", ph.status == "ok_main"),
       url:
-        if(ph.status in ~w(ok_main ok_public pending), do: Storage.presigned_get(ph.storage_key))
+        if(ph.status in ~w(ok_main ok_public pending), do: Storage.presigned_get(ph.storage_key)),
+      thumb_url:
+        if(ph.status in ~w(ok_main ok_public) and ph.thumb_key,
+          do: Storage.presigned_get(ph.thumb_key)
+        )
     }
   end
 

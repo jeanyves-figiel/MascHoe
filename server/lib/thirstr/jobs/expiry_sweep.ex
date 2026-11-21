@@ -17,6 +17,8 @@ defmodule Thirstr.Jobs.ExpirySweep do
     Thirstr.Repo.query!("DELETE FROM taps WHERE created_at < now() - interval '7 days'")
     # ciphertext queue 30 d, franking tags 90 d, expired media blobs (R-07.12, R-08.10)
     Thirstr.Chat.sweep()
+    # SR-04: revoked devices not resumed within 7 d (their queued ciphertext goes with them)
+    Thirstr.Accounts.purge_revoked_devices()
     Thirstr.Verification.sweep()
     Thirstr.Linked.recheck()
     :ok

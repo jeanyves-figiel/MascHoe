@@ -421,6 +421,9 @@ defmodule Thirstr.Location do
       JOIN c9 ON c9.kind = vis.kind AND c9.cell_r9 = vis.cell_r9
       JOIN c8 ON c8.kind = vis.kind AND c8.cell_r8 = vis.cell_r8
       WHERE lc.profile_id = vis.profile_id
+        -- SR-08: write only rows whose resolution changes (no full-table rewrite every minute)
+        AND lc.display_res IS DISTINCT FROM
+            (CASE WHEN c9.n >= $1 THEN 9 WHEN c8.n >= $1 THEN 8 ELSE 7 END)
       """,
       [k]
     )

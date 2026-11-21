@@ -7,7 +7,7 @@ Fast, private 1:1 and group messaging (party guest chats). E2EE, stored on devic
 - R-07.1 Protocol: MLS (RFC 9420) via OpenMLS. 1:1 = 2-member group (+ each side's devices). Party/activity chats = group (max 50).
 - R-07.2 Starting a chat requires sender verified (F-03) unless replying to an inbound message.
 - R-07.3 First message from a new contact: text only, max 500 chars, **no links/handles/phone/email** (client blocks + server rate signals). Links allowed once the other side replied.
-- R-07.4 Message types: `text`, `media` (F-08), `album.grant`, `album.revoke`, `location.share` (TTL), `profile.private` (F-06 R-06.6), `link.preview` (I-01), `quick_reply`, `party.invite`, `checkin.started` (system), `reaction`.
+- R-07.4 Message types: `text`, `media` (F-08), `album.grant`, `album.revoke`, `location.share` (TTL), `profile.private` (F-06 R-06.6), `link.preview` (I-01), `quick_reply`, `party.invite`, `checkin.started` (system), `vcheck` (video check, F-18 R-18.8–R-18.16, #159), `reaction`.
 - R-07.5 Quick replies: "Yes 🔥", "Not now", "Later?", "Pics?", "Host?", "Can travel" + 3 custom (Settings).
 - R-07.6 Disappearing messages: per chat 24 h / 7 d (default) / never; timer starts on read; both sides see setting; change creates a system message.
 - R-07.7 Read receipts + typing: symmetrical; off for user → they don't see others'. Details: R-07.23.

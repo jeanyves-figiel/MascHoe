@@ -13,6 +13,7 @@ import { prefs } from '../me/prefs';
 import { kv } from './kv';
 import * as Recent from './recent';
 import * as Lib from './library';
+import * as MediaCache from './mediaCache';
 
 export type SendOpts = { once: boolean; expiry: '1h' | '24h' | '7d' | 'keep'; save: boolean };
 const EXPIRY_S = { '1h': 3600, '24h': 86400, '7d': 7 * 86400, keep: null } as const;
@@ -24,7 +25,7 @@ export async function readBytes(uri: string): Promise<Uint8Array> {
 }
 
 /** Encrypts and uploads bytes; returns the blob reference (key never leaves the device unencrypted). */
-export async function uploadEncrypted(bytes: Uint8Array, opts: { album?: boolean; ttl_s?: number } = {}) {
+export async function uploadEncrypted(bytes: Uint8Array, opts: { album?: boolean; ttl_s?: number; once?: boolean } = {}) {
   const key = rand(32);
   const iv = rand(12);
   const ct = gcm(key, iv).encrypt(bytes);
@@ -34,17 +35,31 @@ export async function uploadEncrypted(bytes: Uint8Array, opts: { album?: boolean
   return { blob: r.blob_id, key: toB64(key), iv: toB64(iv) };
 }
 
+// Decrypted data URIs in memory, LRU-bounded (SR-05): the disk cache holds ciphertext only.
 const cache = new Map<string, string>();
+const MEM_MAX = 40;
+const remember = (blob: string, uri: string) => {
+  cache.delete(blob);
+  cache.set(blob, uri);
+  while (cache.size > MEM_MAX) cache.delete(cache.keys().next().value as string);
+};
 
-/** Downloads and decrypts a blob into a data URI (memory only). */
-export async function decryptToUri(ref: { blob: string; key: string; iv: string; mime: string }): Promise<string> {
+/** Decrypts a blob into a data URI: memory → on-device ciphertext (SR-05) → download. */
+export async function decryptToUri(ref: { blob: string; key: string; iv: string; mime: string; once?: boolean; exp?: number }): Promise<string> {
   const hit = cache.get(ref.blob);
-  if (hit) return hit;
-  const { url } = await api<{ url: string }>('GET', `/media/${ref.blob}`);
-  const ct = new Uint8Array(await (await fetch(url)).arrayBuffer());
+  if (hit) {
+    remember(ref.blob, hit);
+    return hit;
+  }
+  let ct = await MediaCache.get(ref.blob).catch(() => null);
+  if (!ct) {
+    const { url } = await api<{ url: string }>('GET', `/media/${ref.blob}`);
+    ct = new Uint8Array(await (await fetch(url)).arrayBuffer());
+    await MediaCache.put(ref.blob, ct, { once: ref.once, exp: ref.exp }).catch(() => {});
+  }
   const plain = gcm(fromB64(ref.key), fromB64(ref.iv)).decrypt(ct);
   const uri = `data:${ref.mime};base64,${toB64(plain)}`;
-  cache.set(ref.blob, uri);
+  if (!ref.once) remember(ref.blob, uri);
   return uri;
 }
 

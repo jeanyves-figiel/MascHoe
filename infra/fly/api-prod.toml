@@ -2,10 +2,13 @@
 app = "thirstr-api-prod"
 primary_region = "fra"
 kill_signal = "SIGTERM"
+# SR-03: 30 s to drain requests/sockets and let Oban jobs finish (Oban grace 25 s).
+kill_timeout = 30
 
 [deploy]
   release_command = "/app/bin/migrate"
   strategy = "rolling"
+  max_unavailable = 1
 
 [env]
   DEPLOY_ENV = "prod"
@@ -37,6 +40,11 @@ kill_signal = "SIGTERM"
   method = "GET"
   path = "/v1/health"
   timeout = "5s"
+
+# SR-07 (#147): Fly managed Prometheus scrapes the internal metrics port (not public).
+[metrics]
+  port = 9091
+  path = "/metrics"
 
 [[vm]]
   size = "shared-cpu-1x"

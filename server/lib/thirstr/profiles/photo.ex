@@ -10,6 +10,7 @@ defmodule Thirstr.Profiles.Photo do
     belongs_to :profile, Thirstr.Profiles.Profile
     field :slot, :integer
     field :storage_key, :string
+    field :thumb_key, :string
     field :status, :string, default: "pending"
     field :classifier_score, :map, default: %{}
     field :reject_reason, :string

@@ -49,6 +49,7 @@ defmodule Thirstr.Tonight do
         |> Enum.filter(fn [_, pid, _, _, _, _, aud | _] ->
           (aud == "verified" and ctx.verified) or (aud == "chats" and pid in partners)
         end)
+        |> tap(&Nearby.warm(Enum.map(&1, fn r -> Enum.at(r, 7) end)))
         |> Enum.map(fn [id, pid, ws, we, text, tag, aud, cell, _] ->
           %{
             id: id,

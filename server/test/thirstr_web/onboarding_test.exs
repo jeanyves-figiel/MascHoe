@@ -34,6 +34,8 @@ defmodule ThirstrWeb.OnboardingTest do
       |> json_response(201)
 
     assert up["put_url"] =~ "X-Amz-Signature"
+    # SR-10: card-size copy uploaded next to the photo
+    assert up["thumb_put_url"] =~ "-t?"
 
     res =
       c
@@ -42,6 +44,7 @@ defmodule ThirstrWeb.OnboardingTest do
       |> json_response(200)
 
     assert res["photo"]["status"] == "ok_main"
+    assert res["photo"]["thumb_url"] =~ "-t?"
     assert res["account"]["onboarding_step"] == "verify"
 
     me = c |> recycle_authed() |> post("/v1/me/onboarding/verify_later") |> json_response(200)

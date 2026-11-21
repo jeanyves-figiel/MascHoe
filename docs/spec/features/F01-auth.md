@@ -20,7 +20,8 @@ Beta: passkey, Apple, Google, email magic link, device link by QR, recovery phra
 - R-01.5 Access token 15 min; refresh 30 d, bound to device key; rotate on use (re-use > 60 s after use revokes the device; within 60 s is a client race → 409, #116; the app runs one refresh at a time and signs out only on 401/403); revoke all on "Log out everywhere".
 - R-01.6 Device link: old device shows QR (expires 120 s) → new device scans → old device confirms with biometrics → MLS adds new device to the user's groups.
 - R-01.7 Recovery phrase (12 words, BIP-39) offered after verification, optional, shown once, never stored server-side. Used to re-derive the account key if all devices are lost; chats are not recoverable without encrypted backup.
-- R-01.8 Max 5 devices per account.
+- R-01.8 Max 5 devices per account (revoked devices waiting for a resume don't count).
+- R-01.13 Device resume (SR-04, #144): a revoke by refresh re-use (R-01.5) keeps the device row and its queued chat messages for 7 d. Each sign-in returns `device_id` + `device_secret` (Keychain); the next sign-in of the same install sends them (`x-thirstr-device`, `x-thirstr-device-secret`) and, after the full sign-in, gets the same device back with a new secret. Not resumed in 7 d → device and queue deleted. "Log out" / "Log out everywhere" delete at once.
 - R-01.9 Pause: profiles hidden everywhere, chats kept, can resume anytime.
 - R-01.10 Delete: confirm with biometrics + type "DELETE"; hard delete server data ≤ 24 h; client wipes local DB immediately; MLS leave all groups.
 - R-01.11 Export (GDPR Art. 20): JSON + photos archive, encrypted to device key, ready ≤ 24 h.

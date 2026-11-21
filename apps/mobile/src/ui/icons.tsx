@@ -204,4 +204,11 @@ export const Icon = {
       <Path d="M4 21h16M6 21V4l10-1v18M13 12v.5" {...base(c, w)} />
     </Svg>
   ),
+  /** #159 video check: camera with a check mark. */
+  VideoCheck: ({ size = 22, c = color.fgPrimary, w = 2.1 }: P) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Rect x={2.5} y={6} width={13} height={12} rx={3} {...base(c, w)} />
+      <Path d="M15.5 10.5l5-3v9l-5-3M6 12l2 2 3.5-3.5" {...base(c, w)} />
+    </Svg>
+  ),
 };
