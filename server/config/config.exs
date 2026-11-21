@@ -17,6 +17,8 @@ config :thirstr, Oban,
   queues: [default: 10, maintenance: 2, push: 5],
   plugins: [
     {Oban.Plugins.Pruner, max_age: 3600},
+    # Jobs left "executing" by a restart (e.g. a deploy during the Places import) go back to the queue.
+    {Oban.Plugins.Lifeline, rescue_after: :timer.minutes(45)},
     {Oban.Plugins.Cron,
      crontab: [
        {"*/15 * * * *", Thirstr.Jobs.ExpirySweep},

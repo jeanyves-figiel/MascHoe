@@ -6,7 +6,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
-- **Places import from GitHub Actions** (#113, F-12 R-12.9): new manual workflow "Places import" (staging or production) queues the OpenStreetMap venue import on the server (same job as admin › Places › Import now), waits for it and shows added / updated / removed and the venue count in the run summary.
+- **Places import from GitHub Actions** (#113, F-12 R-12.9): new manual workflow "Places import" (staging or production) queues the OpenStreetMap venue import on the server (same job as admin › Places › Import now), waits for it and shows added / updated / removed and the venue count in the run summary. Fixed: the first version never queued the job (the start flag didn't reach the server) and waited until cancelled. A deploy during an import no longer leaves it stuck: interrupted import jobs are rescued after 45 min (Oban Lifeline), and the workflow cancels jobs killed by a restart before queuing a new one.
 
 ### Fixed
 - **Nav bar on every screen** (app, #137): the bottom nav bar (Explore · Tonight · Chats · Me) now stays visible on all screens, also profiles, chats, settings and forms, not only on the four main tabs. The tab you came from stays lit; tapping any tab closes the open screens and goes there. Chat's message box, the profile buttons and Save / Send buttons sit just above it. It hides while the keyboard is up (and on the selfie camera).
