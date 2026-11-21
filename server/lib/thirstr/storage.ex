@@ -1,7 +1,11 @@
 defmodule Thirstr.Storage do
   @moduledoc "S3-compatible object storage (MinIO in DEV, Tigris EU on Fly). Presigned URLs only."
   @put_ttl 300
-  @get_ttl 3600
+  # SR-10 (#150): GET URLs are signed from the start of a 6 h window and valid 12 h, so the same
+  # photo gets the same URL all window long and the phone's image cache actually hits (a fresh
+  # signature per response meant every grid open re-downloaded every photo).
+  @get_window 6 * 3600
+  @get_ttl 12 * 3600
 
   def presigned_put(key, content_type) do
     ExAws.S3.presigned_url(public_cfg(), :put, bucket(), key,
@@ -11,8 +15,21 @@ defmodule Thirstr.Storage do
   end
 
   def presigned_get(key) do
-    {:ok, url} = ExAws.S3.presigned_url(public_cfg(), :get, bucket(), key, expires_in: @get_ttl)
+    {:ok, url} =
+      ExAws.S3.presigned_url(public_cfg(), :get, bucket(), key,
+        expires_in: @get_ttl,
+        start_datetime: window_start()
+      )
+
     url
+  end
+
+  defp window_start do
+    now = System.system_time(:second)
+
+    (now - rem(now, @get_window))
+    |> DateTime.from_unix!()
+    |> DateTime.to_naive()
   end
 
   @doc "GET URL for server-side services (classifier) reaching storage on the private network."
