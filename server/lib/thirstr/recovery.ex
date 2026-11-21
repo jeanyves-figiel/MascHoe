@@ -37,24 +37,28 @@ defmodule Thirstr.Recovery do
 
   @doc "Turn on or make new words: replaces the key and drops the old backup."
   def put_key(%Account{id: id} = a, %{"public_key" => pk}) do
-    with {:ok, <<_::binary-32>> = pub} <- unb64(pk) do
-      Repo.insert!(%Key{account_id: id, public_key: pub},
-        on_conflict: [
-          set: [
-            public_key: pub,
-            vault: nil,
-            vault_updated_at: nil,
-            inserted_at: DateTime.utc_now(),
-            updated_at: DateTime.utc_now()
-          ]
-        ],
-        conflict_target: :account_id
-      )
+    case unb64(pk) do
+      {:ok, <<_::binary-32>> = pub} ->
+        Repo.insert!(%Key{account_id: id, public_key: pub},
+          on_conflict: [
+            set: [
+              public_key: pub,
+              vault: nil,
+              vault_updated_at: nil,
+              inserted_at: DateTime.utc_now(),
+              updated_at: DateTime.utc_now()
+            ]
+          ],
+          conflict_target: :account_id
+        )
 
-      {:ok, status(a)}
-    else
-      {:ok, _} -> {:error, {:validation, %{public_key: ["must be 32 bytes"]}}}
-      _ -> {:error, {:validation, %{public_key: ["invalid"]}}}
+        {:ok, status(a)}
+
+      {:ok, _} ->
+        {:error, {:validation, %{public_key: ["must be 32 bytes"]}}}
+
+      _ ->
+        {:error, {:validation, %{public_key: ["invalid"]}}}
     end
   rescue
     Ecto.ConstraintError -> {:error, {:conflict_code, "key_in_use", "Make new words"}}
