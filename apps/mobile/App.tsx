@@ -27,6 +27,9 @@ import { color } from './src/theme/tokens';
 import { StartupGuard } from './src/app/StartupGuard';
 import { loadCached, refreshConfig, useAppConfig } from './src/app/config';
 import { UpdateRequiredScreen } from './src/screens/UpdateRequired';
+import { installCrashReporter } from './src/app/crash';
+
+installCrashReporter();
 
 // SafeAreaProvider draws nothing until native reports the insets; if that report never
 // comes the whole app stays blank. Start from known metrics so it always draws (#88).

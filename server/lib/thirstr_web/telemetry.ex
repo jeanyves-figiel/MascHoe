@@ -135,6 +135,8 @@ defmodule ThirstrWeb.Telemetry do
       last_value("thirstr.chat.backlog.count"),
       last_value("thirstr.chat.backlog.oldest_s"),
       counter("thirstr.push.send.count", tags: [:platform, :outcome]),
+      counter("thirstr.client.error.count", tags: [:platform, :fatal]),
+      counter("thirstr.client.session.count", tags: [:platform]),
       counter("thirstr.valkey.fallback.count"),
       last_value("thirstr.db.size_bytes")
     ]

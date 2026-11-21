@@ -28,7 +28,7 @@ Goal: run Thirstr like a mature consumer platform: no lost messages, no lost dat
 ### B. Observability, SLOs, on-call
 - Metrics + alerts (SR-07).
 - **EN-04** (#163) SLOs with error budgets for the targets above; burn-rate alerts; public status page (`status.thirstr.fun`); weekly SLO review.
-- **EN-05** (#164) Error + crash reporting with PII scrubbing, EU-hosted (Sentry EU or self-hosted GlitchTip): server, iOS, Android; release health gates (crash-free %).
+- **EN-05** (#164) Error + crash reporting with PII scrubbing, EU-hosted (Sentry EU or self-hosted GlitchTip): server, iOS, Android; release health gates (crash-free %). ✔ Built in-house instead (no vendor, no cost): anonymous app reports + session pings, server grouping and scrubbing, crash-free alert (`docs/runbooks/monitoring.md` › App crashes); server errors via existing metrics + Fly logs.
 - **EN-06** (#165) On-call: rotation (owner + ≥ 1 engineer once hired), paging (phone push + SMS), runbook per alert, escalation path.
 
 ### C. Incident response
@@ -47,8 +47,8 @@ Goal: run Thirstr like a mature consumer platform: no lost messages, no lost dat
 ### F. Release safety
 - Graceful deploys (SR-03).
 - **EN-12** (#171) Canary deploys: one machine gets the new image first, auto-rollback on error rate / latency / crash gates; expand-and-contract DB migrations only (CI lint blocks destructive migrations in the same release); migration dry run on a prod snapshot.
-- **EN-13** (#172) Feature flags + kill switches: server-driven, per cohort/country/app version, no third-party tracking; every risky feature ships dark first.
-- **EN-14** (#173) Mobile release safety: phased App Store / Play staged rollout, minimum supported version + forced-update screen, API versioning with 2 app versions supported, OTA config kill switches.
+- **EN-13** (#172) Feature flags + kill switches: server-driven, per cohort/country/app version, no third-party tracking; every risky feature ships dark first. ✔ `GET /v1/config`, `docs/runbooks/flags.md`.
+- **EN-14** (#173) Mobile release safety: phased App Store / Play staged rollout, minimum supported version + forced-update screen, API versioning with 2 app versions supported, OTA config kill switches. Minimum build + forced update ✔; phased rollout and API versioning open.
 
 ### G. Testing & resilience
 - Load test + sizing (SR-12).
