@@ -77,7 +77,10 @@ defmodule Thirstr.AppAttest do
   end
 
   defp safe_decode(bin) do
-    CBOR.decode(bin)
+    case CBOR.decode(bin) do
+      {:ok, _, _} = ok -> ok
+      _ -> {:error, :malformed}
+    end
   rescue
     _ -> {:error, :malformed}
   end
