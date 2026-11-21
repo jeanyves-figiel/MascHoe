@@ -16,6 +16,7 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { color, font, Mode, modeColor, radius, space, tileFor, touch, type } from '../theme/tokens';
 import { Icon } from './icons';
 export { Icon } from './icons';
@@ -374,6 +375,15 @@ export function useKeyboardShown() {
   return shown;
 }
 
+/** #137: the Pop nav bar floats on every screen (Main.tsx): 52 pt pill + 6 pt padding ×2 + 8 pt gap. */
+export const NAV_BAR = 72;
+/** Space a bottom-anchored element must leave for the nav bar (0 while the keyboard is up: the bar hides). */
+export function useNavSpace() {
+  const insets = useSafeAreaInsets();
+  const kb = useKeyboardShown();
+  return { kb, bottom: kb ? 0 : insets.bottom + NAV_BAR };
+}
+
 let afterDismiss: (() => void) | null = null;
 let afterTimer: ReturnType<typeof setTimeout> | null = null;
 const flushAfterSheet = () => {
@@ -501,10 +511,12 @@ export function BackButton({ onPress, label = 'Back' }: { onPress: () => void; l
 
 /** App v2 sticky bottom action: one pill over a fade (issue 63). Put it after the ScrollView. */
 export function StickyCta({ children }: { children: React.ReactNode }) {
+  const nav = useNavSpace();
   return (
     <View pointerEvents="box-none" style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}>
-      <Scrim height={110} max={1} steps={8} />
-      <View style={{ paddingHorizontal: space.l, paddingBottom: space.xxl, paddingTop: space.s, gap: space.s }}>{children}</View>
+      <Scrim height={110 + nav.bottom} max={1} steps={8} />
+      {/* #137: sits on top of the nav bar. */}
+      <View style={{ paddingHorizontal: space.l, paddingBottom: nav.bottom + space.m, paddingTop: space.s, gap: space.s }}>{children}</View>
     </View>
   );
 }

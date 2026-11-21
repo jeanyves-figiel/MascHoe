@@ -8,7 +8,7 @@ import { distanceLabel, tx } from '../i18n/app';
 import { color, font, modeColor, radius, space, type } from '../theme/tokens';
 import { v3 } from '../i18n/v3';
 import { AUDIENCES, allowedFor, cycle } from '../me/look';
-import { afterSheet, Badge, Banner, Button, ErrorState, Icon, Loading, Photo, Scrim, useAccent, VerifiedTick } from '../ui';
+import { afterSheet, useNavSpace, Badge, Banner, Button, ErrorState, Icon, Loading, Photo, Scrim, useAccent, VerifiedTick } from '../ui';
 import { getLocal } from '../me/localFields';
 import { FieldList } from './FieldList';
 import { PrivateNote } from './PrivateNote';
@@ -17,7 +17,7 @@ import * as People from '../chat/people';
 import { ppl } from '../i18n/people';
 import { LENSES, lensFields, lensPhoto } from './lens';
 import { SafetySheet, SheetRow } from '../trust/SafetySheet';
-import { toast } from '../ui/Toast';
+import { setToastLift, toast } from '../ui/Toast';
 
 type Nav = { navigate: (s: string, p?: object) => void; goBack: () => void; setParams?: (p: Partial<Params>) => void };
 type Params = { id: string; preview?: 'stranger' | 'verified' | 'chats'; mode?: Mode };
@@ -58,11 +58,19 @@ export function previewOf(p: MyProfile, as: 'stranger' | 'verified' | 'chats', l
 // S-20 profile view (F-06). R-04.9: blocked / unavailable → "Not available".
 export function ProfileScreen({ route, navigation }: { route: { params: Params }; navigation: Nav }) {
   const { id, preview } = route.params;
+  const p0self = !!preview;
   const { me, mode: appMode } = useSession();
   // F-06 R-06.1b: others are seen through the current mode's lens.
   const mode = route.params.mode ?? appMode;
   const accent = useAccent();
   const insets = useSafeAreaInsets();
+  // #137: the action bar sits right above the app nav bar.
+  const { bottom: navBottom } = useNavSpace();
+  useEffect(() => {
+    if (p0self) return;
+    setToastLift(58 + space.s);
+    return () => setToastLift(0);
+  }, [p0self]);
   People.usePeople();
   const [remote, setP] = useState<ProfileView | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -143,7 +151,7 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
     <View style={{ flex: 1, backgroundColor: color.bgBase }}>
       <ScrollView
         // #124: clear the floating action bar (58) + its inset + breathing room, on every phone.
-        contentContainerStyle={{ paddingBottom: p.self ? insets.bottom + space.xxl : insets.bottom + space.l + 58 + space.xxl }}
+        contentContainerStyle={{ paddingBottom: p.self ? navBottom + space.xxl : navBottom + space.s + 58 + space.xxl }}
         scrollEventThrottle={32}
         onScroll={(e) => {
           const past = e.nativeEvent.contentOffset.y > width * 1.33 - 140;
@@ -251,9 +259,9 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
       ) : null}
 
       {/* #124: content fades out under the action bar instead of showing between the buttons. */}
-      {!p.self ? <Scrim height={insets.bottom + space.l + 58 + space.xxl} max={1} steps={10} /> : null}
+      {!p.self ? <Scrim height={navBottom + space.s + 58 + space.xxl} max={1} steps={10} /> : null}
       {!p.self ? (
-        <View style={{ position: 'absolute', left: space.l, right: space.l, bottom: insets.bottom + space.l, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <View style={{ position: 'absolute', left: space.l, right: space.l, bottom: navBottom + space.s, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <Pressable
             testID="tap-btn"
             accessibilityRole="button"

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { color, motion, radius, space, type } from '../theme/tokens';
+import { useNavSpace } from './index';
 
 // App-wide toast (#111): one line + optional action (Undo). Shown above the tab bar for 5 s.
 type T = {
@@ -12,12 +12,25 @@ type T = {
 let listener: ((t: T | null) => void) | null = null;
 let seq = 0;
 
+let lifter: ((n: number) => void) | null = null;
+/** Extra height above the nav bar a screen's own bottom bar takes (Profile action bar). */
+export function setToastLift(n: number) {
+  lifter?.(n);
+}
+
 export function toast(text: string, action?: T['action']) {
   listener?.({ id: ++seq, text, action });
 }
 
 export function ToastHost() {
-  const insets = useSafeAreaInsets();
+  const nav = useNavSpace();
+  const [lift, setLift] = useState(0);
+  useEffect(() => {
+    lifter = setLift;
+    return () => {
+      lifter = null;
+    };
+  }, []);
   const [t, setT] = useState<T | null>(null);
   const [a] = useState(() => new Animated.Value(0));
   useEffect(() => {
@@ -53,7 +66,8 @@ export function ToastHost() {
         position: 'absolute',
         left: space.l,
         right: space.l,
-        bottom: insets.bottom + 84,
+        // #137: above the nav bar (+ a screen's own bottom bar via setToastLift); on the keyboard while typing.
+        bottom: nav.bottom + 12 + lift,
         opacity: a,
         transform: [
           {

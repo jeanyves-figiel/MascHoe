@@ -72,7 +72,7 @@ export function PartyNewScreen({ navigation }: { navigation: Nav }) {
       contentContainerStyle={{
         padding: space.l,
         gap: space.l,
-        paddingBottom: 150,
+        paddingBottom: 220,
       }}
       keyboardShouldPersistTaps="handled"
     >

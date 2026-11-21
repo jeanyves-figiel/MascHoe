@@ -192,7 +192,7 @@ export function ActivityNewScreen({ navigation }: { navigation: Nav }) {
       contentContainerStyle={{
         padding: space.l,
         gap: space.l,
-        paddingBottom: 150,
+        paddingBottom: 220,
       }}
       keyboardShouldPersistTaps="handled"
     >
@@ -357,7 +357,7 @@ export function ClubNewScreen({ navigation }: { navigation: Nav }) {
       contentContainerStyle={{
         padding: space.l,
         gap: space.l,
-        paddingBottom: 150,
+        paddingBottom: 220,
       }}
       keyboardShouldPersistTaps="handled"
     >

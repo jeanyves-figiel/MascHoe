@@ -1,5 +1,5 @@
-import { BottomTabBarProps, createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createNavigationContainerRef, DarkTheme, NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNavigationContainerRef, DarkTheme, NavigationContainer, StackActions, type NavigationState } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as Haptics from 'expo-haptics';
 import React from 'react';
@@ -45,7 +45,7 @@ import { ToastHost } from '../ui/Toast';
 import { HiddenBlockedScreen } from '../trust/HiddenBlockedScreen';
 import { VenueScreen } from '../scene/VenueScreens';
 import { color, modeColor, radius, space, type } from '../theme/tokens';
-import { BackButton, Icon, ModeContext } from '../ui';
+import { BackButton, Icon, ModeContext, useKeyboardShown } from '../ui';
 import { useSession } from './session';
 
 const Tab = createBottomTabNavigator();
@@ -60,8 +60,14 @@ const TAB_ICON: Record<string, (c: string) => React.ReactNode> = {
   Me: (c) => <Icon.User c={c} />,
 };
 
+const TABS = ['Explore', 'Tonight', 'Chats', 'Me'] as const;
+// #137: screens where the nav bar stays hidden (full-screen camera).
+const NO_BAR = new Set(['Verify']);
+
 // Pop bottom nav (App v2): white floating pill, icons; active tab grows, shows its label and fills with the mode colour.
-function PillBar({ state, navigation }: BottomTabBarProps) {
+// #137: one bar for the whole app, drawn over every screen (pushed screens too); hidden while the keyboard is up.
+// The tab under the current screen stays lit; tapping any tab closes pushed screens and opens that tab.
+function PillBar({ active, onPick }: { active: string; onPick: (name: string) => void }) {
   const { mode } = useSession();
   const insets = useSafeAreaInsets();
   useTopics('convs');
@@ -72,18 +78,19 @@ function PillBar({ state, navigation }: BottomTabBarProps) {
       accessibilityRole="tablist"
       style={{ position: 'absolute', left: space.l, right: space.l, bottom: insets.bottom + space.s, flexDirection: 'row', backgroundColor: color.bgInverse, borderRadius: radius.pill, padding: 6, gap: 4, maxWidth: 520, shadowColor: color.bgBase, shadowOpacity: 0.4, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 12, alignSelf: 'center' }}
     >
-      {state.routes.map((r, i) => {
-        const on = state.index === i;
+      {TABS.map((name) => {
+        const r = { name };
+        const on = active === name;
         return (
           <Pressable
-            key={r.key}
+            key={name}
             testID={`tab-${r.name}`}
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
             accessibilityLabel={labels[r.name]}
             onPress={() => {
               if (Platform.OS !== 'web' && prefs().haptics) Haptics.selectionAsync().catch(() => {});
-              if (!on) navigation.navigate(r.name);
+              onPick(r.name);
             }}
             style={{ flex: on ? 1.6 : 1, height: 52, borderRadius: radius.pill, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? modeColor[mode] : 'transparent' }}
           >
@@ -103,7 +110,7 @@ function PillBar({ state, navigation }: BottomTabBarProps) {
 
 function Tabs() {
   return (
-    <Tab.Navigator screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: color.bgBase } }} tabBar={(p) => <PillBar {...p} />}>
+    <Tab.Navigator screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: color.bgBase } }} tabBar={() => null}>
       <Tab.Screen name="Explore" component={ExploreScreen as React.ComponentType} />
       <Tab.Screen name="Tonight" component={TonightScreen as React.ComponentType} />
       <Tab.Screen name="Chats" component={InboxScreen as React.ComponentType} />
@@ -249,11 +256,20 @@ export function Main() {
   useCheckinWatch();
   useHiddenReturn();
   useShareLinks();
+  const kb = useKeyboardShown();
+  const [navState, setNavState] = React.useState<NavigationState | undefined>(undefined);
+  const top = navState?.routes[navState.index];
+  const tabsState = navState?.routes.find((r) => r.name === 'Tabs')?.state;
+  const active = TABS[tabsState?.index ?? 0] ?? 'Explore';
+  const pick = (name: string) => {
+    if (top && top.name !== 'Tabs') nav.dispatch(StackActions.popToTop());
+    nav.navigate('Tabs', { screen: name });
+  };
   return (
     <ModeContext.Provider value={mode}>
       <LockGate>
       <LiveFrame>
-      <NavigationContainer ref={nav} theme={navTheme}>
+      <NavigationContainer ref={nav} theme={navTheme} onReady={() => setNavState(nav.getRootState() as NavigationState)} onStateChange={(st) => setNavState(st as NavigationState | undefined)}>
         <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: color.bgBase } }}>
           <Stack.Screen name="Tabs" component={Tabs} />
           <Stack.Screen name="Profile" component={ProfileScreen as React.ComponentType} />
@@ -289,6 +305,7 @@ export function Main() {
           <Stack.Screen name="AppLock" component={AppLockScreen} options={sub} />
           <Stack.Screen name="Devices" component={DevicesScreen} options={sub} />
         </Stack.Navigator>
+        {!kb && !(top && NO_BAR.has(top.name)) ? <PillBar active={active} onPick={pick} /> : null}
         <PushPrompt />
         <ToastHost />
         <SafeModeAuto navigate={(r) => nav.isReady() && nav.navigate(r)} />
