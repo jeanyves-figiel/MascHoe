@@ -127,6 +127,7 @@ defmodule Thirstr.DeviceAttest do
 
   # Development-environment keys (Xcode debug builds) are only accepted outside prod.
   defp env_allowed(:production), do: :ok
+
   defp env_allowed(:development),
     do:
       if(Application.get_env(:thirstr, :app_attest_allow_dev, true),
