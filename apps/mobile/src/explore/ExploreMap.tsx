@@ -1,11 +1,11 @@
-import { Camera, CameraRef, GeoJSONSource, Layer, Map, Marker } from '@maplibre/maplibre-react-native';
+import { Camera, CameraRef, Map, Marker } from '@maplibre/maplibre-react-native';
 import React, { useEffect, useRef } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { distanceLabel, tx } from '../i18n/app';
 import { pl } from '../i18n/places';
 import { color, type } from '../theme/tokens';
 import { RingPin } from './IntentRing';
-import { cellLabels, cellsGeoJSON, MapProps, pinLabel, START_ZOOM, STYLE_URL } from './mapShared';
+import { cellLabels, MapProps, pinLabel, START_ZOOM, STYLE_URL } from './mapShared';
 import { PlaceMarker } from './Places';
 import { VisitingBubble } from '../travel/VisitingBubble';
 import { tr } from '../i18n/travel';
@@ -45,10 +45,7 @@ export function ExploreMap({ center, me, data, accent, recenter, onRegion, onSel
       onRegionDidChange={(e) => onRegion(e.nativeEvent.bounds)}
     >
       <Camera ref={camera} initialViewState={center ? { center: [center.lng, center.lat], zoom: center.zoom ?? START_ZOOM } : { zoom: 2 }} />
-      <GeoJSONSource id="cells" data={cellsGeoJSON(data)}>
-        <Layer id="cells-fill" type="fill" paint={{ 'fill-color': accent, 'fill-opacity': ['get', 'w'] }} />
-        <Layer id="cells-line" type="line" paint={{ 'line-color': accent, 'line-opacity': 0.45, 'line-width': 1 }} />
-      </GeoJSONSource>
+      {/* #223: no hex zones; Area people sit at a stable random spot in their cell (R-04.2 b). */}
       {people.length === 0
         ? cellLabels(data).map((c) => (
             <Marker key={c.key} id={`cell-${c.key}`} lngLat={[c.lng, c.lat]} anchor="center">
