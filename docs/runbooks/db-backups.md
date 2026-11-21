@@ -43,10 +43,18 @@ Never restore over the running prod volume. Restore into a new machine + volume,
    gosu postgres pgbackrest restore --type=time --target="2026-11-21 09:00:00+00" --target-action=promote
    ```
    (Latest point: omit `--type/--target`.)
-4. Start Postgres on it: update the machine without the sleep init. Drill: add env `BACKUPS=off` so the copy never archives into the live repo (app secrets reach every machine of the app).
+4. Start Postgres on it.
+   - **Drill:** start it by exec, local only, never archiving: `gosu postgres bash -c "setsid postgres -D \$PGDATA -c listen_addresses=localhost -c archive_mode=off > /tmp/pg.log 2>&1 < /dev/null &"`. `thirstr-db-<env>.internal` resolves to every machine of the app, so a drill copy listening on 6PN could receive real API traffic. The drill machine also has env `BACKUPS=off` (app secrets reach every machine).
+   - **Real incident:** update the machine without the sleep init (normal entrypoint, backups on).
 5. Check: `SELECT count(*) FROM accounts; SELECT max(created_at) FROM mls_messages;`
-6. Real incident: stop `thirstr-api-<env>`, point `DATABASE_URL` at the new machine (`<id>.vm.thirstr-db-<env>.internal`), start the API, then make the new machine the only DB machine.
+6. Destroy the drill machine and volume (Machines API `DELETE …/machines/<id>?force=true`, then the volume).
+7. Real incident: stop `thirstr-api-<env>`, point `DATABASE_URL` at the new machine (`<id>.vm.thirstr-db-<env>.internal`), start the API, then make the new machine the only DB machine.
+
+## Gotchas
+- A target time needs a commit **after** it in archived WAL, else recovery stops with "recovery ended before configured recovery target was reached". Force it with `SELECT pg_switch_wal()` (its own statement: `psql -c "a; b"` runs as one transaction) or wait ≤ `archive_timeout`.
+- `pgbackrest` options come from env vars on the DB machine; an exec shell must export them (see step 3).
 
 ## Drill log
 | Date | Env | Target | Result | Time to usable DB |
 |---|---|---|---|---|
+| 2026-11-21 | staging | 09:07:47 UTC (between two marker rows) | ✔ row before target present, row after absent, `venues` count matches (28 686); full backup 40 MB → 6.8 MB in repo | ~1 min per restore (2.6 min incl. one retry, see Gotchas) |

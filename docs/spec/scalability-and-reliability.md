@@ -99,7 +99,7 @@ Rule for every cache: inside the encrypted store or an AES-GCM file whose key is
 ## Prioritized backlog
 | P | ID | Issue | Effort |
 |---|---|---|---|
-| P0 | SR-01 Postgres backups, PITR, restore drill | #141 | M (prod OK needed) |
+| P0 | SR-01 Postgres backups, PITR, restore drill | #141 | ✔ staging 2026-11-21 (drill passed), prod next ([runbook](../runbooks/db-backups.md)) |
 | P0 | SR-07 Metrics + alerts | #147 | M |
 | P0 | SR-02 Push retries, Android-safe, FCM | #142 | S (+M for FCM) |
 | P0 | SR-03 Graceful deploys | #143 | S |
@@ -116,3 +116,5 @@ Rule for every cache: inside the encrypted store or an AES-GCM file whose key is
 | P2 | SR-13 Ciphertext over socket | #153 | M |
 | P2 | SR-16 Offline caches (Explore, profiles, tiles) | #156 | M |
 | — | Second EU region, KMS pepper, Tigris placement | #27 | — |
+
+Follow-on: enterprise-level plan, roadmap and costs in [`enterprise-readiness.md`](enterprise-readiness.md) (EN-01 … EN-22, #160–#181).
