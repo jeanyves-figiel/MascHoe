@@ -1,4 +1,4 @@
-import { cellToBoundary, cellToLatLng } from 'h3-js';
+import { cellToLatLng } from 'h3-js';
 import { API_BASE } from '../api/client';
 import type { Card, MapData, Mode, Place } from '../api/types';
 import { modeColor } from '../theme/tokens';
@@ -39,20 +39,7 @@ export function pinLabel(c: Card, names: Record<Mode, string>, and: string, dist
   return fmt(`${c.display_name}, ${c.age}`, joined, dist);
 }
 
-/** Cell heat polygons (R-04.2 a). Opacity grows with count, capped. */
-export function cellsGeoJSON(data: MapData | null): GeoJSON.FeatureCollection {
-  const max = Math.max(1, ...(data?.cells ?? []).map((c) => c.count));
-  return {
-    type: 'FeatureCollection',
-    features: (data?.cells ?? []).map((c) => ({
-      type: 'Feature',
-      properties: { w: 0.08 + 0.32 * (c.count / max) },
-      geometry: { type: 'Polygon', coordinates: [cellToBoundary(c.cell, true)] },
-    })),
-  };
-}
-
-/** Start zoom: a few r7 cells fit on screen, so heat reads as areas, not one blob. */
+/** Start zoom: a few r7 cells fit on screen. */
 export const START_ZOOM = 12;
 
 /** Count labels at cell centres (max 40), shown where the server gives counts, not people. */
@@ -147,7 +134,8 @@ export function ringSegments(intents: Mode[] | undefined, r: number, gap = 5): R
 export type PlaceKind = 'clubs' | 'saunas' | 'parties' | 'gyms';
 export const PLACE_KINDS: PlaceKind[] = ['clubs', 'saunas', 'parties', 'gyms'];
 export type Layers = { on: Record<PlaceKind, boolean>; gymsTouched: boolean };
-export const defaultLayers: Layers = { on: { clubs: true, saunas: true, parties: true, gyms: false }, gymsTouched: false };
+/** #223: Clubs and Saunas off by default; Parties on; Gyms by the Sport-only rule. */
+export const defaultLayers: Layers = { on: { clubs: false, saunas: false, parties: true, gyms: false }, gymsTouched: false };
 
 export function restoreLayers(saved: string | null): Layers {
   try {
