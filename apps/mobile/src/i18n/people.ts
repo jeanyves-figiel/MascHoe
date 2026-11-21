@@ -49,7 +49,14 @@ const en = {
   saveNote: 'Save note',
   addNote: 'Add private note',
   editNote: 'Edit private note',
-  deleteNote: 'Delete note',
+  deleteNote: 'Delete note',  find: 'Search in chat',
+  findPh: 'Search in this chat',
+  findCount: (i: number, n: number) => `${i} of ${n}`,
+  findNone: 'No matches',
+  findHint: 'Type at least 2 letters',
+  findLocal: 'Searched on this phone only',
+  findOlder: 'Older match',
+  findNewer: 'Newer match',
 };
 type T = typeof en;
 
@@ -100,7 +107,14 @@ const fr: T = {
   saveNote: 'Enregistrer',
   addNote: 'Ajouter une note privée',
   editNote: 'Modifier la note privée',
-  deleteNote: 'Supprimer la note',
+  deleteNote: 'Supprimer la note',  find: 'Chercher dans le chat',
+  findPh: 'Chercher dans ce chat',
+  findCount: (i, n) => `${i} sur ${n}`,
+  findNone: 'Aucun résultat',
+  findHint: 'Tape au moins 2 lettres',
+  findLocal: 'Recherche sur ce téléphone uniquement',
+  findOlder: 'Résultat plus ancien',
+  findNewer: 'Résultat plus récent',
 };
 
 const de: T = {
@@ -150,7 +164,14 @@ const de: T = {
   saveNote: 'Notiz speichern',
   addNote: 'Private Notiz hinzufügen',
   editNote: 'Private Notiz bearbeiten',
-  deleteNote: 'Notiz löschen',
+  deleteNote: 'Notiz löschen',  find: 'Im Chat suchen',
+  findPh: 'In diesem Chat suchen',
+  findCount: (i, n) => `${i} von ${n}`,
+  findNone: 'Keine Treffer',
+  findHint: 'Mindestens 2 Buchstaben',
+  findLocal: 'Nur auf diesem Handy gesucht',
+  findOlder: 'Älterer Treffer',
+  findNewer: 'Neuerer Treffer',
 };
 
 const lang = getLocales()[0]?.languageCode ?? 'en';
