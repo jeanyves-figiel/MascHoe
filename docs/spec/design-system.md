@@ -101,6 +101,13 @@ Generated to TS (RN theme) by Style Dictionary in CI. Hard-coded colours/sizes i
 - Hero card (`Hero`): Party, Activity, Club (mode colour) and Venue (teal). Radius 28, ink status pill, 30 pt title, meta line, up to 3 stat tiles.
 - Primary action: one pill in `StickyCta` (bottom fade) on forms (Edit profile, Host a party, Post activity, New club, Report). Save is white; destructive submit is `danger` fill.
 - Single choice of 2–4 options = `Segmented` (audience, intent, join policy, visibility); longer single choice = radio rows (Report reasons).
+- Form controls (#189, [mockup option A](https://claude.ai/artifact/Vra2UhUrQeLyytnkqGrHYD)): no chip walls. One control per question, `apps/mobile/src/ui/form.tsx`:
+  - `TimeRange` timeline scrubber for any start → end time: `bg.raised` card radius 22, big 26 pt `start → end` readout with an ink length pill, 64 pt track with half-hour ticks and hour labels (every 2 h, 4 h above 16 h), mode-colour window (2 pt border, 22 % fill), white 16×46 knobs. Drag an end to set it, drag the middle to slide the whole window, tap outside to move the nearest end. Snap 15 min to clock quarters; the domain start stays "Now". A11y: adjustable, actions ±15 min for start and end.
+  - `Stepper` for counts: − / + 52 pt round buttons (hold repeats, accelerating), 44 pt number that also drags sideways (12 pt per step), dots showing the size (you in white).
+  - `IconChoice` for one choice of 2–5 (type, audience): one `bg.raised` rail, icon over label (or side by side with `row`), selected = fill + ink.
+  - `IconTiles` for multi-select of up to 8 (house rules): 4 square tiles per row, icon + label, selected = mode fill + ink dot.
+  - Forms open with a live preview card of what others will see ("How others see it" tag on the card edge).
+  - Haptics (#187 tokens): selection tick per step or choice, light impact at a limit, success on submit. Respects Settings › Haptics.
 - Photo editor: mosaic, main photo 2×2 with white "Main" pill, two right, two wide below; empty slots dashed with plus icon.
 
 ### Iconography

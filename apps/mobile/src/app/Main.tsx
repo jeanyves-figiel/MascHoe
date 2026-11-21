@@ -293,7 +293,7 @@ export function Main() {
           <Stack.Screen name="AlbumEdit" component={AlbumEditScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="Album" component={AlbumViewScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="Party" component={PartyScreen as React.ComponentType} options={sub} />
-          <Stack.Screen name="PartyNew" component={PartyNewScreen as React.ComponentType} options={sub} />
+          <Stack.Screen name="PartyNew" component={PartyNewScreen as React.ComponentType} options={{ headerShown: false }} />
           <Stack.Screen name="Activity" component={ActivityScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="ActivityNew" component={ActivityNewScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="Club" component={ClubScreen as React.ComponentType} options={sub} />

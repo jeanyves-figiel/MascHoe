@@ -37,12 +37,12 @@ Tab bar (4): **Explore** S-10 · **Tonight** S-13 · **Chats** S-40 · **Me** S-
 
 ## Tonight & Now
 | S-13 | Tonight [v2 Tonight] | F-09 | city · day caption, 34 pt title, time window chips, featured party card (art, spots badge, Request), plan rows (avatar ring in mode colour, Message), white "Post a plan" FAB | drag slider; tap card → S-20 | empty → "Be the first tonight" + FAB |
-| S-13b | Post plan sheet | F-09 R-09.9 | window, text, tag, audience | post | limit reached → message |
+| S-13b | Post plan sheet | F-09 R-09.9 | live preview, What (5 icon choices), line, When (timeline scrubber), Who sees it (#189) | drag window, post | limit reached → message |
 | S-18 | Now sheet | F-09 | status options, text, TTL | set/end | — |
 
 ## Parties
 | S-14 | Party detail [Party] | F-10 | header, seats, rules, requests (host) / status (guest), Guest chat, Send address | accept/decline; request; leave | full / ended / cancelled |
-| S-15 | Create party sheet | F-10 R-10.1 | fields | create | account < 7 d → disabled with reason |
+| S-15 | Host a party | F-10 R-10.1 | header row, live card preview, title, Today/Tomorrow + timeline scrubber, guest stepper, rule tiles + own rules, audience, area note, sticky Create (#189) | create | Safe Mode → disabled with reason |
 
 ## Activities
 | S-16 | Sport feed [Activities] | F-11 | sport chips, posts, clubs carousel | join/leave; open club | no posts → "Start one" |

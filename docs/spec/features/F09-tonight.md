@@ -12,6 +12,7 @@
 - R-09.7 Featured: parties nearby with free spots appear as large cards at top (F-10), max 2.
 - R-09.8 Plan card: avatar, name, verified, distance bucket, text, window chip, tag chip; tap → profile; long-press → message.
 - R-09.9 Post plan (FAB "Post your plan"): window start/end, text optional 140 (empty → tag shown as the line), tag (hosting, can travel, drinks first, party, other), audience (verified default / my chats). Max 2 active plans. Verified only.
+  - Form (#189): live preview of the plan row (R-09.8) on top; **What** = 5 icon choices in one row (default: last type used); optional line; **When** = timeline scrubber from now to 06:00 (R-09.11), 15 min snap, window 30 min–12 h, default now → +4 h; "Now" means the moment of posting; **Who sees it** = Verified people / My chats. Post button repeats the window ("Post · Now – 01:45").
 - R-09.10 Mode applies: Hookup shows hookup plans; Sport shows activity posts (F-11) today; Friends shows friends plans.
 - R-09.11 Expiry 06:00 local or window_end + 1 h, whichever first.
 

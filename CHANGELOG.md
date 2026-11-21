@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+- **Post your plan and Host a party, redone** (app, #189, F-09 R-09.9, F-10 R-10.1, [mockup option A](https://claude.ai/artifact/Vra2UhUrQeLyytnkqGrHYD)): no more walls of time and number chips. Both forms use one **timeline scrubber** for start and end: drag an end, or slide the whole window; 15 min steps with a haptic tick. Plan types and audiences are one row of icons; house rules are 8 icon tiles plus up to 3 of your own typed inline; guests are a − / + stepper (hold to repeat, or drag the number). A live preview shows what others will see. Smart defaults: last plan type, now → +4 h; parties 22:00 for 4 h, 6 guests, Safer sex.
+
+### Fixed
+- **Host a party layout** (app, #189): the Host button no longer covers the custom-rule field, Who sees it is no longer hidden behind the nav bar, start times can no longer appear out of order (+24 h showed last as 11:00), and the screen title is back (own header row).
+
 ### Fixed
 - **Grid and lists load small photos** (server + app, SR-10 #150): the app now uploads a 480 px copy (~30–60 KB) next to each public photo; Explore, Tonight, parties, activities, chats lists and block/hide lists show it instead of the full photo (1–2 MB), about 95 % less data per grid page. The copy is checked by the photo classifier on its own and is only used if it passes; otherwise the full photo is shown. Deleted together with the photo.
 - **Explore scrolls faster, lighter on the database** (server, SR-09 #149): scrolling the grid used to re-run the full nearby search (up to 1 500 profiles) for every page; later pages now read only their own 60 profiles in the order of the first page (kept 2 min; blocks and hides still apply). Distances for Tonight, parties, activities and venues are computed in memory instead of one database query per item.
