@@ -9,6 +9,7 @@ import type { ProfileView } from '../api/types';
 import { fromB64, fromUtf8, hex, rand, toB64, utf8 } from './bytes';
 import { kv } from './kv';
 import * as Recent from './recent';
+import * as MediaCache from './mediaCache';
 import * as mls from './mls';
 import * as store from './store';
 import * as people from './people';
@@ -182,13 +183,15 @@ export async function start(account: Me) {
   registerPush().catch(() => {});
   pull();
   drain();
-  sweepTimer ??= setInterval(sweepExpired, 60_000);
+  // EN-18: no work while backgrounded; foreground runs a sweep anyway.
+  sweepTimer ??= setInterval(() => AppState.currentState === 'active' && sweepExpired(), 60_000);
   sweepExpired();
   // R-07.17: foreground (also after a push wake) pulls and drains the outbox.
   appSub ??= AppState.addEventListener('change', (s) => {
     if (s === 'active') {
       pull();
       drain();
+      sweepExpired();
     }
   });
 }
@@ -228,6 +231,7 @@ export async function wipe() {
   convs = {};
   // R-08.14: Sent recently files are outside the store; delete them before the index.
   await Recent.clear().catch(() => {});
+  await MediaCache.clear().catch(() => {}); // SR-05: cached chat media files
   await kv.wipe();
   store.reset();
   emit('convs');

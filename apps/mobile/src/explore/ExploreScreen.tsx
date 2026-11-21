@@ -1,8 +1,8 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { privateStore as AsyncStorage } from '../app/privateStore';
 import { cellToLatLng } from 'h3-js';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as Haptics from 'expo-haptics';
-import { FlatList, Platform, Pressable, RefreshControl, Text, View } from 'react-native';
+import { FlatList, Platform, Pressable, RefreshControl, Text, View, AppState } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, ApiError } from '../api/client';
 import type { Card, ExploreSummary, MapData, Mode, Place } from '../api/types';
@@ -137,7 +137,8 @@ export function ExploreScreen({ navigation }: { navigation: { navigate: (s: stri
     locateDevice()
       .catch(() => null)
       .then(sync);
-    const id = setInterval(sync, 5 * 60_000);
+    // EN-18: refresh only while the app is on screen (no background location/network).
+    const id = setInterval(() => AppState.currentState === 'active' && sync(), 5 * 60_000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me.location?.level]);

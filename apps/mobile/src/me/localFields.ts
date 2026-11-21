@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { privateStore as AsyncStorage } from '../app/privateStore';
 
 // R-06.6: values set to "My chats" / "Only me" never reach the server. They stay on this device
 // and are shared E2EE with chat partners (B2 chat attaches them to the profile card message).

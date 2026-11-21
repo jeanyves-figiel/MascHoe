@@ -128,13 +128,67 @@ defmodule ThirstrWeb.AuthTest do
       )
 
       assert conn |> recycle() |> post("/v1/auth/refresh", %{refresh: r1}) |> json_response(401)
-      # the whole device session is gone
+      # the whole device session is gone (device kept as revoked for a resume, SR-04)
       assert conn
              |> recycle()
              |> post("/v1/auth/refresh", %{refresh: s2["refresh_token"]})
              |> json_response(401)
 
       assert conn |> authed(s2["access_token"]) |> get("/v1/me") |> json_response(401)
+    end
+
+    test "SR-04: a revoked device is resumed by the same install after sign-in", %{conn: conn} do
+      sub = "sub-" <> Thirstr.Ids.random_token(6)
+      {_c, s} = sign_up(conn, sub)
+      assert is_binary(s["device_id"]) and is_binary(s["device_secret"])
+      dev = s["device_id"]
+      r1 = s["refresh_token"]
+      _ = conn |> recycle() |> post("/v1/auth/refresh", %{refresh: r1}) |> json_response(200)
+
+      Thirstr.Repo.update_all(Thirstr.Accounts.RefreshToken,
+        set: [used_at: DateTime.add(DateTime.utc_now(), -120)]
+      )
+
+      assert conn |> recycle() |> post("/v1/auth/refresh", %{refresh: r1}) |> json_response(401)
+      # revoked, not deleted: the row (and its chat queue) is still there
+      assert %{revoked_at: %DateTime{}} = Thirstr.Repo.get(Thirstr.Accounts.Device, dev)
+
+      login = fn secret ->
+        conn
+        |> recycle()
+        |> put_req_header("x-thirstr-device", dev)
+        |> put_req_header("x-thirstr-device-secret", secret)
+        |> post("/v1/auth/oidc", %{
+          provider: "apple",
+          id_token: Thirstr.Auth.OIDC.dev_mint(sub),
+          age_confirmed: true
+        })
+        |> json_response(200)
+      end
+
+      # wrong secret → a new device
+      other = login.("nope")
+      assert other["device_id"] != dev
+
+      # right secret → same device back, new secret, tokens work
+      back = login.(s["device_secret"])
+      assert back["device_id"] == dev
+      assert back["device_secret"] != s["device_secret"]
+      assert conn |> authed(back["access_token"]) |> get("/v1/me") |> json_response(200)
+      assert %{revoked_at: nil} = Thirstr.Repo.get(Thirstr.Accounts.Device, dev)
+    end
+
+    test "SR-04: revoked devices are purged after 7 days", %{conn: conn} do
+      {_c, s} = sign_up(conn)
+      :ok = Thirstr.Accounts.revoke_device(s["device_id"])
+      assert Thirstr.Accounts.purge_revoked_devices() == 0
+
+      Thirstr.Repo.update_all(Thirstr.Accounts.Device,
+        set: [revoked_at: DateTime.add(DateTime.utc_now(), -8 * 86_400)]
+      )
+
+      assert Thirstr.Accounts.purge_revoked_devices() == 1
+      refute Thirstr.Repo.get(Thirstr.Accounts.Device, s["device_id"])
     end
 
     test "#116: parallel refresh with the same token is a race, not theft", %{conn: conn} do
