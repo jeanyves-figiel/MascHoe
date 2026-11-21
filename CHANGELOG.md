@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+- **Post your plan and Host a party, redone** (app, #189, F-09 R-09.9, F-10 R-10.1, [mockup option A](https://claude.ai/artifact/Vra2UhUrQeLyytnkqGrHYD)): no more walls of time and number chips. Both forms use one **timeline scrubber** for start and end: drag an end, or slide the whole window; 15 min steps with a haptic tick. Plan types and audiences are one row of icons; house rules are 8 icon tiles plus up to 3 of your own typed inline; guests are a − / + stepper (hold to repeat, or drag the number). A live preview shows what others will see. Smart defaults: last plan type, now → +4 h; parties 22:00 for 4 h, 6 guests, Safer sex.
+
+### Fixed
+- **Host a party layout** (app, #189): the Host button no longer covers the custom-rule field, Who sees it is no longer hidden behind the nav bar, start times can no longer appear out of order (+24 h showed last as 11:00), and the screen title is back (own header row).
+
 ### Fixed
 - **Location mode switches in one tap, everywhere** (app, #190, S-60, S-30, R-05.4, [mockup](https://claude.ai/artifact/TC8czvMyPo13hWdQKQFsTM)): on Me, tapping **Exact** opened a second "Your location" sheet that listed all four modes again; picking a mode there only marked it until **Save**, so closing the sheet kept the old mode. Now there is no second sheet and no Save: Hidden / City / Area apply on tap, and Exact shows its own panel under the switch (like Hidden): pin time, who sees it, and one **Share my pin** button (the explicit confirm, was Save + Confirm). While the pin is live, changing time or audience updates it right away and **Stop pin** goes back to Area. Safe Mode still asks a second time. Explore's location button and Settings › Privacy open a short sheet with the same control plus "Hide me from guys who are hidden".
 
