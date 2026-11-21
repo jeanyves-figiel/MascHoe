@@ -18,6 +18,8 @@ import { BlockedScreen } from '../me/BlockedScreen';
 import { DevicesScreen } from '../me/DevicesScreen';
 import { EditProfileScreen } from '../me/EditProfileScreen';
 import { MeScreen } from '../me/MeScreen';
+import { backOf, hiddenExpired } from '../me/hidden';
+import { quickLevel } from '../explore/LocationSheet';
 import { LensPreviewScreen } from '../me/LensPreviewScreen';
 import { SettingsScreen } from '../me/SettingsScreen';
 import { AccountSettings, ChatSettings, DeleteAccount, NotificationSettings, PrivacySettings, SafetySettings } from '../me/settings/screens';
@@ -121,6 +123,28 @@ function VerifyRoute({ navigation }: { navigation: { goBack: () => void } }) {
 
 const nav = createNavigationContainerRef<Record<string, object | undefined>>();
 
+/** #114 R-05.7: when a timed Hidden ends, come back at the chosen level (needs a fresh cell from the phone). */
+function useHiddenReturn() {
+  const { me, setMe } = useSession();
+  React.useEffect(() => {
+    if (!me.hidden || !me.hidden_until) return;
+    let done = false;
+    const back = () => {
+      if (done || !hiddenExpired(me)) return;
+      done = true;
+      quickLevel(backOf(me)).then((m) => m && setMe(m), () => (done = false));
+    };
+    const ms = Math.max(0, new Date(me.hidden_until).getTime() - Date.now());
+    const t = setTimeout(back, Math.min(ms + 1000, 2_147_000_000));
+    const s = AppState.addEventListener('change', (st) => st === 'active' && back());
+    back();
+    return () => {
+      clearTimeout(t);
+      s.remove();
+    };
+  }, [me, setMe]);
+}
+
 /** F-13: open "All good?" once a check-in is due; keep the held alert's location fresh (5 min). */
 function useCheckinWatch() {
   React.useEffect(() => {
@@ -192,6 +216,7 @@ export function Main() {
     });
   }, []);
   useCheckinWatch();
+  useHiddenReturn();
   useShareLinks();
   return (
     <ModeContext.Provider value={mode}>

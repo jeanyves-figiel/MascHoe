@@ -5,7 +5,7 @@ Status: draft v0.1 · 2026-11-17 · Source of truth before any code. Product rat
 ## Conventions
 - Each feature spec: Purpose · Scope (beta / later) · User stories · Rules · States · Interactions · Edge cases · Data · API · Privacy · Acceptance criteria.
 - IDs: features `F-xx`, screens `S-xx`, rules `R-xx.n`, acceptance criteria `AC-xx.n`. Reference them in issues/PRs.
-- "Verified" = holds a valid verification credential (F-03). "Visible" = Location level ≠ Hidden and not incognito.
+- "Verified" = holds a valid verification credential (F-03). "Visible" = Location level ≠ Hidden (Incognito merged into Hidden, #114).
 - Times are device-local in UI, UTC on server. Distances metric by default.
 - MUST / SHOULD / MAY per RFC 2119.
 - Every change to a spec: ChangeLog entry + linked issue.

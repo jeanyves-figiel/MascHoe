@@ -7,7 +7,7 @@ Every F-01…F-18 / I-01…I-03 rule in beta scope ships before the closed beta 
 ## Milestones (PRs)
 | PR | Scope | Specs |
 |---|---|---|
-| B1 Explore | tab shell, Pop theme, profiles (all fields, 3 kinds, per-field visibility, preview-as, completeness), photos 5 slots + reorder, location levels (Hidden/City/Area/Exact pin/incognito/hide-from-hidden, k-anon, velocity), Explore map + grid + tray + filters, profile view, taps, block, hide, map tile proxy | F-04, F-05, F-06, F-17 (visibility subset), F-18 badges |
+| B1 Explore | tab shell, Pop theme, profiles (all fields, 3 kinds, per-field visibility, preview-as, completeness), photos 5 slots + reorder, location levels (Hidden (timed, #114)/City/Area/Exact pin/hide-from-hidden, k-anon, velocity), Explore map + grid + tray + filters, profile view, taps, block, hide, map tile proxy | F-04, F-05, F-06, F-17 (visibility subset), F-18 badges |
 | B2 Chat | MLS delivery service, key packages, realtime socket, inbox, 1:1 + group chat, disappearing, quick replies, read/typing, media + private albums (E2EE blobs), private notes, push (APNs/FCM, content-free), notification settings | F-07, F-08, F-16, F-06 R-06.6/R-06.9 |
 | B3 Social | Now status, Tonight board, parties (requests, seats, guest chat, address), Activities + clubs, venues + check-in + here-now | F-09, F-10, F-11, F-12 |
 | B4 Trust & safety | Verification (liveness + blind credential), reports + franking, shadow quarantine + signals, admin console, vouches, linked accounts, Safe Mode, check-in + trusted contacts + panic, app lock + duress, settings tree, GDPR export, device link | F-03, F-13, F-14, F-15, F-17, F-18, I-01, I-02, F-01 rest |

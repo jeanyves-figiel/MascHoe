@@ -22,8 +22,10 @@ Principle: store the minimum; anything audience-restricted is E2EE or coarse-fla
 | age_confirmed_at | timestamptz | R-01.12 checkbox |
 | onboarding_step | enum(basics, location, photo, verify, done) | F-02 resume |
 | paused_at | timestamptz null | R-01.9 |
-| incognito | bool | R-05.5 browse without appearing (verified only) |
+| incognito | bool | deprecated (#114, merged into Hidden); always false |
 | hidden | bool | location level Hidden (no location_cells rows) |
+| hidden_until | utc_datetime null | R-05.7 end of Hidden (null = until I switch) |
+| hidden_return | text null | R-05.7 level to come back as: city \| area |
 | safe_mode_active | bool | effective Safe Mode reported by the device (F-14) |
 
 ### passkeys

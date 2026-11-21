@@ -24,15 +24,16 @@ async function position() {
  * One-tap level change from Me (S-60, #102) for Hidden / City / Area. Returns null when it needs
  * the full sheet (no position for City/Area: city search or permission), else the updated Me.
  */
-export async function quickLevel(level: Exclude<Level, 'exact'>): Promise<Me | null> {
+export async function quickLevel(level: Exclude<Level, 'exact'>, hidden?: { until: string | null; return_level: 'city' | 'area' }): Promise<Me | null> {
   const p = await position();
   if (!p) return null;
+  if (level === 'hidden') return api<Me>('PUT', '/me/location', { level, cell_r9: areaCell(p.lat, p.lng), ...(hidden ?? {}) });
   if (level === 'city') return api<Me>('PUT', '/me/location', { level: 'city', cell_r5: cellToParent(latLngToCell(p.lat, p.lng, 9), 5) });
   return api<Me>('PUT', '/me/location', { level, cell_r9: areaCell(p.lat, p.lng) });
 }
 
 // S-30 Location sheet (F-05): 4 levels, Exact TTL + audience + confirm, Safe Mode second warning,
-// hide-from-hidden, incognito, "Others see" preview.
+// hide-from-hidden, "Others see" preview. Incognito merged into Hidden (#114).
 // `initial` preselects a level (Me's location segment opens the sheet on Exact, #102).
 export function LocationSheet({ visible, onClose, initial }: { visible: boolean; onClose: () => void; initial?: Level }) {
   const { me, setMe } = useSession();
@@ -107,7 +108,7 @@ export function LocationSheet({ visible, onClose, initial }: { visible: boolean;
   }
 
   const preview =
-    me.incognito || level === 'hidden'
+    level === 'hidden'
       ? tx.location.preview.hidden
       : level === 'city'
         ? tx.location.preview.city('…')
@@ -190,13 +191,6 @@ export function LocationSheet({ visible, onClose, initial }: { visible: boolean;
         sub={tx.location.hideFromHiddenSub}
         value={!!me.location?.hide_from_hidden}
         onChange={(v) => run(() => api<Me>('PATCH', '/me/visibility', { hide_from_hidden: v }))}
-      />
-      <Toggle
-        label={tx.location.incognito}
-        sub={me.verified ? tx.location.incognitoSub : tx.common.verifyToDo}
-        disabled={!me.verified}
-        value={!!me.incognito}
-        onChange={(v) => run(() => api<Me>('PATCH', '/me/visibility', { incognito: v }))}
       />
 
       {cities ? (

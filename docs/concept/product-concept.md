@@ -59,7 +59,7 @@ Cross-app pain points (user reviews):
 
 - **No ads. Ever.** No ad SDKs, no ad IDs, no data sales. Written into bylaws/ToS.
 - **Free tier must be complete**: a user never needs to pay to find, chat, meet safely.
-- **Safety features never paywalled** (incognito, hostile-country mode, disguised icon, blocking, verification).
+- **Safety features never paywalled** (Hidden, hostile-country mode, disguised icon, blocking, verification).
 - **Know nothing server-side**: minimize what exists to be leaked.
 - **User owns ranking**: transparent, chronological/distance; no hidden pay-to-win sorting.
 - **Fast**: grid < 300 ms p95, cold start < 1 s, app < 30 MB.
@@ -151,7 +151,7 @@ Guardrails (keeps §9.1 anti-bot intact):
 - Full field list, per-field visibility and settings tree: [profile-and-settings.md](profile-and-settings.md).
 - Sign-up (passkey-first, no phone number), onboarding flow, design system & audit: [onboarding-and-design.md](onboarding-and-design.md).
 - Visibility per field (public / matches / chosen).
-- Incognito: browse without appearing (free).
+- Hidden: browse without appearing, for a set time or until I switch (free; replaces Incognito, #114).
 - Pause profile vs. delete.
 - One-tap full export (GDPR Art. 20) + instant hard delete (no 30-day limbo beyond legal min).
 - No algorithmic feed by default; optional "suggestions" toggle, explainable.
@@ -185,11 +185,11 @@ Precision is the user's call. Four levels, switchable anytime (mockup: Location 
 What you see = what each nearby person chose, not your own setting. Your setting only controls how others see you.
 
 Viewing rules:
-- **Exact pins visible to any viewer the pin owner allows** (owner decision 2026-11-17), incl. Hidden/incognito viewers unless the owner turns on "Hide me from hidden users"; no give-to-get. Filters: pin owner's audience setting (verified only by default / my chats / everyone) + that toggle.
+- **Exact pins visible to any viewer the pin owner allows** (owner decision 2026-11-17), incl. Hidden viewers unless the owner turns on "Hide me from hidden users"; no give-to-get. Filters: pin owner's audience setting (verified only by default / my chats / everyone) + that toggle.
 - Grid sort: exact users by metres, then area users by cell distance, randomized within cell.
 - **k-anonymity**: a cell is only shown at res 9 (~200 m) if it holds ≥ k active users (e.g. k = 5); else merged up to res 8 (~500 m) or 7.
-- **Hide me from hidden users** (owner decision 2026-11-17): toggle; when on, viewers in Hidden mode or incognito don't see you in grid, map, exact pins, Tonight or venues. Off by default.
-- Hidden mode and incognito require verification (owner decision 2026-11-17): no anonymous lurking by unverified accounts.
+- **Hide me from hidden users** (owner decision 2026-11-17): toggle; when on, viewers in Hidden mode don't see you in grid, map, exact pins, Tonight or venues. Off by default.
+- Hidden mode requires verification (owner decision 2026-11-17): no anonymous lurking by unverified accounts.
 
 Exact opt-in rules:
 - Explicit action each time; one-screen warning ("anyone you allow sees your exact spot").
@@ -297,7 +297,7 @@ Economics:
 ## 11. Monetization (no ads, generous free)
 
 Free (forever):
-- Unlimited grid/map scroll, all filters, unlimited messages, private albums (limited count), video calls, incognito, Safe Mode, verification, read receipts, 1 active travel plan, events.
+- Unlimited grid/map scroll, all filters, unlimited messages, private albums (limited count), video calls, Hidden, Safe Mode, verification, read receipts, 1 active travel plan, events.
 
 **Plus** (target €4.99–6.99/mo, PPP regional pricing, lifetime option):
 - Multiple/scheduled travel plans; bigger album storage + longer media history; themes/icons; advanced chat organization; early features; supporter badge (optional).
@@ -322,7 +322,7 @@ In:
 - Hookup status: hosting / can travel / door open.
 - Anti-bot v1: device attestation, send-rate caps, first-message link block, shadow quarantine, bot report.
 - E2EE 1:1 chat, media, view-once, block/report (franking).
-- Incognito, Safe Mode basics (disguised icon, city-level, no previews).
+- Hidden, Safe Mode basics (disguised icon, city-level, no previews).
 - Right Now (expiring posts).
 - Push (content-free).
 - Export/delete.

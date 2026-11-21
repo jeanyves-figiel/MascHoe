@@ -23,7 +23,9 @@ export type Me = {
   onboarding_step: 'basics' | 'location' | 'photo' | 'verify' | 'done';
   safe_mode: 'auto' | 'on' | 'off' | string;
   safe_mode_active?: boolean;
-  incognito?: boolean;
+  /** #114 R-05.7: end of Hidden (null = until I switch) and the level to come back as. */
+  hidden_until?: string | null;
+  hidden_return?: 'city' | 'area' | null;
   hidden?: boolean;
   member_since?: string;
   has_email?: boolean;

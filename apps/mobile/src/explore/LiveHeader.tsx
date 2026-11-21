@@ -140,7 +140,7 @@ export function LiveHeader({
     });
   }, [mode, reduce, fades]);
 
-  const level = me.incognito ? "incognito" : (me.location?.level ?? "city");
+  const level = me.location?.level ?? "city";
   const place = summary ? (summary.place ?? h.somewhere) : " ";
   const around = summary ? countLabel(summary.counts[mode]) : "·";
   const nowN = summary ? countLabel(summary.now) : "·";

@@ -15,8 +15,10 @@ defmodule ThirstrWeb.MeJSON do
       onboarding_step: a.onboarding_step,
       safe_mode: a.safe_mode,
       safe_mode_active: a.safe_mode_active,
-      incognito: a.incognito,
       hidden: a.hidden,
+      # #114 R-05.7: when Hidden ends (nil = until I switch) and the level to come back as.
+      hidden_until: a.hidden && a.hidden_until,
+      hidden_return: a.hidden && a.hidden_return,
       member_since: a.inserted_at && Calendar.strftime(a.inserted_at, "%Y-%m"),
       # RF-7: whether a sign-in email is on file (the address itself is never stored).
       has_email: not is_nil(a.email_hash),
