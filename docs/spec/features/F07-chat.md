@@ -55,6 +55,7 @@ Goal: keep track of the people who matter without anyone else knowing. [Mockup](
   - Block, report-and-block, or the profile going away → friend state deleted locally, nothing sent.
 - R-07.37 **Tap vs favorite**: Tap (F-06) gets its own flame icon (coral when sent) on S-20 and in the inbox Taps row, so the star means favorite everywhere.
 - R-07.38 Privacy: favorites, notes and friends are in "Download my data" (device part), never in reports (R-07.11), never on the server. Deleting a chat keeps favorite and note (they belong to the person); it keeps friend state too.
+- R-07.39 **Search in a chat** (#121, [mockup](https://claude.ai/artifact/333MUDiSEuQkEYKCM3RmDA#artboard-Search)): chat ⋯ › "Search in chat". The header becomes a search field (2 pt `personal` border, autofocus) + Done; the composer becomes a bar with "N of M" (or "Type at least 2 letters" / "No matches"), a teal lock line "Searched on this phone only" and up (older) / down (newer) 44 pt buttons. Runs only on the device over the local store: text, quick replies (built-in ones in the app language), album names; case- and accent-insensitive, from 2 letters. Matches show the term marked in `personal` (ink text); non-matches dim to 35 %; the current match has a 2 pt `personal` ring and is scrolled to the middle; newest match first; Return goes to the next one. Translated bubbles match on the original text. No search for people by name anywhere in the app (stalking risk); people you know are found through Chats search (R-07.34).
 
 ## Edge cases
 - Recipient blocks sender mid-chat → sender sees "Message not delivered" without revealing block (generic).
@@ -80,3 +81,4 @@ Goal: keep track of the people who matter without anyone else knowing. [Mockup](
 - AC-07.16 A note "met at Bear night" with tag gym shows under Marco's chat header and on his inbox row; searching "gym" in Chats finds his chat.
 - AC-07.17 A sends a friend request, B accepts → both see each other in Friends with a "Friend" badge; server stores only ciphertext (no friend table, no new endpoint). B taps Not now → A's card goes back to "Add as friend" with no "declined" text.
 - AC-07.18 Remove friend on one side removes it on both within one delivery; block removes it on the blocker's side without sending anything.
+- AC-07.19 In a chat with three messages mentioning Langstrasse, searching "langstr" shows "1 of 3" on the newest, up moves to "2 of 3" and scrolls to it; a network capture shows no request carrying the term.

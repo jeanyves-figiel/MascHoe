@@ -95,6 +95,12 @@ export const Icon = {
       <Path d="M4 20h4L19 9l-4-4L4 16v4z" {...base(c, w)} />
     </Svg>
   ),
+  /** Up / down chevron by path (in-chat search R-07.39). */
+  Chevron: ({ size = 20, c = color.fgPrimary, w = 2.4, d = 'M6 9l6 6 6-6' }: P & { d?: string }) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d={d} {...base(c, w)} />
+    </Svg>
+  ),
   Search: ({ size = 18, c = color.fgMuted, w = 2.2 }: P) => (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Circle cx={11} cy={11} r={6.5} {...base(c, w)} />
