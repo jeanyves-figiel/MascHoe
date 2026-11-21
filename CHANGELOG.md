@@ -13,6 +13,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 - **Classifier deploy builds** (infra, #26): its Dockerfile now copies from the repository root, the build context `flyctl deploy` uses.
+- **Classifier reachable on Fly** (infra + server, #26): the service now listens dual-stack (it crashed binding `::` as IPv4), and the API resolves its private `.flycast` name over IPv6.
 - **Safety check-in stuck after reinstall or wipe** (server + app, #127, F-13 R-13.21): when the phone lost its copy of a running check-in, the app showed none, a new one was refused ("A check-in is already running") and the held alert still fired to your trusted contacts at due + 15 min: a false alarm. Me › Safety now shows "A check-in is still running … Tap to end it", and starting one (sheet or meetup card) opens the "Check-in still running" screen instead of an error. **I'm OK** there (same PIN / Face ID / duress PIN rules) ends it on the server by account (`DELETE /v1/checkin`), deletes the held alert and tells the contacts this phone still knows. If ending fails you see an error, never "All good".
 
 ### Changed

@@ -10,6 +10,7 @@ GET  /health                -> {"ok": true}
 import json
 import logging
 import os
+import socket
 import time
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -81,5 +82,22 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "8080"))
     log.info("classifier ready on :%d", port)
-    # Fly private network is IPv6; BIND_HOST=0.0.0.0 for IPv4-only hosts.
-    ThreadingHTTPServer((os.environ.get("BIND_HOST", "::"), port), Handler).serve_forever()
+    # Dual-stack "::" (Fly proxy + private IPv6); BIND_HOST=0.0.0.0 for IPv4-only hosts.
+    host = os.environ.get("BIND_HOST", "::")
+
+    class Server(ThreadingHTTPServer):
+        address_family = socket.AF_INET6 if ":" in host else socket.AF_INET
+
+        def server_bind(self):
+            if self.address_family == socket.AF_INET6:
+                self.socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+            super().server_bind()
+
+    try:
+        server = Server((host, port), Handler)
+    except OSError:  # no IPv6 on this host
+        Server.address_family = socket.AF_INET
+        host = "0.0.0.0"
+        server = Server((host, port), Handler)
+    log.info("listening on [%s]:%d", host, port)
+    server.serve_forever()

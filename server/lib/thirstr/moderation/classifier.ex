@@ -104,7 +104,9 @@ defmodule Thirstr.Moderation.NudeNetClassifier do
         json: %{url: Thirstr.Storage.internal_presigned_get(key)},
         headers: headers,
         receive_timeout: 20_000,
-        retry: :transient
+        retry: :transient,
+        # .flycast / .internal names resolve to IPv6 only (Fly private network).
+        inet6: true
       ] ++ Application.get_env(:thirstr, :classifier_req_options, [])
 
     case Req.post(url <> "/detect", opts) do
