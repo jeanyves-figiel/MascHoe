@@ -146,3 +146,15 @@ describe('#222 tray sheets keep the keyboard', () => {
     holdTray(false);
   });
 });
+
+describe('#138 video labels', () => {
+  it('counts photos and videos, formats length', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { mxEn, mmss } = require('../src/i18n/media') as typeof import('../src/i18n/media');
+    expect(mxEn.countsPV(3, 1)).toBe('3 photos · 1 video');
+    expect(mxEn.countsPV(0, 2)).toBe('2 videos');
+    expect(mxEn.countsPV(1, 0)).toBe('1 photo');
+    expect(mmss(75)).toBe('1:15');
+    expect(mmss(9)).toBe('0:09');
+  });
+});

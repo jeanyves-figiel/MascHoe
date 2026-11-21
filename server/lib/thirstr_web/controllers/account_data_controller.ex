@@ -1,7 +1,7 @@
 defmodule ThirstrWeb.AccountDataController do
   @moduledoc "B4d: data export (R-01.11), linked devices (R-01.6), linked accounts (I-01), share links (I-02)."
   use ThirstrWeb, :controller
-  alias Thirstr.{DeviceLink, Export, Linked, Social}
+  alias Thirstr.{DeviceAttest, DeviceLink, Export, Linked, Social}
 
   action_fallback ThirstrWeb.FallbackController
 
@@ -25,6 +25,18 @@ defmodule ThirstrWeb.AccountDataController do
   def link_start(conn, _), do: DeviceLink.start(me(conn)) |> done(conn)
   def link_status(conn, %{"code" => c}), do: DeviceLink.status(me(conn), c) |> done(conn)
   def link_confirm(conn, %{"code" => c}), do: DeviceLink.confirm(me(conn), c) |> done(conn)
+
+  # #25 device attestation
+  defp dev(conn), do: conn.assigns.device_id
+  def attest_status(conn, _), do: json(conn, DeviceAttest.status(dev(conn)))
+
+  def attest_challenge(conn, _) do
+    with {:ok, _} <- Social.limit(me(conn), "attest", 20, 3600),
+         do: DeviceAttest.challenge(dev(conn)) |> done(conn)
+  end
+
+  def attest(conn, p), do: DeviceAttest.attest(dev(conn), p) |> done(conn)
+  def assert(conn, p), do: DeviceAttest.assert(dev(conn), p) |> done(conn)
 
   def link_claim(conn, p) do
     case DeviceLink.claim(p) do

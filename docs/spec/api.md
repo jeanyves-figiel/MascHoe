@@ -1,6 +1,6 @@
 # API & realtime contract
 
-Base: `https://api.thirstr.fun/v1` (staging: `https://staging.thirstr.fun/v1`; DEV: `https://localhost:7443/v1`). JSON. Auth: short-lived access token (15 min) + refresh (30 d, device-bound) issued after passkey/OIDC/magic-link. Every request signed with device key + attestation token (iOS App Attest / Play Integrity) refreshed daily.
+Base: `https://api.thirstr.fun/v1` (staging: `https://staging.thirstr.fun/v1`; DEV: `https://localhost:7443/v1`). JSON. Auth: short-lived access token (15 min) + refresh (30 d, device-bound) issued after passkey/OIDC/magic-link. Devices attest once and re-assert daily (iOS App Attest; Android Play Integrity with the Android build), see security.md › Device attestation; beta does not block unattested clients.
 
 Errors: `{ "error": { "code": "rate_limited", "message": "...", "retry_after": 30 } }`. Codes: `unauthorized`, `forbidden`, `not_verified`, `rate_limited`, `not_found`, `conflict`, `validation`, `safe_mode_blocked`, `quarantined` (never returned to the quarantined client; it gets fake success).
 
@@ -34,6 +34,10 @@ Errors: `{ "error": { "code": "rate_limited", "message": "...", "retry_after": 3
 | POST | /devices/link | → {code, expires_in: 120} |
 | GET | /devices/link/{code} | → {state: pending\|claimed\|confirmed, platform?} |
 | POST | /devices/link/{code}/confirm | → 204 (after app lock / Face ID on the old device) |
+| GET | /devices/attest | → {attested, has_key, attested_at} for the calling device (#25) |
+| POST | /devices/attest/challenge | → {challenge (base64url, 43 chars), expires_in: 300}; single use, bound to the device; 20/h |
+| POST | /devices/attest | {key_id, attestation (base64), challenge} → {attested: true}; iOS App Attest, once per install. 422 `attestation_invalid` / `challenge` |
+| POST | /devices/assert | {assertion (base64), challenge} → {attested: true}; at most daily. 409 `not_attested`, 422 `assertion_invalid` / `challenge` |
 | POST | /auth/device-link | no auth, 10/min/IP. {code, platform} → {claim}; {code, claim} → 202 {state} until confirmed, then Session |
 
 Sign-up calls (passkey register, OIDC, email verify) carry `age_confirmed: true` (R-01.12) and `platform`. Every request carries `x-thirstr-install` (random per install, hashed server-side) used only for the R-02.3 under-age flag. Session response: `{access_token, refresh_token, expires_in, account: Me}`.

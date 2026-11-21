@@ -8,6 +8,7 @@ import { fromB64, hex, rand } from './bytes';
 import * as E from './engine';
 import { kv } from './kv';
 import { readBytes, uploadEncrypted } from './media';
+import * as Video from './video';
 
 export type Share = { cid: string; until?: number };
 export type Album = { id: string; name: string; items: E.AlbumItem[]; shares: Share[] };
@@ -46,17 +47,41 @@ async function regrant(a: Album) {
   }
 }
 
-/** Adds photos/videos from the library (no limits in private albums). */
-export async function addItems(id: string) {
-  const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.85, exif: false, allowsMultipleSelection: true, selectionLimit: 20 });
+/**
+ * Adds photos and videos from the library (no count limit in private albums). Videos (#138): exported
+ * at 1080p by the system, metadata removed on the phone, ≤ 50 MB / 3 min each (R-08.17).
+ * Returns why a video was skipped, if one was; the other items are still added.
+ */
+export async function addItems(id: string): Promise<Video.VideoError['kind'] | undefined> {
+  const r = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ['images', 'videos'],
+    quality: 0.85,
+    exif: false,
+    allowsMultipleSelection: true,
+    selectionLimit: 20,
+    videoMaxDuration: Video.MAX_S,
+    videoExportPreset: ImagePicker.VideoExportPreset.HEVC_1920x1080,
+  });
   if (r.canceled) return;
   const added: E.AlbumItem[] = [];
+  let skipped: Video.VideoError['kind'] | undefined;
   for (const asset of r.assets) {
+    if (asset.type === 'video') {
+      try {
+        const v = Video.prepare(await readBytes(asset.uri), asset.duration ? asset.duration / 1000 : undefined);
+        added.push({ ...(await uploadEncrypted(v.bytes, { album: true })), mime: v.mime, dur: v.dur, w: asset.width, h: asset.height });
+      } catch (e) {
+        if (e instanceof Video.VideoError) skipped = e.kind;
+        else throw e;
+      }
+      continue;
+    }
     const ref = await uploadEncrypted(await readBytes(asset.uri), { album: true });
     added.push({ ...ref, mime: asset.mimeType ?? 'image/jpeg' });
   }
   const a = await update(id, (x) => ({ ...x, items: [...x.items, ...added] }));
   if (a) await regrant(a);
+  return skipped;
 }
 
 export async function removeItem(id: string, blob: string) {
@@ -76,7 +101,7 @@ async function rotate(a: Album): Promise<Album> {
   for (const it of a.items) {
     const { url } = await api<{ url: string }>('GET', `/media/${it.blob}`);
     const plain = gcm(fromB64(it.key), fromB64(it.iv)).decrypt(new Uint8Array(await (await fetch(url)).arrayBuffer()));
-    items.push({ ...(await uploadEncrypted(plain, { album: true })), mime: it.mime });
+    items.push({ ...it, ...(await uploadEncrypted(plain, { album: true })) });
     await api('DELETE', `/media/${it.blob}`).catch(() => {});
   }
   return { ...a, items };
