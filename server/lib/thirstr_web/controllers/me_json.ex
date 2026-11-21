@@ -31,8 +31,15 @@ defmodule ThirstrWeb.MeJSON do
     }
   end
 
-  def session(%{access_token: at, refresh_token: rt, expires_in: exp, account: a}),
-    do: %{access_token: at, refresh_token: rt, expires_in: exp, account: me(a)}
+  # SR-04: device_id + device_secret only on sign-in (the install keeps them to resume later).
+  def session(%{access_token: at, refresh_token: rt, expires_in: exp, account: a} = s) do
+    %{access_token: at, refresh_token: rt, expires_in: exp, account: me(a)}
+    |> then(fn m ->
+      if s[:device_secret],
+        do: Map.merge(m, %{device_id: s.device_id, device_secret: s.device_secret}),
+        else: m
+    end)
+  end
 
   def photo(ph) do
     %{

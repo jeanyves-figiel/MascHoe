@@ -42,14 +42,17 @@ defmodule Thirstr.Push do
     end
   end
 
-  @doc "Called by Notify for every event; throttled to one wake per account per 20 s (R-16.5)."
+  @doc """
+  Called by Notify for every event; throttled to one wake per account per 20 s (R-16.5).
+  If Valkey is unreachable the job is still queued; Oban's uniqueness keeps the throttle (SR-11).
+  """
   def maybe_wake(account_id, event) do
     case Map.get(@types, event) do
       nil ->
         :ok
 
       _ ->
-        if Valkey.command!(["SET", "pushq:" <> account_id, "1", "NX", "EX", "20"]) == "OK" do
+        if throttle_free?(account_id) do
           %{account_id: account_id, event: event}
           |> Thirstr.Jobs.PushWake.new()
           |> Oban.insert()
@@ -59,21 +62,39 @@ defmodule Thirstr.Push do
     end
   end
 
-  @doc "Sends the wake to every device of the account with a token, unless toggled off."
+  defp throttle_free?(account_id) do
+    case Valkey.safe(["SET", "pushq:" <> account_id, "1", "NX", "EX", "20"]) do
+      {:ok, "OK"} -> true
+      {:ok, _} -> false
+      {:error, _} -> true
+    end
+  end
+
+  @doc """
+  Sends the wake to every device of the account with a token, unless toggled off.
+  Returns `{:error, :retry}` when a send failed in a way a retry can fix (APNs/FCM 429, 5xx,
+  network), so the Oban job retries with backoff (SR-02). Unknown platforms are skipped.
+  """
   def deliver(account_id, event) do
     with %Account{} = a <- Repo.get(Account, account_id),
          true <- wanted?(a, event) do
       safe = Account.safe_mode_on?(a)
 
       Repo.query!(
-        "SELECT push_token, push_platform FROM devices WHERE account_id = $1 AND push_token IS NOT NULL",
+        "SELECT push_token, push_platform FROM devices WHERE account_id = $1 AND push_token IS NOT NULL AND revoked_at IS NULL",
         [Ecto.UUID.dump!(account_id)]
       ).rows
-      |> Enum.each(fn [token, "ios"] -> send_apns(token, payload(safe)) end)
+      |> Enum.map(fn [token, platform] -> send_one(platform, token, safe) end)
+      |> Enum.any?(&(&1 == :retry))
+      |> if(do: {:error, :retry}, else: :ok)
+    else
+      _ -> :ok
     end
-
-    :ok
   end
+
+  defp send_one("ios", token, safe), do: send_apns(token, payload(safe))
+  defp send_one("android", token, safe), do: send_fcm(token, fcm_message(token, safe))
+  defp send_one(_, _, _), do: :skipped
 
   defp wanted?(a, event) do
     {toggle, urgent} = Map.fetch!(@types, event)
@@ -109,7 +130,7 @@ defmodule Thirstr.Push do
 
     cond do
       cfg[:mock_url] ->
-        Req.post(cfg[:mock_url], json: payload, retry: false)
+        Req.post(cfg[:mock_url], [json: payload, retry: false] ++ req_opts()) |> outcome()
 
       cfg[:key_p8] && cfg[:key_id] && cfg[:team_id] ->
         Req.post("#{cfg[:host]}/3/device/#{token}",
@@ -122,6 +143,7 @@ defmodule Thirstr.Push do
             {"apns-collapse-id", "thirstr"}
           ],
           connect_options: [protocols: [:http2]],
+          receive_timeout: 10_000,
           retry: false
         )
         |> handle_apns(token)
@@ -131,12 +153,127 @@ defmodule Thirstr.Push do
     end
   end
 
-  # 410 Unregistered / 400 BadDeviceToken → forget the token.
+  # 410 Unregistered / 400 BadDeviceToken → forget the token. 403 = provider token rejected:
+  # mint a new one on the retry.
   defp handle_apns({:ok, %{status: s}}, token) when s in [400, 410] do
     Repo.query!("UPDATE devices SET push_token = NULL WHERE push_token = $1", [token])
+    :ok
   end
 
-  defp handle_apns(res, _), do: res
+  defp handle_apns({:ok, %{status: 403}}, _token) do
+    :persistent_term.erase({__MODULE__, :jwt})
+    :retry
+  end
+
+  defp handle_apns(res, _), do: outcome(res)
+
+  # Tests route requests through Req.Test (config :thirstr, :push_req).
+  defp req_opts, do: Application.get_env(:thirstr, :push_req, [])
+
+  @doc false
+  def outcome({:ok, %{status: s}}) when s in 200..299, do: :ok
+  def outcome({:ok, %{status: s}}) when s == 429 or s >= 500, do: :retry
+  def outcome({:ok, _}), do: :ok
+  def outcome({:error, _}), do: :retry
+
+  # ---------------------------------------------------------------- FCM (Android, HTTP v1)
+
+  @doc "FCM message: same content-free wording as APNs (AC-16.1); `t` is an opaque token."
+  def fcm_message(token, safe_mode?) do
+    {title, body} =
+      if safe_mode?, do: {"Reminder", "You have a reminder"}, else: {"Thirstr", "New activity"}
+
+    %{
+      "message" => %{
+        "token" => token,
+        "notification" => %{"title" => title, "body" => body},
+        "android" => %{"priority" => "high", "collapse_key" => "thirstr"},
+        "data" => %{"t" => Base.url_encode64(:crypto.strong_rand_bytes(12), padding: false)}
+      }
+    }
+  end
+
+  defp send_fcm(token, msg) do
+    cfg = Application.get_env(:thirstr, :fcm, [])
+
+    cond do
+      cfg[:mock_url] ->
+        Req.post(cfg[:mock_url], [json: msg, retry: false] ++ req_opts()) |> outcome()
+
+      sa = cfg[:service_account] && Jason.decode!(cfg[:service_account]) ->
+        case fcm_token(sa) do
+          {:ok, bearer} ->
+            Req.post(
+              "https://fcm.googleapis.com/v1/projects/#{sa["project_id"]}/messages:send",
+              json: msg,
+              headers: [{"authorization", "Bearer " <> bearer}],
+              receive_timeout: 10_000,
+              retry: false
+            )
+            |> handle_fcm(token)
+
+          _ ->
+            :retry
+        end
+
+      true ->
+        :skipped
+    end
+  end
+
+  # 404 UNREGISTERED / 400 INVALID_ARGUMENT on the token → forget it.
+  defp handle_fcm({:ok, %{status: 404}}, token), do: forget(token)
+
+  defp handle_fcm({:ok, %{status: 400, body: %{"error" => %{"details" => d}}}} = res, token) do
+    if Enum.any?(List.wrap(d), &(&1["errorCode"] in ["UNREGISTERED", "INVALID_ARGUMENT"])),
+      do: forget(token),
+      else: outcome(res)
+  end
+
+  defp handle_fcm(res, _), do: outcome(res)
+
+  defp forget(token) do
+    Repo.query!("UPDATE devices SET push_token = NULL WHERE push_token = $1", [token])
+    :ok
+  end
+
+  # OAuth2 access token from the service account (JWT bearer grant), cached 50 min.
+  defp fcm_token(sa) do
+    now = System.system_time(:second)
+
+    case :persistent_term.get({__MODULE__, :fcm}, nil) do
+      {tok, at} when now - at < 3000 ->
+        {:ok, tok}
+
+      _ ->
+        jwk = JOSE.JWK.from_pem(sa["private_key"])
+
+        {_, assertion} =
+          JOSE.JWT.sign(jwk, %{"alg" => "RS256"}, %{
+            "iss" => sa["client_email"],
+            "scope" => "https://www.googleapis.com/auth/firebase.messaging",
+            "aud" => "https://oauth2.googleapis.com/token",
+            "iat" => now,
+            "exp" => now + 3600
+          })
+          |> JOSE.JWS.compact()
+
+        case Req.post("https://oauth2.googleapis.com/token",
+               form: [
+                 grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+                 assertion: assertion
+               ],
+               retry: false
+             ) do
+          {:ok, %{status: 200, body: %{"access_token" => tok}}} ->
+            :persistent_term.put({__MODULE__, :fcm}, {tok, now})
+            {:ok, tok}
+
+          _ ->
+            :error
+        end
+    end
+  end
 
   # Provider token, reused for 40 min (Apple: refresh between 20 and 60 min).
   defp jwt(cfg) do

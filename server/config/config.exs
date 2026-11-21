@@ -14,7 +14,9 @@ config :thirstr, Thirstr.Mailer, adapter: Swoosh.Adapters.Local
 
 config :thirstr, Oban,
   repo: Thirstr.Repo,
-  queues: [default: 10, maintenance: 2, push: 5],
+  queues: [default: 10, maintenance: 2, push: 10],
+  # SR-03: let running jobs finish on SIGTERM (Fly kill_timeout is 30 s).
+  shutdown_grace_period: :timer.seconds(25),
   plugins: [
     {Oban.Plugins.Pruner, max_age: 3600},
     # Jobs left "executing" by a restart (e.g. a deploy during the Places import) go back to the queue.

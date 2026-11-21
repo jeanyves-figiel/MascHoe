@@ -37,6 +37,11 @@ config :thirstr,
     host: env.("APNS_HOST", "https://api.push.apple.com"),
     mock_url: System.get_env("PUSH_MOCK_URL")
   ],
+  # F-16 Android (FCM HTTP v1, SR-02): service-account JSON as a secret; unset = Android skipped.
+  fcm: [
+    service_account: System.get_env("FCM_SERVICE_ACCOUNT_JSON"),
+    mock_url: System.get_env("FCM_MOCK_URL")
+  ],
   # AASA webcredentials (I-03): "<TeamID>.<bundle id>" once APPLE_TEAM_ID is set.
   apple_app_ids:
     (case System.get_env("APPLE_TEAM_ID") do

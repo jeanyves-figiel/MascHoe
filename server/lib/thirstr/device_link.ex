@@ -17,7 +17,7 @@ defmodule Thirstr.DeviceLink do
     rows =
       Repo.all(
         from(d in Device,
-          where: d.account_id == ^a.id,
+          where: d.account_id == ^a.id and is_nil(d.revoked_at),
           order_by: d.inserted_at,
           select: {d.id, d.platform, d.last_seen_day}
         )
