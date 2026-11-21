@@ -6,6 +6,12 @@ Errors: `{ "error": { "code": "rate_limited", "message": "...", "retry_after": 3
 
 ## REST
 
+### App config, flags, minimum build (EN-13 #172, EN-14 #173)
+- `GET /v1/config` (no account) → `{min_build: {ios, android}, upgrade_required, store_url: {ios, android}, flags: {name: bool}}`. Cached 60 s by the client, kept on the phone for offline use; fetched at start and on every foreground.
+- Every request may send `x-thirstr-platform` and `x-thirstr-build` (native build number). A native build below `min_build` gets **426** `upgrade_required` on every endpoint except `/v1/config` and `/v1/health`; the app then shows the forced-update screen (chats stay on the phone). Requests without a build number (older builds, web) pass.
+- `POST /v1/client/errors` (no account, EN-05) `{platform: ios|android|web, build?, fatal?, message, stack?}` → 204; 422 if platform or message missing. Scrubbed, grouped by signature, kept 30 days after last seen. `POST /v1/client/sessions` `{platform}` → 204 (anonymous start ping, crash-free rate). Both limited to 120 per IP per hour.
+- Flags: unknown name = off; known name without a row = on (code defaults); a row with `enabled = false` is a kill switch. Rules: `platforms`, `min_build` per platform, `percent` (stable per install). No country targeting yet. Ops: `docs/runbooks/flags.md`.
+
 ### Auth (F-01)
 | Method | Path | Body → Response |
 |---|---|---|

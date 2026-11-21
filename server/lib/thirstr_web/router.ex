@@ -3,6 +3,7 @@ defmodule ThirstrWeb.Router do
 
   pipeline :api do
     plug :accepts, ["json"]
+    plug ThirstrWeb.Plugs.ClientVersion
   end
 
   pipeline :maybe_auth do
@@ -15,6 +16,10 @@ defmodule ThirstrWeb.Router do
 
   pipeline :auth_limit do
     plug ThirstrWeb.Plugs.RateLimit, bucket: "auth", limit: 60, window: 3600
+  end
+
+  pipeline :client_report_limit do
+    plug ThirstrWeb.Plugs.RateLimit, bucket: "crep", limit: 120, window: 3600
   end
 
   pipeline :relay_limit do
@@ -118,6 +123,7 @@ defmodule ThirstrWeb.Router do
     pipe_through :api
 
     get "/health", PublicController, :health
+    get "/config", PublicController, :config
     get "/welcome", PublicController, :welcome
     get "/cities", PublicController, :cities
     get "/safe-mode/countries", PublicController, :safe_mode_countries
@@ -136,6 +142,13 @@ defmodule ThirstrWeb.Router do
       post "/oidc", AuthController, :oidc
       post "/email/verify", AuthController, :email_verify
       post "/refresh", AuthController, :refresh
+    end
+
+    # EN-05 (#164): crash reports + session pings, per-IP limited, no account
+    scope "/client" do
+      pipe_through [:client_report_limit]
+      post "/errors", ClientController, :error
+      post "/sessions", ClientController, :session
     end
 
     scope "/auth" do
