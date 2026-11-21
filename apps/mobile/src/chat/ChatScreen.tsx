@@ -627,7 +627,7 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
         </View>
       ) : null}
 
-      <FlatList
+      <FlatList showsVerticalScrollIndicator={false}
         ref={listRef}
         inverted
         // #134: dragging the messages closes the keyboard.

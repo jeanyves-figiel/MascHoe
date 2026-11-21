@@ -332,7 +332,7 @@ function MenuRow({ icon, label, onPress, danger }: { icon: React.ReactNode; labe
 // R-21.17 (D-21b C): names, unless the viewer watches quietly; a quiet poster sees counts only.
 function SeenBy({ m, quietMe }: { m: MyMoment; quietMe: boolean }) {
   return (
-    <ScrollView style={{ maxHeight: 420 }} contentContainerStyle={{ gap: space.m, paddingBottom: space.l }}>
+    <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }} contentContainerStyle={{ gap: space.m, paddingBottom: space.l }}>
       <View style={{ flexDirection: 'row', gap: space.s }}>
         {[
           [String(m.seen_count), mx.seenBy(m.seen_count).replace(/\s*\d+$/, '')],

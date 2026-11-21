@@ -95,7 +95,7 @@ export function PartyNewScreen({ navigation }: { navigation: Nav }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: color.bgBase }}>
-      <ScrollView
+      <ScrollView showsVerticalScrollIndicator={false}
         keyboardDismissMode="on-drag"
         automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"

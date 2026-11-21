@@ -49,7 +49,7 @@ export function AppLockScreen() {
   if (cfg === undefined) return <Loading />;
   const L = tx.safety.lock;
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: color.bgBase }} contentContainerStyle={{ padding: space.l, gap: space.l, paddingBottom: 120 }}>
+    <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1, backgroundColor: color.bgBase }} contentContainerStyle={{ padding: space.l, gap: space.l, paddingBottom: 120 }}>
       <Text style={{ ...type.display, color: color.fgPrimary }}>{L.title}</Text>
       <Toggle
         label={L.on}

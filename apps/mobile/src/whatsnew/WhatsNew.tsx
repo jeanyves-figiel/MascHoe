@@ -268,7 +268,7 @@ const fmtDate = (iso: string) => {
 export function WhatsNewScreen({ navigation }: { navigation: { navigate: (r: string, p?: object) => void } }) {
   const notes = NOTES.slice(0, 10);
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: color.bgBase }} contentContainerStyle={{ padding: space.l, paddingTop: space.s, gap: space.xl, paddingBottom: 120, maxWidth: 560, width: '100%', alignSelf: 'center' }}>
+    <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1, backgroundColor: color.bgBase }} contentContainerStyle={{ padding: space.l, paddingTop: space.s, gap: space.xl, paddingBottom: 120, maxWidth: 560, width: '100%', alignSelf: 'center' }}>
       <Text accessibilityRole="header" style={{ ...type.display, fontSize: 34, lineHeight: 40, color: color.fgPrimary }}>
         {wn.title}
       </Text>

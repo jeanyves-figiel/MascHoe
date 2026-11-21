@@ -141,7 +141,7 @@ export function MeScreen({ navigation }: { navigation: Nav }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: color.bgBase }}>
-      <ScrollView contentContainerStyle={{ padding: space.l, paddingTop: insets.top + space.s, gap: space.xl, paddingBottom: 140, maxWidth: 560, width: '100%', alignSelf: 'center' }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: space.l, paddingTop: insets.top + space.s, gap: space.xl, paddingBottom: 140, maxWidth: 560, width: '100%', alignSelf: 'center' }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <Text accessibilityRole="header" style={{ ...type.display, fontSize: 34, lineHeight: 40, color: color.fgPrimary }}>
             {tx.me.title}
