@@ -56,6 +56,7 @@ import { AddPlaceScreen } from '../scene/AddPlaceScreen';
 import { color, modeColor, radius, space, type } from '../theme/tokens';
 import { BackButton, Icon, ModeContext, useBottomPanel, useKeyboardShown } from '../ui';
 import { useSession } from './session';
+import { WhatsNewCard, WhatsNewScreen } from '../whatsnew/WhatsNew';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -410,9 +411,16 @@ export function Main() {
           <Stack.Screen name="CheckinDue" component={CheckinDueScreen as React.ComponentType} options={sub} />
           <Stack.Screen name="AppLock" component={AppLockScreen} options={sub} />
           <Stack.Screen name="Devices" component={DevicesScreen} options={sub} />
+          <Stack.Screen name="WhatsNew" component={WhatsNewScreen as React.ComponentType} options={sub} />
         </Stack.Navigator>
         {!kb && !panel && !(top && NO_BAR.has(top.name)) ? <PillBar active={active} onPick={pick} /> : null}
         <PushPrompt />
+        {/* F-17 R-17.15 (#238): small card under the Explore header, once per release note, only over a quiet Explore. */}
+        <WhatsNewCard
+          ready={!kb && !panel && top?.name === 'Tabs' && active === 'Explore'}
+          onOpen={(to) => nav.isReady() && (nav.navigate as (r: string, p?: object) => void)(to.route, to.params)}
+          onHistory={() => nav.isReady() && nav.navigate('WhatsNew')}
+        />
         <ToastHost />
         <SafeModeAuto navigate={(r) => nav.isReady() && nav.navigate(r)} />
       </NavigationContainer>

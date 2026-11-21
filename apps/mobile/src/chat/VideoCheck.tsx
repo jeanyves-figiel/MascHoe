@@ -12,6 +12,9 @@ import { moveText, vcx } from '../i18n/vcheck';
 import { color, font, radius, space, type } from '../theme/tokens';
 import { Icon, Sheet, Toggle } from '../ui';
 import { native, SecureVideo } from '../../modules/thirstr-secure-video';
+import { faceMatchAvailable, matchClip } from '../../modules/thirstr-face';
+import type { ProfileView } from '../api/types';
+import { photoTargets, verdict, type Verdict } from '../trust/faceMatch';
 import { fromB64 } from './bytes';
 import * as E from './engine';
 import { readBytes, uploadEncrypted } from './media';
@@ -412,6 +415,9 @@ export function VcViewer({ conv, v, onClose, onReport }: { conv: E.Conv; v: V.Vc
   const [captured, setCaptured] = useState(false);
   const [prog, setProg] = useState(0);
   const [answered, setAnswered] = useState<null | boolean>(null);
+  // R-18.15 (#185): on-device face match, runs while he watches; 'pending' until done, null = show nothing.
+  const [face, setFace] = useState<Verdict | 'pending'>(null);
+  const matching = useRef<Promise<unknown> | null>(null);
   const file = useRef<string | null>(null);
   const viewer = me?.profiles?.find((x) => x.id === conv.me)?.display_name ?? '';
   const [stamp] = useState(() => new Date().toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }));
@@ -421,6 +427,9 @@ export function VcViewer({ conv, v, onClose, onReport }: { conv: E.Conv; v: V.Vc
     file.current = null;
     setUri(null);
     if (!u) return;
+    // The match reads frames from the clip file: let it finish (max 4 s) before the file goes.
+    const m = matching.current;
+    if (m) await Promise.race([m.catch(() => {}), new Promise((r) => setTimeout(r, 4000))]);
     try {
       const { File } = await import('expo-file-system');
       const f = new File(u);
@@ -458,6 +467,14 @@ export function VcViewer({ conv, v, onClose, onReport }: { conv: E.Conv; v: V.Vc
         file.current = f.uri;
         setUri(f.uri);
         setPhase('ready');
+        if (faceMatchAvailable) {
+          setFace('pending');
+          const run = api<ProfileView>('GET', `/profiles/${conv.peer}`)
+            .then((p) => matchClip(f.uri, photoTargets(p.photos)))
+            .then((r) => verdict(r), () => null);
+          matching.current = run;
+          run.then((r) => alive && setFace(r));
+        }
       } catch {
         if (alive) setPhase('failed');
       }
@@ -587,6 +604,7 @@ export function VcViewer({ conv, v, onClose, onReport }: { conv: E.Conv; v: V.Vc
           <View testID="vc-end" style={[StyleSheet.absoluteFill, { backgroundColor: color.bgBase, justifyContent: 'center', padding: space.xl, gap: space.l }]}>
             {answered === null ? (
               <>
+                <FaceLine v={face} />
                 <Text style={{ ...type.title, color: color.fgPrimary, textAlign: 'center' }}>{vcx.didHe}</Text>
                 {v ? <MoveCard move={v.move} big /> : null}
                 <View style={{ flexDirection: 'row', gap: space.m }}>
@@ -627,7 +645,24 @@ export function VcViewer({ conv, v, onClose, onReport }: { conv: E.Conv; v: V.Vc
   );
 }
 
+/** R-18.15: result of the on-device face match, shown above "Did he do the move?". Nothing when no verdict. */
+function FaceLine({ v }: { v: Verdict | 'pending' }) {
+  if (!v) return null;
+  const ok = v === 'match';
+  const c = v === 'pending' ? color.fgMuted : ok ? color.trust : color.warn;
+  return (
+    <View testID={`vc-face-${v}`} style={{ alignItems: 'center', gap: 6 }}>
+      <View style={[st.face, { borderColor: `${c}59`, backgroundColor: `${c}1F` }]}>
+        {v === 'pending' ? null : ok ? <Icon.Check size={14} c={c} /> : <Text style={{ ...type.meta, fontFamily: font.heavy, color: c }}>?</Text>}
+        <Text style={{ ...type.meta, fontFamily: font.bold, color: c }}>{v === 'pending' ? vcx.faceChecking : ok ? vcx.faceMatch : vcx.faceNoMatch}</Text>
+      </View>
+      {v === 'pending' ? null : <Text style={{ ...type.caption, fontFamily: font.medium, color: color.fgMuted, textAlign: 'center' }}>{ok ? vcx.faceMatchSub : vcx.faceNoMatchSub}</Text>}
+    </View>
+  );
+}
+
 const st = StyleSheet.create({
+  face: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.pill, borderWidth: 1 },
   label: { ...type.caption, letterSpacing: 0.8, textTransform: 'uppercase', color: color.fgMuted },
   move: { flexDirection: 'row', alignItems: 'center', gap: space.s, backgroundColor: color.bgBase, borderRadius: radius.sm, paddingHorizontal: space.m, paddingVertical: 8 },
   cta: { height: 50, borderRadius: radius.pill, backgroundColor: color.trust, alignItems: 'center', justifyContent: 'center', paddingHorizontal: space.xl },
