@@ -18,6 +18,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Gestures spec** (docs, #187): F-19 Gestures & haptics: 18 gestures (swipe to reply, double-tap ❤️, reaction bar, inbox row swipes, pull to refresh everywhere, grid sheet on the UI thread, pinch grid size, photo tap zones, swipe between profiles, double-tap to Tap, pull down to close, full-screen photo viewer, swipe back anywhere, swipe-down sheets, tab long-press, haptics tokens, screen reader actions). Each has a visible button too.
 
 ### Fixed
+- **Location mode switches in one tap, everywhere** (app, #190, S-60, S-30, R-05.4, [mockup](https://claude.ai/artifact/TC8czvMyPo13hWdQKQFsTM)): on Me, tapping **Exact** opened a second "Your location" sheet that listed all four modes again; picking a mode there only marked it until **Save**, so closing the sheet kept the old mode. Now there is no second sheet and no Save: Hidden / City / Area apply on tap, and Exact shows its own panel under the switch (like Hidden): pin time, who sees it, and one **Share my pin** button (the explicit confirm, was Save + Confirm). While the pin is live, changing time or audience updates it right away and **Stop pin** goes back to Area. Safe Mode still asks a second time. Explore's location button and Settings › Privacy open a short sheet with the same control plus "Hide me from guys who are hidden".
+
+### Fixed
 - **Grid and lists load small photos** (server + app, SR-10 #150): the app now uploads a 480 px copy (~30–60 KB) next to each public photo; Explore, Tonight, parties, activities, chats lists and block/hide lists show it instead of the full photo (1–2 MB), about 95 % less data per grid page. The copy is checked by the photo classifier on its own and is only used if it passes; otherwise the full photo is shown. Deleted together with the photo.
 - **Explore scrolls faster, lighter on the database** (server, SR-09 #149): scrolling the grid used to re-run the full nearby search (up to 1 500 profiles) for every page; later pages now read only their own 60 profiles in the order of the first page (kept 2 min; blocks and hides still apply). Distances for Tonight, parties, activities and venues are computed in memory instead of one database query per item.
 - **Pushes are retried** (server, SR-02 #142, R-16.10): a failed APNs send (rate limit, Apple outage, network) used to be dropped; it now retries after 5 s, 15 s, 45 s and 2 min. An Android device on an account no longer stops pushes to the account's iPhones. Android pushes via FCM are ready (off until the FCM key is set).
@@ -32,6 +35,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Valkey outage no longer blocks chat** (server, SR-11 #151): rate limits fall back to a per-machine counter and push wakes still go out.
 
 ### Added
+- **Spec brought up to date with 2026-11-21 release** (docs): nav bar on every screen (#137), keyboard rules (#134), no-overlap / toast / banner rules and share-from-sheet rule (#124) in design-system.md and screens.md; selfie check details (#131, R-03.1a) in F-03.
 - **Load test kit** (infra, SR-12 #152): k6 scenarios for grid paging, chat send → pull → ack and realtime sockets with the SLO thresholds (`infra/load/`), load accounts from `Thirstr.LoadTest.users/1` (only on `DEPLOY_ENV=load` or DEV), sizing method and run log (`docs/runbooks/capacity.md`). A real load environment is not created yet (needs owner OK: cost).
 
 ### Fixed

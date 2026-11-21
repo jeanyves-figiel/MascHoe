@@ -19,7 +19,7 @@ import { MeScreen } from '../me/MeScreen';
 import { backOf, hiddenExpired, stayOf, untilFor } from '../me/hidden';
 import { gx } from '../i18n/gestures';
 import { toast } from '../ui/Toast';
-import { quickLevel } from '../explore/LocationSheet';
+import { quickLevel } from '../explore/level';
 import { LensPreviewScreen } from '../me/LensPreviewScreen';
 import { SettingsScreen } from '../me/SettingsScreen';
 import { AccountSettings, ChatSettings, DeleteAccount, NotificationSettings, PrivacySettings, SafetySettings } from '../me/settings/screens';

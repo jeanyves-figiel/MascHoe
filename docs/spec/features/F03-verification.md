@@ -4,7 +4,8 @@
 Prove "real human, 18+, matches photos" without storing identity. Primary anti-bot gate.
 
 ## Rules
-- R-03.1 Liveness runs **on device**: randomized 3-step challenge from server nonce (turn left/right, blink, smile, look up). Passive deepfake/injection detection (camera stream integrity, App Attest/Play Integrity).
+- R-03.1 Liveness runs **on device**: randomized 3-step challenge from server nonce (turn left/right, smile, look up; blink dropped, #131: too rarely caught on still photos). Passive deepfake/injection detection (camera stream integrity, App Attest/Play Integrity).
+  - R-03.1a (#131) iOS: Apple Vision face rectangles revision 3 (continuous yaw/pitch), nose-landmark pose as fallback, image orientation fallback. Each step keeps sampling frames for up to 6 s until the move is seen, then shows a ✓. If no face is found at the start (baseline), the app says so and the attempt does not count toward R-03.10.
 - R-03.2 Photo match on device: selfie embedding vs main photo face embedding; threshold set for FAR ≤ 1 %. No-face main photo allowed: match against any public photo with a face, else badge shows "face-verified" without photo-match claim.
 - R-03.3 Age estimation on device; if estimate < 23 → require second method: third-party zero-retention age check (boolean only) per jurisdiction.
 - R-03.4 Result → client blinds a token → server signs (blind signature, RSA-BSSA RFC 9474) after verifying signed liveness result + attestation → client unblinds → redeems. Server learns "this account is verified" but cannot link the liveness session data (none stored) to anything else.

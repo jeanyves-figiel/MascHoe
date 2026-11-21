@@ -47,6 +47,18 @@ const en = {
     checkin: 'Date check-in',
     checkinSub: (n: number) => (n ? `${n} trusted contact${n > 1 ? 's' : ''} ready` : 'Add a trusted contact'),
     verifyLocked: 'Verify to use Hidden and Exact',
+    // #190 Exact panel under the level switch (S-60, S-30).
+    exact: {
+      explain: 'Your pin on the map, 10–20 m off, with the distance. It disappears on its own.',
+      share: (t: string) => `Share my pin for ${t}`,
+      notYet: (l: string) => `Until you share, you stay on ${l}.`,
+      live: (at: string, aud: string) => `Pin live · ends ${at} · ${aud}`,
+      ended: 'Your pin ended. Share it again or pick another mode.',
+      stop: 'Stop pin, back to Area',
+      safeWarn: 'Safe Mode is on. An exact pin can put you at risk here.',
+      shareAnyway: 'Share anyway',
+      citySearch: 'Location is off. Pick your city',
+    },
   },
   // S-66 How others see you (#114).
   look: {
@@ -248,6 +260,17 @@ const fr: P<V> = {
     checkin: 'Check-in rendez-vous',
     checkinSub: (n: number) => (n ? `${n} contact${n > 1 ? 's' : ''} de confiance prêt${n > 1 ? 's' : ''}` : 'Ajoute un contact de confiance'),
     verifyLocked: 'Vérifie-toi pour Caché et Exact',
+    exact: {
+      explain: 'Ton repère sur la carte, décalé de 10 à 20 m, avec la distance. Il disparaît tout seul.',
+      share: (t: string) => `Partager mon repère pour ${t}`,
+      notYet: (l: string) => `Tant que tu ne partages pas, tu restes en ${l}.`,
+      live: (at: string, aud: string) => `Repère actif · jusqu’à ${at} · ${aud}`,
+      ended: 'Ton repère a expiré. Partage-le à nouveau ou choisis un autre mode.',
+      stop: 'Retirer le repère, revenir en Zone',
+      safeWarn: 'Le mode sécurité est actif. Un repère exact peut te mettre en danger ici.',
+      shareAnyway: 'Partager quand même',
+      citySearch: 'Localisation désactivée. Choisis ta ville',
+    },
   },
   look: {
     title: 'Comment les autres te voient',
@@ -441,6 +464,17 @@ const de: P<V> = {
     checkin: 'Date-Check-in',
     checkinSub: (n: number) => (n ? `${n} Vertrauensperson${n > 1 ? 'en' : ''} bereit` : 'Vertrauensperson hinzufügen'),
     verifyLocked: 'Verifiziere dich für Versteckt und Exakt',
+    exact: {
+      explain: 'Dein Pin auf der Karte, 10–20 m versetzt, mit Entfernung. Er verschwindet von selbst.',
+      share: (t: string) => `Pin teilen für ${t}`,
+      notYet: (l: string) => `Bis du teilst, bleibst du auf ${l}.`,
+      live: (at: string, aud: string) => `Pin aktiv · bis ${at} · ${aud}`,
+      ended: 'Dein Pin ist abgelaufen. Teile ihn neu oder wähle einen anderen Modus.',
+      stop: 'Pin entfernen, zurück zu Bereich',
+      safeWarn: 'Der Sicherheitsmodus ist an. Ein genauer Pin kann dich hier gefährden.',
+      shareAnyway: 'Trotzdem teilen',
+      citySearch: 'Standort ist aus. Wähle deine Stadt',
+    },
   },
   look: {
     title: 'So sehen dich andere',
