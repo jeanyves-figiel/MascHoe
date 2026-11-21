@@ -39,8 +39,10 @@ async function drain(stop: (p: any) => boolean) {
     const r = await api('GET', '/mls/messages');
     let done = false;
     for (const m of r.messages) {
+      // Shared device queue: a bot may still write to an earlier peer run (Ghost's icebreaker,
+      // late replies). Those welcomes / ciphertexts are not for this run's keys: skip them.
       if (m.kind === 'welcome') {
-        const j = await mls.join(fromB64(m.ciphertext));
+        const j = await mls.join(fromB64(m.ciphertext)).catch(() => null);
         if (j?.ctx) {
           groupCtx = { gid: j.groupId, ctx: j.ctx };
           out({ got: 'welcome', ctx: j.ctx });
@@ -48,7 +50,7 @@ async function drain(stop: (p: any) => boolean) {
         }
         continue;
       }
-      const pt = await mls.open(hex(fromB64(m.group_id)), fromB64(m.ciphertext));
+      const pt = await mls.open(hex(fromB64(m.group_id)), fromB64(m.ciphertext)).catch(() => null);
       if (!pt) continue;
       const p = JSON.parse(fromUtf8(pt));
       const line: Record<string, unknown> = { got: p.t, text: p.text, k: p.k, n: p.n, group: !!p.n };
