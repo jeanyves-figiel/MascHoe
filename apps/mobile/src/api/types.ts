@@ -1,5 +1,6 @@
 // Response shapes (docs/spec/api.md). Account ids never appear.
 import type { Photo } from './client';
+import type { MomentsBadge } from '../moments/api';
 
 export type Mode = 'hookup' | 'friends' | 'sport';
 export type Kind = 'now' | 'sport' | 'friends';
@@ -55,6 +56,8 @@ export type Card = {
   /** F-20 R-20.13: listed because of a trip (no distance). */
   visitor?: boolean;
   trip?: VisitorTrip | null;
+  /** F-21 R-21.27 (#212): ring data, null when he has no Moment I may see. */
+  moments?: MomentsBadge;
 };
 
 /** F-20: what others see of a shown trip (never his position or other trips). */
@@ -122,6 +125,8 @@ export type ProfileView = {
   badges: { kind: string; since?: string; years?: number; up_pct?: number; total?: number }[];
   linked_accounts: { platform: string; handle: string; verified?: boolean; url?: string }[];
   self: boolean;
+  /** F-21 R-21.9 (#212): ring on the profile photo. */
+  moments?: MomentsBadge;
   /** F-20 R-20.7: his shown trip to the viewer's area. */
   trip?: VisitorTrip | null;
 };
@@ -141,6 +146,8 @@ export type Settings = {
   show_distance: 'exact' | 'range' | 'none';
   online_visible: boolean;
   read_receipts: boolean;
+  /** F-21 R-21.17 (#212): watch Moments quietly. */
+  moments_quiet?: boolean;
   who_can_message: 'verified' | 'tapped' | 'filters';
   explicit_from_strangers: 'blur' | 'allow' | 'block';
   disappearing_default: '24h' | '7d' | 'never';

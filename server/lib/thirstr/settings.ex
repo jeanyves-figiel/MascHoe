@@ -28,6 +28,8 @@ defmodule Thirstr.Settings do
     # R-17.5 symmetry
     "online_visible" => true,
     "read_receipts" => true,
+    # F-21 R-21.17 (#212): watch Moments quietly (views counted, never named; reciprocal)
+    "moments_quiet" => false,
     # R-17.6 verified | tapped | filters
     "who_can_message" => "verified",
     # R-07.10 blur | allow | block

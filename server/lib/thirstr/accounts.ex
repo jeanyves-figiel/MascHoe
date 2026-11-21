@@ -83,6 +83,8 @@ defmodule Thirstr.Accounts do
       )
       |> Repo.all()
       |> Enum.flat_map(&[&1, Thirstr.Profiles.thumb_of(&1)])
+      # F-21 R-21.23: Moments files go too
+      |> Kernel.++(Thirstr.Moments.keys_of(a.id))
 
     Multi.new()
     |> Multi.delete(:account, a)
