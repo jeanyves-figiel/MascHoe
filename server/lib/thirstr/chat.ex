@@ -222,13 +222,56 @@ defmodule Thirstr.Chat do
       end)
       |> case do
         {:ok, {res, events}} ->
-          Enum.each(events, fn acc -> Notify.event(acc, "message.new", %{}) end)
+          announce(events)
           {:ok, res}
 
         {:error, _} = e ->
           e
       end
     end
+  end
+
+  @env_fields [:group_id, :kind, :key_package_id, :ciphertext, :created_at]
+  # SR-13 (#153): envelopes up to this size (per device and send) ride the socket.
+  @socket_max 48_000
+
+  @doc "Topic of one device's socket (SR-13): envelopes for that device only."
+  def device_topic(device_id), do: "device:" <> device_id
+
+  # After commit. Accounts: "message.new" (push wake + clients that pull). Devices with a live
+  # socket that asked for envelopes (UserChannel `env`) get them directly, or "message.pull"
+  # when they are too big; such sockets ignore the account-wide "message.new".
+  defp announce(events) do
+    events
+    |> Enum.map(&elem(&1, 0))
+    |> Enum.uniq()
+    |> Enum.each(&Notify.event(&1, "message.new", %{}))
+
+    for {_acc, stored} <- events, {device, rows} <- Enum.group_by(stored, & &1.to_device_id) do
+      topic = device_topic(Ecto.UUID.cast!(device))
+
+      msg =
+        if Enum.reduce(rows, 0, &(byte_size(&1.ciphertext) + &2)) <= @socket_max,
+          do: {:event, "message.env", %{messages: Enum.map(rows, &wire/1)}},
+          else: {:event, "message.pull", %{}}
+
+      Phoenix.PubSub.broadcast(Thirstr.PubSub, topic, msg)
+    end
+
+    :ok
+  end
+
+  defp wire(r) do
+    %{
+      id: r.id,
+      to_profile_id: Ecto.UUID.cast!(r.to_profile_id),
+      from_profile_id: Ecto.UUID.cast!(r.from_profile_id),
+      group_id: Base.encode64(r.group_id),
+      kind: r.kind,
+      key_package_id: r.key_package_id,
+      ciphertext: Base.encode64(r.ciphertext),
+      at: Thirstr.Explore.utc_any(r.created_at)
+    }
   end
 
   defp store_all(a, device_id, from, group, envs, params, cid) do
@@ -246,7 +289,8 @@ defmodule Thirstr.Chat do
       |> Enum.group_by(& &1.to_profile_id)
       |> Enum.reduce({[], [], []}, fn {to, list}, {ok, ko, ev} ->
         case deliver(a, device_id, from, to, group, list, now, params) do
-          {:ok, acc} -> {[to | ok], ko, if(acc, do: [acc | ev], else: ev)}
+          {:ok, nil} -> {[to | ok], ko, ev}
+          {:ok, {acc, stored}} -> {[to | ok], ko, [{acc, stored} | ev]}
           :dropped -> {ok, [to | ko], ev}
           {:error, _} = e -> Repo.rollback(elem(e, 1))
         end
@@ -254,7 +298,7 @@ defmodule Thirstr.Chat do
 
     res = %{delivered: delivered, undelivered: undelivered}
     save_client_id(device_id, cid, res)
-    {res, Enum.uniq(events)}
+    {res, events}
   end
 
   defp client_id(nil), do: {:ok, nil}
@@ -328,10 +372,14 @@ defmodule Thirstr.Chat do
               }
             end)
 
-          Repo.insert_all("mls_messages", rows)
+          {_, stored} =
+            Repo.insert_all("mls_messages", rows,
+              returning: [:id, :to_device_id, :to_profile_id, :from_profile_id] ++ @env_fields
+            )
+
           if app?, do: count_contact(from, to, now)
           store_franking(params["franking_tag"], from, to, now)
-          {:ok, t.account_id}
+          {:ok, {t.account_id, stored}}
         end
 
       _ ->

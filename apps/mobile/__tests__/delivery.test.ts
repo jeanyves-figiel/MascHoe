@@ -304,6 +304,33 @@ describe('R-07.18 idempotent send', () => {
 });
 
 describe('R-07.20 receive integrity', () => {
+  it('SR-13: envelopes pushed on the socket are stored, acked, and a later pull adds nothing twice', async () => {
+    const { E, cid, bob } = await open1to1();
+    await E.send(cid, { t: 'text', text: 'hi' });
+    await bob.pull();
+    const gid = E.getConv(cid)!.groups[0];
+    await bob.say(gid, { t: 'text', text: 'pushed' });
+    const pushed = srv.queue.filter((q) => q.to_profile_id === 'pa').map((q) => ({ ...q }));
+    expect(pushed).toHaveLength(1);
+    let gets = 0;
+    const call = srv.call.bind(srv);
+    srv.call = (m: string, p: string, ...rest: [any, any, any]) => {
+      if (m === 'GET' && p === '/mls/messages') gets++;
+      return call(m, p, ...rest);
+    };
+    await E.receivePushed(pushed as never);
+    expect(gets).toBe(0);
+    expect(texts(await E.messages(cid))).toEqual(['hi', 'pushed']);
+    expect(srv.queue.filter((q) => q.to_profile_id === 'pa')).toHaveLength(0);
+    // the same envelope again (socket + pull race): nothing doubled
+    await E.receivePushed(pushed as never);
+    await E.pull();
+    expect(texts(await E.messages(cid))).toEqual(['hi', 'pushed']);
+    srv.call = call;
+    await new Promise((r) => setTimeout(r, 300)); // let the Delivered receipt send finish on Alice's store
+  }, 60000);
+
+
   it('AC-07.7: killed before the ack → after relaunch nothing missing, nothing doubled', async () => {
     const { E, cid, bob } = await open1to1();
     await E.send(cid, { t: 'text', text: 'hi' });
