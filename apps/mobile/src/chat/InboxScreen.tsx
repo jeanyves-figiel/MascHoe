@@ -1,16 +1,20 @@
-import React, { useEffect, useState } from 'react';
-import { Pressable, SectionList, Text, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Pressable, ScrollView, SectionList, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '../api/client';
 import type { Tap } from '../api/types';
 import { tx } from '../i18n/app';
-import { color, radius, space, type } from '../theme/tokens';
+import { ppl } from '../i18n/people';
+import { color, font, radius, space, type } from '../theme/tokens';
 import { EmptyState, Icon, ListRow, Photo, Segmented, Sheet, VerifiedTick } from '../ui';
 import { v2 } from '../i18n/v2';
-import { Conv, deleteConv, getConvs, setConv } from './engine';
+import { answerFriend, Conv, deleteConv, getConvs, refreshPeer, setConv } from './engine';
 import { useTopics } from './hooks';
+import * as P from './people';
 
 type Nav = { navigate: (s: string, p?: object) => void };
+type Tab = 'all' | 'unread' | 'fav' | 'friends';
+type Row = { kind: 'conv'; c: Conv } | { kind: 'fav'; peer: string; name: string; photo: string | null } | { kind: 'request'; c: Conv };
 
 const ago = (t: number) => {
   const m = Math.round((Date.now() - t) / 60000);
@@ -20,15 +24,20 @@ const ago = (t: number) => {
   return new Date(t).toLocaleDateString();
 };
 
-// S-40 Inbox (R-07.8, R-07.15): Taps row, New (unreplied inbound), Chats, Parties & groups (B3).
+const FILL: Record<Tab, string> = { all: color.hookup, unread: color.hookup, fav: color.personal, friends: color.friends };
+
+// S-40 Inbox (R-07.8, R-07.15, R-07.32–R-07.34): search, All / Unread / Favorites / Friends,
+// favorites strip, Taps row, New, Parties & groups, Chats.
 export function InboxScreen({ navigation }: { navigation: Nav }) {
   useTopics('convs');
+  P.usePeople();
   const tapsTick = useTopics('taps');
   const insets = useSafeAreaInsets();
   const [taps, setTaps] = useState<number | null>(null);
   const [menu, setMenu] = useState<Conv | null>(null);
   const [showArchived, setShowArchived] = useState(false);
-  const [filt, setFilt] = useState<'all' | 'unread' | 'new'>('all');
+  const [tab, setTab] = useState<Tab>('all');
+  const [q, setQ] = useState('');
 
   useEffect(() => {
     api<{ taps: Tap[] }>('GET', '/taps')
@@ -37,63 +46,200 @@ export function InboxScreen({ navigation }: { navigation: Nav }) {
   }, [tapsTick]);
 
   const all = getConvs().filter((c) => c.last || c.groups.length);
-  const live = all.filter((c) => !!c.archived === showArchived && (filt !== 'unread' || !!c.unread));
-  const starred = (a: Conv, b: Conv) => Number(!!b.starred) - Number(!!a.starred);
-  const groups = live.filter((c) => !!c.ctx).sort(starred);
-  const fresh = live.filter((c) => !c.ctx && c.theyWrote && !c.iWrote).sort(starred);
-  const chats = live.filter((c) => !c.ctx && !(c.theyWrote && !c.iWrote)).sort(starred);
-  const sections = filt === 'new' ? (fresh.length ? [{ title: tx.chat.new, data: fresh }] : []) : [
-    ...(fresh.length ? [{ title: tx.chat.new, data: fresh }] : []),
-    ...(groups.length ? [{ title: tx.chat.parties, data: groups }] : []),
-    ...(chats.length ? [{ title: showArchived ? tx.chat.archived : tx.chat.chats, data: chats }] : []),
-  ];
+  const byPeer = useMemo(() => new Map(all.filter((c) => !c.ctx).map((c) => [c.peer, c])), [all]);
+
+  // R-07.33: Friends tab refreshes online state of friends once per visit.
+  useEffect(() => {
+    if (tab !== 'friends') return;
+    for (const peer of P.friendList('yes').slice(0, 50)) {
+      const c = byPeer.get(peer);
+      if (c) refreshPeer(c).catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+
+  const hit = (c: Conv) => P.matches(q, c.peer, c.name, c.last);
+  const pinned = (a: Conv, b: Conv) => Number(!!b.starred) - Number(!!a.starred);
+  const recent = (a: Conv, b: Conv) => b.lastAt - a.lastAt;
+  const conv = (c: Conv): Row => ({ kind: 'conv', c });
+
+  let sections: { title: string; data: Row[] }[] = [];
+  if (tab === 'all' || tab === 'unread') {
+    const live = all.filter((c) => !!c.archived === showArchived && (tab !== 'unread' || !!c.unread) && hit(c));
+    const groups = live.filter((c) => !!c.ctx).sort(recent).sort(pinned);
+    const fresh = live.filter((c) => !c.ctx && c.theyWrote && !c.iWrote).sort(recent);
+    const chats = live.filter((c) => !c.ctx && !(c.theyWrote && !c.iWrote)).sort(recent);
+    sections = [
+      { title: tx.chat.new, data: fresh.map(conv) },
+      { title: tx.chat.parties, data: groups.map(conv) },
+      { title: showArchived ? tx.chat.archived : tx.chat.chats, data: chats.map(conv) },
+    ];
+  } else if (tab === 'fav') {
+    const favs = P.favList();
+    const withChat = favs.map((f) => byPeer.get(f.peer)).filter((c): c is Conv => !!c && hit(c)).sort(recent);
+    const without = favs.filter((f) => !byPeer.has(f.peer) && P.matches(q, f.peer, f.name));
+    sections = [
+      {
+        title: ppl.favSection,
+        data: [...withChat.map(conv), ...without.map((f): Row => ({ kind: 'fav', peer: f.peer, name: f.name ?? '…', photo: f.photo ?? null }))],
+      },
+    ];
+  } else {
+    const req = P.friendList('in').map((p) => byPeer.get(p)).filter((c): c is Conv => !!c && hit(c));
+    const fr = P.friendList('yes').map((p) => byPeer.get(p)).filter((c): c is Conv => !!c && hit(c));
+    const byName = (a: Conv, b: Conv) => a.name.localeCompare(b.name);
+    sections = [
+      { title: ppl.requests, data: req.map((c): Row => ({ kind: 'request', c })) },
+      { title: ppl.online, data: fr.filter((c) => c.online).sort(byName).map(conv) },
+      { title: ppl.friends, data: fr.filter((c) => !c.online).sort(byName).map(conv) },
+    ];
+  }
+  sections = sections.filter((s) => s.data.length);
+
   const archivedCount = all.filter((c) => c.archived).length;
+  const favStrip = tab === 'all' && !q && !showArchived ? P.favList().slice(0, 12) : [];
+  const empty = sections.length === 0;
+  const emptyText = q
+    ? { title: ppl.noResults, body: '' }
+    : tab === 'fav'
+      ? { title: ppl.noFav, body: ppl.noFavBody }
+      : tab === 'friends'
+        ? { title: ppl.noFriends, body: ppl.noFriendsBody }
+        : { title: tx.chat.empty, body: tx.chat.emptyBody };
+  const footer = tab === 'friends' ? ppl.friendsFooter : tab === 'fav' ? ppl.favFooter : v2.inbox.e2ee;
+
+  const openPeer = (peer: string) => {
+    const c = byPeer.get(peer);
+    if (c) navigation.navigate('Chat', { cid: c.id });
+    else navigation.navigate('Profile', { id: peer });
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: color.bgBase, paddingTop: insets.top + space.s }}>
       <Text accessibilityRole="header" style={{ ...type.display, fontSize: 34, lineHeight: 38, color: color.fgPrimary, paddingHorizontal: space.l, marginBottom: space.m }}>
         {tx.chat.title}
       </Text>
-      <View style={{ paddingHorizontal: space.l, marginBottom: space.m, alignSelf: 'flex-start' }}>
+      <View style={{ marginHorizontal: space.l, marginBottom: space.m, height: 44, borderRadius: radius.pill, backgroundColor: color.bgRaised, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: space.l }}>
+        <Icon.Search />
+        <TextInput
+          testID="inbox-search"
+          value={q}
+          onChangeText={setQ}
+          placeholder={ppl.search}
+          placeholderTextColor={color.fgMuted}
+          accessibilityLabel={ppl.search}
+          autoCorrect={false}
+          returnKeyType="search"
+          style={{ flex: 1, color: color.fgPrimary, fontFamily: font.regular, fontSize: 15, paddingVertical: 0 }}
+        />
+        {q ? (
+          <Pressable accessibilityRole="button" accessibilityLabel={tx.common.close} onPress={() => setQ('')} hitSlop={10}>
+            <Icon.Close size={16} c={color.fgMuted} />
+          </Pressable>
+        ) : null}
+      </View>
+      <View style={{ paddingHorizontal: space.l, marginBottom: space.s, flexDirection: 'row' }}>
         <Segmented
           label={tx.chat.title}
-          value={filt}
-          onChange={setFilt}
+          value={tab}
+          onChange={setTab}
+          grow
+          fills={FILL}
           options={[
-            { value: 'all', label: v2.inbox.all },
-            { value: 'unread', label: v2.inbox.unread },
-            { value: 'new', label: tx.chat.new },
+            { value: 'all', label: ppl.tabs.all },
+            { value: 'unread', label: ppl.tabs.unread },
+            { value: 'fav', label: ppl.tabs.fav },
+            { value: 'friends', label: ppl.tabs.friends },
           ]}
         />
       </View>
-      <Pressable
-        testID="inbox-taps"
-        accessibilityRole="button"
-        onPress={() => navigation.navigate('Taps')}
-        style={({ pressed }) => [{ marginHorizontal: space.l, marginBottom: space.s, padding: space.m, borderRadius: radius.tray, backgroundColor: color.bgRaised, flexDirection: 'row', alignItems: 'center', gap: space.m }, pressed && { opacity: 0.85 }]}
-      >
-        <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: color.personal, alignItems: 'center', justifyContent: 'center' }}>
-          <Icon.Star size={22} c={color.onAccent} fill={color.onAccent} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={{ ...type.headline, color: color.fgPrimary }}>{tx.chat.taps}</Text>
-          <Text style={{ ...type.meta, color: color.fgSecondary }}>{tx.chat.tapsNew(taps ?? 0)}</Text>
-        </View>
-        {taps ? <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: color.hookup }} /> : null}
-      </Pressable>
-      {all.length === 0 ? (
-        <EmptyState title={tx.chat.empty} body={tx.chat.emptyBody} />
-      ) : (
-        <SectionList
-          sections={sections}
-          keyExtractor={(c) => c.id}
-          contentContainerStyle={{ paddingBottom: 120 }}
-          renderSectionHeader={({ section }) => (
-            <Text style={{ ...type.caption, color: color.fgMuted, textTransform: 'uppercase', paddingHorizontal: space.l, paddingTop: space.m, paddingBottom: space.xs, backgroundColor: color.bgBase }}>
-              {section.title}
-            </Text>
-          )}
-          renderItem={({ item: c }) => (
+      <SectionList
+        sections={sections}
+        keyExtractor={(r) => (r.kind === 'fav' ? 'f:' + r.peer : (r.kind === 'request' ? 'r:' : '') + r.c.id)}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        keyboardShouldPersistTaps="handled"
+        stickySectionHeadersEnabled={false}
+        ListHeaderComponent={
+          <>
+            {favStrip.length ? (
+              <ScrollView testID="fav-strip" horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 14, paddingHorizontal: space.l, paddingVertical: space.s }}>
+                {favStrip.map((f) => {
+                  const c = byPeer.get(f.peer);
+                  return (
+                    <Pressable key={f.peer} testID={`fav-${f.peer}`} accessibilityRole="button" accessibilityLabel={`${ppl.favorite}: ${c?.name ?? f.name ?? ''}`} onPress={() => openPeer(f.peer)} style={{ width: 64, alignItems: 'center', gap: 6 }}>
+                      <View style={{ width: 62, height: 62, borderRadius: 31, borderWidth: 2.5, borderColor: color.personal, padding: 3 }}>
+                        <Photo uri={c?.photo ?? f.photo ?? null} id={f.peer} label="" style={{ width: 51, height: 51, borderRadius: 26 }} />
+                        {c?.online ? <View style={{ position: 'absolute', right: 0, bottom: 2, width: 14, height: 14, borderRadius: 7, backgroundColor: color.sport, borderWidth: 3, borderColor: color.bgBase }} /> : null}
+                      </View>
+                      <Text numberOfLines={1} style={{ ...type.meta, fontSize: 12, fontFamily: font.bold, color: color.fgSecondary, maxWidth: 64 }}>
+                        {(c?.name ?? f.name ?? '…').split(',')[0]}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            ) : null}
+            {tab === 'all' && !q ? (
+              <Pressable
+                testID="inbox-taps"
+                accessibilityRole="button"
+                onPress={() => navigation.navigate('Taps')}
+                style={({ pressed }) => [{ marginHorizontal: space.l, marginVertical: space.s, padding: space.m, borderRadius: radius.tray, backgroundColor: color.bgRaised, flexDirection: 'row', alignItems: 'center', gap: space.m }, pressed && { opacity: 0.85 }]}
+              >
+                <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: color.hookup, alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon.Flame size={22} c={color.onAccent} fill={color.onAccent} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ ...type.headline, color: color.fgPrimary }}>{tx.chat.taps}</Text>
+                  <Text style={{ ...type.meta, color: color.fgSecondary }}>{tx.chat.tapsNew(taps ?? 0)}</Text>
+                </View>
+                {taps ? <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: color.hookup }} /> : null}
+              </Pressable>
+            ) : null}
+            {empty ? <EmptyState title={emptyText.title} body={emptyText.body} /> : null}
+          </>
+        }
+        renderSectionHeader={({ section }) => (
+          <Text style={{ ...type.caption, fontSize: 12, letterSpacing: 0.8, color: color.fgMuted, textTransform: 'uppercase', paddingHorizontal: space.l, paddingTop: space.m, paddingBottom: space.xs }}>
+            {section.title}
+          </Text>
+        )}
+        renderItem={({ item: r }) => {
+          if (r.kind === 'fav') {
+            return (
+              <Pressable testID={`favrow-${r.peer}`} accessibilityRole="button" onPress={() => navigation.navigate('Profile', { id: r.peer })} style={{ flexDirection: 'row', alignItems: 'center', gap: space.m, paddingHorizontal: space.l, paddingVertical: space.s }}>
+                <Photo uri={r.photo} id={r.peer} label="" style={{ width: 56, height: 56, borderRadius: radius.pill }} />
+                <View style={{ flex: 1, gap: 2 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text numberOfLines={1} style={{ ...type.headline, color: color.fgPrimary, flexShrink: 1 }}>{r.name}</Text>
+                    <Icon.Star size={14} c={color.personal} fill={color.personal} />
+                  </View>
+                  <NoteLine peer={r.peer} />
+                </View>
+                <Text style={{ ...type.meta, fontFamily: font.heavy, color: color.hookup }}>{ppl.sayHi}</Text>
+              </Pressable>
+            );
+          }
+          if (r.kind === 'request') {
+            return (
+              <View testID={`req-${r.c.peer}`} style={{ marginHorizontal: space.l, marginVertical: space.xs, padding: space.m, borderRadius: radius.tray, backgroundColor: color.bgRaised, flexDirection: 'row', alignItems: 'center', gap: space.m }}>
+                <Pressable accessibilityRole="button" onPress={() => navigation.navigate('Chat', { cid: r.c.id })} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.m }}>
+                  <Photo uri={r.c.photo} id={r.c.peer} label="" style={{ width: 44, height: 44, borderRadius: 22 }} />
+                  <Text numberOfLines={2} style={{ ...type.headline, fontSize: 15, color: color.fgPrimary, flex: 1 }}>{ppl.askedYou(r.c.name)}</Text>
+                </Pressable>
+                <Pressable testID={`req-no-${r.c.peer}`} accessibilityRole="button" accessibilityLabel={ppl.notNow} onPress={() => answerFriend(r.c.id, false)} hitSlop={6} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: color.line, alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon.Close size={16} c={color.fgSecondary} />
+                </Pressable>
+                <Pressable testID={`req-yes-${r.c.peer}`} accessibilityRole="button" onPress={() => answerFriend(r.c.id, true)} style={{ height: 36, paddingHorizontal: 14, borderRadius: radius.pill, backgroundColor: color.friends, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ ...type.meta, fontFamily: font.heavy, color: color.onAccent }}>{ppl.accept}</Text>
+                </Pressable>
+              </View>
+            );
+          }
+          const c = r.c;
+          const fav = !c.ctx && P.isFav(c.peer);
+          const friend = !c.ctx && P.friendOf(c.peer) === 'yes';
+          return (
             <Pressable
               testID={`conv-${c.peer}`}
               accessibilityRole="button"
@@ -101,19 +247,28 @@ export function InboxScreen({ navigation }: { navigation: Nav }) {
               onLongPress={() => setMenu(c)}
               style={{ flexDirection: 'row', alignItems: 'center', gap: space.m, paddingHorizontal: space.l, paddingVertical: space.s, opacity: c.gone ? 0.5 : 1 }}
             >
-              <Photo uri={c.photo} id={c.peer} label="" style={{ width: 56, height: 56, borderRadius: radius.pill }} />
-              <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <View>
+                <Photo uri={c.photo} id={c.peer} label="" style={{ width: 56, height: 56, borderRadius: radius.pill }} />
+                {c.online && !c.ctx ? <View style={{ position: 'absolute', right: 0, bottom: 0, width: 14, height: 14, borderRadius: 7, backgroundColor: color.sport, borderWidth: 3, borderColor: color.bgBase }} /> : null}
+              </View>
+              <View style={{ flex: 1, gap: 2 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <Text numberOfLines={1} style={{ ...type.headline, color: color.fgPrimary, flexShrink: 1 }}>
                     {c.gone ? tx.chat.gone : c.name}
                   </Text>
                   {c.verified ? <VerifiedTick size={14} /> : null}
-                  {c.starred ? <Icon.Star size={13} c={color.personal} fill={color.personal} /> : null}
+                  {fav || (c.ctx && c.starred) ? <Icon.Star size={14} c={color.personal} fill={color.personal} /> : null}
+                  {friend ? (
+                    <View style={{ paddingHorizontal: 7, paddingVertical: 1, borderRadius: radius.pill, backgroundColor: color.friends }}>
+                      <Text style={{ ...type.caption, color: color.onAccent }}>{ppl.friend}</Text>
+                    </View>
+                  ) : null}
                   {c.muted ? <Text style={{ ...type.caption, color: color.fgMuted }}>{v2.inbox.muted}</Text> : null}
                 </View>
                 <Text numberOfLines={1} style={{ ...type.body, fontSize: 14, color: c.unread ? color.fgPrimary : color.fgSecondary, fontFamily: c.unread ? type.headline.fontFamily : type.body.fontFamily }}>
                   {c.last}
                 </Text>
+                {!c.ctx ? <NoteLine peer={c.peer} /> : null}
               </View>
               <View style={{ alignItems: 'flex-end', gap: 4 }}>
                 <Text style={{ ...type.meta, fontSize: 12, color: color.fgMuted }}>{ago(c.lastAt)}</Text>
@@ -124,10 +279,11 @@ export function InboxScreen({ navigation }: { navigation: Nav }) {
                 ) : null}
               </View>
             </Pressable>
-          )}
-          ListFooterComponent={
-            <>
-            {archivedCount || showArchived ? (
+          );
+        }}
+        ListFooterComponent={
+          <>
+            {(tab === 'all' || tab === 'unread') && (archivedCount || showArchived) ? (
               <Pressable accessibilityRole="button" onPress={() => setShowArchived(!showArchived)} style={{ padding: space.l }}>
                 <Text style={{ ...type.meta, color: color.fgSecondary, textAlign: 'center' }}>
                   {showArchived ? tx.chat.chats : `${tx.chat.archived} · ${archivedCount}`}
@@ -136,22 +292,43 @@ export function InboxScreen({ navigation }: { navigation: Nav }) {
             ) : null}
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, padding: space.l }}>
               <Icon.Lock />
-              <Text style={{ ...type.meta, fontSize: 12, fontFamily: type.headline.fontFamily, color: color.trust }}>{v2.inbox.e2ee}</Text>
+              <Text style={{ ...type.meta, fontSize: 12, fontFamily: type.headline.fontFamily, color: color.trust, textAlign: 'center', flexShrink: 1 }}>{footer}</Text>
             </View>
-            </>
-          }
-        />
-      )}
+          </>
+        }
+      />
       <Sheet visible={!!menu} onClose={() => setMenu(null)} title={menu?.name ?? ''} closeLabel={tx.common.close}>
         {menu ? (
           <View>
-            <ListRow title={menu.starred ? tx.chat.unstar : tx.chat.star} onPress={() => setConv(menu.id, { starred: !menu.starred }).then(() => setMenu(null))} />
+            {menu.ctx ? (
+              <ListRow title={menu.starred ? ppl.unpin : ppl.pin} onPress={() => setConv(menu.id, { starred: !menu.starred }).then(() => setMenu(null))} />
+            ) : (
+              <ListRow
+                testID="menu-fav"
+                title={P.isFav(menu.peer) ? ppl.removeFav : ppl.addFav}
+                onPress={() => P.setFav(menu.peer, !P.isFav(menu.peer), { name: menu.name, photo: menu.photo }).then(() => setMenu(null))}
+              />
+            )}
             <ListRow title={menu.muted ? tx.chat.unmute : tx.chat.mute} onPress={() => setConv(menu.id, { muted: !menu.muted }).then(() => setMenu(null))} />
             <ListRow title={menu.archived ? tx.chat.unarchive : tx.chat.archive} onPress={() => setConv(menu.id, { archived: !menu.archived }).then(() => setMenu(null))} />
             <ListRow title={tx.chat.deleteChat} danger onPress={() => deleteConv(menu.id).then(() => setMenu(null))} />
           </View>
         ) : null}
       </Sheet>
+    </View>
+  );
+}
+
+/** R-07.35: sunflower pen + note (tags first, else text) under the preview. */
+function NoteLine({ peer }: { peer: string }) {
+  const line = P.noteLine(peer);
+  if (!line) return null;
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+      <Icon.Pen size={12} w={2.6} />
+      <Text numberOfLines={1} style={{ ...type.meta, fontSize: 12, fontFamily: font.bold, color: color.personal, flexShrink: 1 }}>
+        {line}
+      </Text>
     </View>
   );
 }

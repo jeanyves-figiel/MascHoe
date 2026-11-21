@@ -1,4 +1,4 @@
-// R-01.11 Download my data: server archive + device-only data (chats, notes, trusted-contact names).
+// R-01.11 Download my data: server archive + device-only data (chats, notes, favorites, friends, trusted-contact names).
 import { Platform, Share } from 'react-native';
 import { api } from '../api/client';
 import * as E from '../chat/engine';
@@ -19,7 +19,7 @@ export async function exportData(): Promise<void> {
   );
   const notes = await Promise.all((await kv.keys('note:')).map(async (k) => ({ profile: k.slice(5), note: await kv.get(k) })));
   const contacts = ((await kv.get<{ label: string; accepted?: boolean }[]>('safety:contacts')) ?? []).map((c) => ({ name: c.label, accepted: !!c.accepted }));
-  const json = JSON.stringify({ ...server, device: { chats, private_notes: notes, trusted_contacts: contacts } }, null, 2);
+  const json = JSON.stringify({ ...server, device: { chats, private_notes: notes, favorites: (await kv.get('favs')) ?? {}, friends: (await kv.get('friends')) ?? {}, trusted_contacts: contacts } }, null, 2);
   const name = `thirstr-export-${new Date().toISOString().slice(0, 10)}.json`;
 
   if (Platform.OS === 'web') {

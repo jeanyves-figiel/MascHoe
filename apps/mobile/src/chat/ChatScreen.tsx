@@ -14,6 +14,9 @@ import { trx } from '../i18n/translate';
 import { prefs } from '../me/prefs';
 import { TranslatedText } from './TranslatedText';
 import { langName, modeFor, targetLang, translateAvailable } from './translate';
+import { ppl } from '../i18n/people';
+import * as P from './people';
+import { NoteSheet, NoteStrip } from '../profile/PrivateNote';
 
 type Nav = { navigate: (s: string, p?: object) => void; goBack: () => void; setOptions: (o: object) => void };
 type Params = { cid?: string; profileId?: string; name?: string };
@@ -68,6 +71,8 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
   const [msgMenu, setMsgMenu] = useState<E.Msg | null>(null);
   const [custom, setCustom] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [noteOpen, setNoteOpen] = useState(false);
+  P.usePeople();
   const [mediaSheet, setMediaSheet] = useState(false);
   const [albums, setAlbums] = useState<Albums.Album[]>([]);
   useEffect(() => {
@@ -139,6 +144,8 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
   }, [list]);
 
   const lastMine = visible.find((x) => x.m.from === 'me')?.m.id;
+  // R-07.36: only the latest request row is live (Accept / Pending); older ones are a plain line.
+  const lastReq = visible.find((x) => x.m.p.t === 'friend' && x.m.p.op === 'request')?.m.id;
 
   const send = useCallback(
     async (p: E.Payload) => {
@@ -176,6 +183,15 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
   const trCan = translateAvailable() && prefs().translate !== 'off';
   // Group chats (party / activity / club): no single peer, sender names from the E2EE payload.
   const group = !!conv.ctx;
+  const fav = !group && P.isFav(conv.peer);
+  const friend = group ? null : P.friendOf(conv.peer);
+  const askFriend = () => {
+    if (!me.verified) {
+      setProblem(tx.chat.unverified);
+      return;
+    }
+    E.requestFriend(conv.id).catch((e) => setProblem(errorText(e)));
+  };
   const who = (m: E.Msg) => (m.from === 'me' ? tx.chat.you : group ? (m.by && conv.names?.[m.by]) || '…' : conv.name);
 
   return (
@@ -192,11 +208,16 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
                 {conv.gone ? tx.chat.gone : conv.name}
               </Text>
               {conv.verified ? <VerifiedTick size={13} /> : null}
+              {!group && P.friendOf(conv.peer) === 'yes' ? (
+                <View style={{ paddingHorizontal: 7, paddingVertical: 1, borderRadius: radius.pill, backgroundColor: color.friends }}>
+                  <Text style={{ ...type.caption, color: color.onAccent }}>{ppl.friend}</Text>
+                </View>
+              ) : null}
             </View>
             {offline ? (
               <View testID="chat-offline" style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: color.fgMuted }} />
-                <Text style={{ ...type.meta, color: color.fgMuted }}>{tx.chat.waiting}</Text>
+                <Text numberOfLines={1} style={{ ...type.meta, color: color.fgMuted, flexShrink: 1 }}>{tx.chat.waiting}</Text>
               </View>
             ) : typing ? (
               <Text style={{ ...type.meta, color: accent }}>{tx.chat.typing}</Text>
@@ -206,13 +227,27 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
         {conv.ttl !== 'never' ? (
           <Pressable accessibilityRole="button" accessibilityLabel={tx.chat.disappearing} onPress={() => setMenu(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, height: 28, borderRadius: radius.pill, backgroundColor: color.personal }}>
             <Icon.Timer />
-            <Text style={{ ...type.caption, color: color.onAccent }}>{ttlLabel}</Text>
+            {/* #115: compact (24h / 7d) so name, favorite and ⋯ fit the header. */}
+            <Text style={{ ...type.caption, color: color.onAccent }}>{group ? ttlLabel : conv.ttl}</Text>
           </Pressable>
         ) : null}
-        <Pressable testID="chat-menu" accessibilityRole="button" accessibilityLabel="More" onPress={() => setMenu(true)} hitSlop={12}>
+        {!group && !conv.gone ? (
+          <Pressable
+            testID="chat-fav"
+            accessibilityRole="button"
+            accessibilityLabel={fav ? ppl.removeFav : ppl.addFav}
+            accessibilityState={{ selected: fav }}
+            onPress={() => P.setFav(conv.peer, !fav, { name: conv.name, photo: conv.photo })}
+            style={({ pressed }) => ({ width: 44, height: 44, borderRadius: 22, backgroundColor: fav ? color.personal : color.bgRaised, alignItems: 'center', justifyContent: 'center', transform: [{ scale: pressed ? 0.94 : 1 }] })}
+          >
+            <Icon.Star size={21} c={fav ? color.onAccent : color.fgPrimary} fill={fav ? color.onAccent : 'none'} />
+          </Pressable>
+        ) : null}
+        <Pressable testID="chat-menu" accessibilityRole="button" accessibilityLabel="More" onPress={() => setMenu(true)} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: color.bgRaised, alignItems: 'center', justifyContent: 'center' }}>
           <Icon.More />
         </Pressable>
       </View>
+      {!group ? <NoteStrip peer={conv.peer} onPress={() => setNoteOpen(true)} /> : null}
 
       <FlatList
         inverted
@@ -240,6 +275,39 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
               <View testID={`notice-${m.p.kind}`} style={{ alignSelf: 'center', maxWidth: '86%', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: space.m, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: color.bgRaised, marginVertical: space.s }}>
                 <Icon.Lock />
                 <Text style={{ ...type.caption, color: color.fgSecondary, flexShrink: 1 }}>{m.p.kind === 'expired' ? tx.chat.expired(m.p.n ?? 1) : tx.chat.undecryptable}</Text>
+              </View>
+            );
+          }
+          if (m.p.t === 'friend') {
+            // R-07.36 friend request / accepted.
+            if (m.p.op === 'accept') {
+              return (
+                <View testID="friend-yes" style={{ alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: space.s, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: `${color.friends}24`, marginVertical: space.s }}>
+                  <Icon.Check size={14} c={color.friends} />
+                  <Text style={{ ...type.meta, fontFamily: font.heavy, color: color.friends }}>{ppl.nowFriends(conv.name)}</Text>
+                </View>
+              );
+            }
+            const live = m.id === lastReq && ((m.from === 'me' && friend === 'out') || (m.from === 'them' && friend === 'in'));
+            if (!live) {
+              return <Text style={{ ...type.meta, color: color.fgMuted, textAlign: 'center', marginVertical: space.s }}>{ppl.oldRequest}</Text>;
+            }
+            return (
+              <View testID={m.from === 'me' ? 'friend-pending' : 'friend-ask'} style={{ alignSelf: 'stretch', marginVertical: space.s, padding: space.l, borderRadius: radius.md, backgroundColor: `${color.friends}1F`, alignItems: 'center', gap: space.s }}>
+                <Icon.UserPlus size={26} />
+                <Text style={{ ...type.headline, fontSize: 15, color: color.friends, textAlign: 'center' }}>{m.from === 'me' ? ppl.youAsked(conv.name) : ppl.askedYou(conv.name)}</Text>
+                {m.from === 'me' ? (
+                  <Text style={{ ...type.meta, color: color.fgSecondary, textAlign: 'center' }}>{ppl.pending}</Text>
+                ) : (
+                  <View style={{ flexDirection: 'row', gap: space.s, marginTop: space.xs }}>
+                    <Pressable testID="friend-no" accessibilityRole="button" onPress={() => E.answerFriend(conv.id, false)} style={{ height: 40, paddingHorizontal: 18, borderRadius: radius.pill, backgroundColor: color.bgOverlay, justifyContent: 'center' }}>
+                      <Text style={{ ...type.meta, fontFamily: font.heavy, color: color.fgPrimary }}>{ppl.notNow}</Text>
+                    </Pressable>
+                    <Pressable testID="friend-accept" accessibilityRole="button" onPress={() => E.answerFriend(conv.id, true)} style={{ height: 40, paddingHorizontal: 18, borderRadius: radius.pill, backgroundColor: color.friends, justifyContent: 'center' }}>
+                      <Text style={{ ...type.meta, fontFamily: font.heavy, color: color.onAccent }}>{ppl.accept}</Text>
+                    </Pressable>
+                  </View>
+                )}
               </View>
             );
           }
@@ -382,6 +450,19 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
       <Sheet visible={menu} onClose={() => setMenu(false)} title={conv.name} closeLabel={tx.common.close}>
         {!conv.gone && !group ? <ListRow title={tx.chat.viewProfile} onPress={() => { setMenu(false); navigation.navigate('Profile', { id: conv.peer }); }} /> : null}
         {!conv.gone && !group ? (
+          <View>
+            <ListRow testID="menu-fav" title={fav ? ppl.removeFav : ppl.addFav} onPress={() => P.setFav(conv.peer, !fav, { name: conv.name, photo: conv.photo }).then(() => setMenu(false))} />
+            {friend === 'in' ? (
+              <ListRow testID="menu-friend" title={ppl.acceptFriend} onPress={() => E.answerFriend(conv.id, true).then(() => setMenu(false))} />
+            ) : friend ? (
+              <ListRow testID="menu-friend" title={friend === 'out' ? ppl.cancelRequest : ppl.removeFriend} onPress={() => E.dropFriend(conv.id).then(() => setMenu(false))} />
+            ) : P.canAsk(conv.peer) && (conv.iWrote || conv.theyWrote) ? (
+              <ListRow testID="menu-friend" title={ppl.addFriend} right={ppl.addFriendSub} onPress={() => { setMenu(false); askFriend(); }} />
+            ) : null}
+            <ListRow testID="menu-note" title={P.noteFor(conv.peer) ? ppl.editNote : ppl.addNote} onPress={() => { setMenu(false); setNoteOpen(true); }} />
+          </View>
+        ) : null}
+        {!conv.gone && !group ? (
           <ListRow
             testID="chat-checkin"
             title={tx.safety.checkin}
@@ -435,6 +516,7 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
                 onPress={() =>
                   api('POST', `/profiles/${conv.peer}/block`)
                     .then(() => E.setConv(conv.id, { archived: true }))
+                    .then(() => P.forgetFriend(conv.peer))
                     .then(() => {
                       setMenu(false);
                       navigation.goBack();
@@ -451,6 +533,8 @@ export function ChatScreen({ navigation, route }: { navigation: Nav; route: { pa
           />
         </View>
       </Sheet>
+
+      {!group ? <NoteSheet peer={conv.peer} visible={noteOpen} onClose={() => setNoteOpen(false)} /> : null}
 
       <Sheet visible={mediaSheet} onClose={() => setMediaSheet(false)} title={tx.chat.sendPhoto} closeLabel={tx.common.close}>
         <Toggle label={tx.chat.viewOnce} value={mopts.once} onChange={(v) => setMopts({ ...mopts, once: v })} />

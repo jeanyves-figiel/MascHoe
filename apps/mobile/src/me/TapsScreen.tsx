@@ -37,12 +37,12 @@ export function TapsScreen({ navigation }: { navigation: Nav }) {
               <Pressable
                 accessibilityRole="button"
                 onPress={() => navigation.navigate('Profile', { id: item.profile.id })}
-                style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: space.m, padding: space.s + 2, borderRadius: radius.md, backgroundColor: mutual ? `${color.personal}1A` : color.bgRaised, opacity: pressed ? 0.85 : 1 })}
+                style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: space.m, padding: space.s + 2, borderRadius: radius.md, backgroundColor: mutual ? `${color.hookup}1A` : color.bgRaised, opacity: pressed ? 0.85 : 1 })}
               >
                 <View>
                   <Photo uri={item.profile.photo} id={item.profile.id} label="" style={{ width: 56, height: 56, borderRadius: radius.pill }} />
-                  <View style={{ position: 'absolute', right: -3, bottom: -3, width: 24, height: 24, borderRadius: 12, backgroundColor: color.personal, borderWidth: 3, borderColor: color.bgBase, alignItems: 'center', justifyContent: 'center' }}>
-                    <Icon.Star size={11} c={color.onAccent} fill={color.onAccent} />
+                  <View style={{ position: 'absolute', right: -3, bottom: -3, width: 24, height: 24, borderRadius: 12, backgroundColor: color.hookup, borderWidth: 3, borderColor: color.bgBase, alignItems: 'center', justifyContent: 'center' }}>
+                    <Icon.Flame size={11} c={color.onAccent} fill={color.onAccent} />
                   </View>
                 </View>
                 <View style={{ flex: 1, gap: 2 }}>
@@ -53,7 +53,7 @@ export function TapsScreen({ navigation }: { navigation: Nav }) {
                     {item.profile.verified ? <VerifiedTick size={13} /> : null}
                     {!item.seen ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color.hookup, marginLeft: 2 }} /> : null}
                   </View>
-                  <Text numberOfLines={1} style={{ ...type.meta, color: mutual ? color.personal : color.fgMuted }}>
+                  <Text numberOfLines={1} style={{ ...type.meta, color: mutual ? color.hookup : color.fgMuted }}>
                     {mutual ? tx.profile.mutual : new Date(item.at).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })}
                   </Text>
                 </View>
@@ -64,9 +64,9 @@ export function TapsScreen({ navigation }: { navigation: Nav }) {
                       ? navigation.navigate('Chat', { profileId: item.profile.id, name: item.profile.display_name })
                       : api('POST', `/profiles/${item.profile.id}/tap`).then(() => setBack((b) => ({ ...b, [item.profile.id]: true })), () => {})
                   }
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 40, paddingHorizontal: 14, borderRadius: radius.pill, backgroundColor: mutual ? color.personal : color.line }}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 40, paddingHorizontal: 14, borderRadius: radius.pill, backgroundColor: mutual ? color.hookup : color.line }}
                 >
-                  <Icon.Star size={15} c={mutual ? color.onAccent : color.fgPrimary} fill={mutual ? color.onAccent : color.fgPrimary} />
+                  <Icon.Flame size={15} c={mutual ? color.onAccent : color.fgPrimary} fill={mutual ? color.onAccent : color.fgPrimary} />
                   <Text style={{ ...type.meta, fontFamily: type.headline.fontFamily, color: mutual ? color.onAccent : color.fgPrimary }}>{mutual ? tx.profile.message : tx.explore.quick.tap}</Text>
                 </Pressable>
               </Pressable>

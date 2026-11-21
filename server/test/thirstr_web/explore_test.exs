@@ -550,4 +550,20 @@ defmodule ThirstrWeb.ExploreTest do
 
     assert v.c |> recycle_authed() |> get("/v1/explore/summary?mode=nope") |> json_response(422)
   end
+
+  test "profile view shows online, symmetric with the online setting (#115, R-07.33)", %{viewer: v, other: o} do
+    # `o` made requests during onboarding, so its seen:<account> key is fresh.
+    view = fn -> v.c |> recycle_authed() |> get("/v1/profiles/#{o.pid}") |> json_response(200) end
+    assert view.()["online"] == true
+
+    Thirstr.Repo.query!(
+      "UPDATE accounts SET settings = COALESCE(settings, '{}'::jsonb) || '{\"online_visible\": false}' WHERE id = (SELECT account_id FROM profiles WHERE id = $1)",
+      [Ecto.UUID.dump!(o.pid)]
+    )
+
+    assert view.()["online"] == false
+
+    own = v.c |> recycle_authed() |> get("/v1/profiles/#{v.pid}") |> json_response(200)
+    assert own["online"] == false
+  end
 end

@@ -10,7 +10,9 @@ import { Badge, Banner, Button, ErrorState, Icon, Loading, Photo, Scrim, Section
 import { getLocal } from '../me/localFields';
 import { FieldList } from './FieldList';
 import { PrivateNote } from './PrivateNote';
-import { getConvs } from '../chat/engine';
+import { convWith, dropFriend, answerFriend, getConvs, requestFriend } from '../chat/engine';
+import * as People from '../chat/people';
+import { ppl } from '../i18n/people';
 import { lensFields, lensPhoto } from './lens';
 
 type Nav = { navigate: (s: string, p?: object) => void; goBack: () => void };
@@ -57,6 +59,7 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
   const mode = route.params.mode ?? appMode;
   const accent = useAccent();
   const insets = useSafeAreaInsets();
+  People.usePeople();
   const [remote, setP] = useState<ProfileView | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [gone, setGone] = useState(false);
@@ -119,6 +122,20 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
   if (!p) return <Loading />;
 
   const photos = p.photos.length ? p.photos : [null];
+  // #115: favorite (private) and friends (R-07.36, only once a chat exists).
+  const fav = People.isFav(p.id);
+  const fstate = People.friendOf(p.id);
+  const chat = convWith(p.id);
+  const friendRows: { label: string; icon: typeof Icon.UserPlus; tint: string; on: () => void; danger?: boolean }[] =
+    p.self || !chat || (!chat.iWrote && !chat.theyWrote)
+      ? []
+      : fstate === 'in'
+        ? [{ label: ppl.acceptFriend, icon: Icon.UserPlus, tint: color.friends, on: () => { setMenu(false); answerFriend(chat.id, true); } }]
+        : fstate
+          ? [{ label: fstate === 'out' ? ppl.cancelRequest : ppl.removeFriend, icon: Icon.UserPlus, tint: color.friends, on: () => { setMenu(false); dropFriend(chat.id); } }]
+          : People.canAsk(p.id) && me.verified
+            ? [{ label: ppl.addFriend, icon: Icon.UserPlus, tint: color.friends, on: () => { setMenu(false); requestFriend(chat.id); } }]
+            : [];
   const years = Math.floor((nowTs - new Date(p.member_since).getTime()) / (365.25 * 86400000));
 
   return (
@@ -226,9 +243,19 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
             accessibilityLabel={p.tapped ? tx.profile.tapped : tx.profile.tap}
             accessibilityState={{ disabled: p.tapped, busy }}
             onPress={p.tapped || busy ? undefined : () => act(() => api('POST', `/profiles/${p.id}/tap`), () => setP({ ...p, tapped: true }))}
-            style={({ pressed }) => [{ width: 58, height: 58, borderRadius: 29, alignItems: 'center', justifyContent: 'center', backgroundColor: p.tapped ? color.personal : color.bgRaised }, pressed && { transform: [{ scale: 0.95 }] }]}
+            style={({ pressed }) => [{ width: 58, height: 58, borderRadius: 29, alignItems: 'center', justifyContent: 'center', backgroundColor: p.tapped ? color.hookup : color.bgRaised }, pressed && { transform: [{ scale: 0.95 }] }]}
           >
-            <Icon.Star c={p.tapped ? color.onAccent : color.fgPrimary} fill={p.tapped ? color.onAccent : 'none'} />
+            <Icon.Flame c={p.tapped ? color.onAccent : color.fgPrimary} fill={p.tapped ? color.onAccent : 'none'} />
+          </Pressable>
+          <Pressable
+            testID="fav-btn"
+            accessibilityRole="button"
+            accessibilityLabel={fav ? ppl.removeFav : ppl.addFav}
+            accessibilityState={{ selected: fav }}
+            onPress={() => People.setFav(p.id, !fav, { name: p.display_name, photo: p.photos[0] ?? null })}
+            style={({ pressed }) => [{ width: 58, height: 58, borderRadius: 29, alignItems: 'center', justifyContent: 'center', backgroundColor: fav ? color.personal : color.bgRaised }, pressed && { transform: [{ scale: 0.95 }] }]}
+          >
+            <Icon.Star c={fav ? color.onAccent : color.fgPrimary} fill={fav ? color.onAccent : 'none'} />
           </Pressable>
           <View style={{ flex: 1 }}>
             <Button
@@ -255,12 +282,13 @@ export function ProfileScreen({ route, navigation }: { route: { params: Params }
               kind="danger"
               title={tx.profile.block}
               busy={busy}
-              onPress={() => act(() => api('POST', `/profiles/${p.id}/block`), () => { setMenu(false); navigation.goBack(); })}
+              onPress={() => act(() => api('POST', `/profiles/${p.id}/block`), () => { People.forgetFriend(p.id); setMenu(false); navigation.goBack(); })}
             />
           </View>
         ) : (
           <Section>
             {[
+              ...friendRows,
               { label: tx.profile.share, icon: Icon.Share, tint: color.friends, on: () => Share.share({ message: `https://thirstr.fun/p/${p.id}` }).catch(() => {}) },
               ...(p.vouched || p.can_vouch
                 ? [{ label: p.vouched ? tx.profile.unvouch : tx.profile.vouch, icon: Icon.Shield, tint: color.trust, on: () => act(() => api(p.vouched ? 'DELETE' : 'POST', `/profiles/${p.id}/vouch`), () => { setMenu(false); load(); }) }]
