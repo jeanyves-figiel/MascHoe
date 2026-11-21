@@ -16,9 +16,13 @@ export type ChatState = {
   n: number;
 };
 
-export const initialState = (): ChatState => ({ lang: 'de', mix: false, delivered: true, read: true, n: 0 });
+export const initialState = (lang: Lang = 'de', receipts = true): ChatState => ({ lang, mix: false, delivered: receipts, read: receipts, n: 0 });
 
-export type Out = { delayMs: number; p: { t: 'text'; text: string } | { t: 'quick_reply'; text: string; k: number } };
+/** Things a bot can share in a 1:1 chat (bot.ts does them). */
+export type Act = 'photo' | 'once' | 'album' | 'revoke' | 'location' | 'link';
+export type Out =
+  | { delayMs: number; p: { t: 'text'; text: string } | { t: 'quick_reply'; text: string; k: number }; act?: undefined }
+  | { delayMs: number; act: Act; p?: undefined };
 
 const PHRASES: Record<Lang, string[]> = {
   de: [
@@ -94,7 +98,7 @@ export const QUICK_EN = ['Yes 🔥', 'Not now', 'Later?', 'Pics?', 'Host?', 'Can
 
 export const HELP = [
   '🤖 Thirstr test bot (staging only, not a real person).',
-  'I answer every message, in German by default. Commands:',
+  'I answer every message. Commands:',
   '• lang de|pt|fr|es|it|en|ja: reply language',
   '• mix: change language on every reply (mix off to stop)',
   '• long: a long message (translation test)',
@@ -105,6 +109,10 @@ export const HELP = [
   '• noread: Delivered but never Read (read on to undo)',
   '• receipts off|on: no Delivered/Read from me',
   '• status: my current settings',
+  '• photo / once: I send a photo (once = view once)',
+  '• album / revoke: I share / unshare my private album',
+  '• location: I share my live location (1 h)',
+  '• link: my profile link',
 ].join('\n');
 
 const BASE_DELAY = 2000;
@@ -153,6 +161,14 @@ export function plan(text: string, s0: ChatState, rnd: () => number = Math.rando
       const sec = Math.max(5, Math.min(600, parseInt(arg, 10) || 60));
       return { state: s, out: [say(`⏰ ${sec} s`, 800), say(next(), sec * 1000)] };
     }
+    case 'photo':
+    case 'pic':
+    case 'once':
+    case 'album':
+    case 'revoke':
+    case 'location':
+    case 'link':
+      return { state: s, out: [{ delayMs: 1500, act: c === 'pic' ? 'photo' : (c as Act) }] };
     case 'quick': {
       const k = Math.floor(rnd() * QUICK_EN.length);
       return { state: s, out: [{ delayMs: 1200, p: { t: 'quick_reply', text: QUICK_EN[k], k } }] };

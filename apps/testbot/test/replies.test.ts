@@ -5,7 +5,7 @@ import { initialState, plan, HELP, LANGS } from '../src/replies.ts';
 test('plain text: German reply by default, counter moves', () => {
   const r = plan('hi', initialState(), () => 0);
   assert.equal(r.out.length, 1);
-  assert.equal(r.out[0].p.t, 'text');
+  assert.equal(r.out[0].p!.t, 'text');
   assert.match((r.out[0].p as { text: string }).text, /Hey!/);
   assert.equal(r.state.n, 1);
 });
