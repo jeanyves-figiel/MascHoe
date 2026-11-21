@@ -495,7 +495,25 @@ defmodule Thirstr.Chat do
 
   @max_blob 210 * 1024 * 1024
 
-  @doc "Upload slot for an encrypted blob (R-08.2). Chat media expiry ≤ 30 d; album items kept."
+  @once_max 3 * 1024 * 1024
+  @once_ttl 86_400
+  @once_refetch_s 600
+
+  @doc """
+  Upload slot for an encrypted blob (R-08.2). Chat media expiry ≤ 30 d; album items kept.
+  `once: true` = video check clip (R-18.12): ≤ 3 MB, 24 h, bound to its first fetcher.
+  """
+  def create_blob(%Account{} = a, %{"once" => true} = params) do
+    size = params["size"]
+
+    with true <-
+           (is_integer(size) and size > 0 and size <= @once_max) ||
+             {:error, {:validation, %{size: ["1 B – 3 MB"]}}},
+         {:ok, _} <- Social.limit(a, "blob_once", 20, 86_400) do
+      insert_blob(a, size, @once_ttl, true)
+    end
+  end
+
   def create_blob(%Account{} = a, params) do
     size = params["size"]
 
@@ -508,46 +526,75 @@ defmodule Thirstr.Chat do
              {:error, {:validation, %{size: ["1 B – 210 MB"]}}},
          true <- (is_integer(ttl) and ttl > 0) || {:error, {:validation, %{ttl_s: ["invalid"]}}},
          {:ok, _} <- Social.limit(a, "blob", 300, 3600) do
-      id = Ecto.UUID.generate()
-      key = "blob/#{id}"
-      now = DateTime.utc_now()
-
-      Repo.insert_all("media_blobs", [
-        %{
-          id: dump(id),
-          account_id: dump(a.id),
-          storage_key: key,
-          size: size,
-          expires_at: DateTime.add(now, ttl, :second),
-          created_at: now
-        }
-      ])
-
-      {:ok, put_url} = Storage.presigned_put(key, "application/octet-stream")
-      {:ok, %{blob_id: id, put_url: put_url}}
+      insert_blob(a, size, ttl, false)
     end
   end
 
-  @doc "Signed GET for a blob. Ids are random and only travel inside E2EE messages."
-  def blob_url(id) do
+  defp insert_blob(a, size, ttl, once) do
+    id = Ecto.UUID.generate()
+    key = "blob/#{id}"
+    now = DateTime.utc_now()
+
+    Repo.insert_all("media_blobs", [
+      %{
+        id: dump(id),
+        account_id: dump(a.id),
+        storage_key: key,
+        size: size,
+        once: once,
+        expires_at: DateTime.add(now, ttl, :second),
+        created_at: now
+      }
+    ])
+
+    {:ok, put_url} = Storage.presigned_put(key, "application/octet-stream")
+    {:ok, %{blob_id: id, put_url: put_url}}
+  end
+
+  @doc """
+  Signed GET for a blob. Ids are random and only travel inside E2EE messages.
+  Once blobs (R-18.12): the first caller claims it; only that account may fetch again,
+  within #{@once_refetch_s} s (network retry). Signed URL lives 2 min.
+  """
+  def blob_url(%Account{} = a, id) do
     with {:ok, _} <- Ecto.UUID.cast(id),
-         %{rows: [[key]]} <-
+         %{rows: [[key, once]]} <-
            Repo.query!(
-             "SELECT storage_key FROM media_blobs WHERE id = $1 AND expires_at > now()",
+             "SELECT storage_key, once FROM media_blobs WHERE id = $1 AND expires_at > now()",
              [dump(id)]
            ) do
-      {:ok, %{url: Storage.presigned_get(key)}}
+      if once, do: claim_once(a, id), else: {:ok, %{url: Storage.presigned_get(key)}}
     else
       _ -> {:error, :not_found}
     end
   end
 
-  @doc "Sender deletes a blob early (view-once after all acks, unsend)."
+  defp claim_once(a, id) do
+    case Repo.query!(
+           """
+           UPDATE media_blobs SET fetched_by = $2, fetched_at = coalesce(fetched_at, now())
+           WHERE id = $1 AND once AND expires_at > now()
+             AND (fetched_by IS NULL
+                  OR (fetched_by = $2 AND fetched_at > now() - make_interval(secs => $3)))
+           RETURNING storage_key
+           """,
+           [dump(id), dump(a.id), @once_refetch_s]
+         ) do
+      %{rows: [[key]]} -> {:ok, %{url: Storage.presigned_get(key, 120)}}
+      _ -> {:error, :not_found}
+    end
+  end
+
+  @doc "Sender deletes a blob early (view-once after all acks, unsend); a once blob also by its fetcher."
   def delete_blob(%Account{} = a, id) do
     with {:ok, _} <- Ecto.UUID.cast(id),
          %{rows: [[key]]} <-
            Repo.query!(
-             "DELETE FROM media_blobs WHERE id = $1 AND account_id = $2 RETURNING storage_key",
+             """
+             DELETE FROM media_blobs
+             WHERE id = $1 AND (account_id = $2 OR (once AND fetched_by = $2))
+             RETURNING storage_key
+             """,
              [dump(id), dump(a.id)]
            ) do
       Storage.delete_many([key])
@@ -578,7 +625,15 @@ defmodule Thirstr.Chat do
     Repo.query!("DELETE FROM franking_tags WHERE created_at < now() - interval '90 days'")
 
     keys =
-      Repo.query!("DELETE FROM media_blobs WHERE expires_at < now() RETURNING storage_key").rows
+      Repo.query!(
+        """
+        DELETE FROM media_blobs
+        WHERE expires_at < now()
+           OR (once AND fetched_at < now() - make_interval(secs => $1))
+        RETURNING storage_key
+        """,
+        [@once_refetch_s]
+      ).rows
       |> List.flatten()
 
     Storage.delete_many(keys)

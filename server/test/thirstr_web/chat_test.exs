@@ -143,6 +143,54 @@ defmodule ThirstrWeb.ChatTest do
     assert b.c |> recycle_authed() |> get("/v1/media/#{id}") |> json_response(404)
   end
 
+  @tag ac: "AC-18.4"
+  test "once blob (video check): bound to first fetcher, fetcher can delete, swept", %{
+    alice: a,
+    bob: b,
+    conn: conn
+  } do
+    assert a.c
+           |> recycle_authed()
+           |> post("/v1/media/upload", %{size: 4_000_000, once: true})
+           |> json_response(422)
+
+    %{"blob_id" => id} =
+      a.c
+      |> recycle_authed()
+      |> post("/v1/media/upload", %{size: 1_500_000, once: true})
+      |> json_response(201)
+
+    assert %{"url" => _} = b.c |> recycle_authed() |> get("/v1/media/#{id}") |> json_response(200)
+    # retry by the same account is fine; anyone else gets 404
+    assert %{"url" => _} = b.c |> recycle_authed() |> get("/v1/media/#{id}") |> json_response(200)
+    carol = onboarded(conn, basics: [display_name: "Carol"])
+    assert carol.c |> recycle_authed() |> get("/v1/media/#{id}") |> json_response(404)
+    assert carol.c |> recycle_authed() |> delete("/v1/media/#{id}") |> json_response(404)
+    assert b.c |> recycle_authed() |> delete("/v1/media/#{id}") |> response(204)
+    assert b.c |> recycle_authed() |> get("/v1/media/#{id}") |> json_response(404)
+
+    # refetch window: 10 min after first fetch the blob is gone for everyone
+    %{"blob_id" => id2} =
+      a.c
+      |> recycle_authed()
+      |> post("/v1/media/upload", %{size: 1000, once: true})
+      |> json_response(201)
+
+    assert %{"url" => _} =
+             b.c |> recycle_authed() |> get("/v1/media/#{id2}") |> json_response(200)
+
+    Thirstr.Repo.query!(
+      "UPDATE media_blobs SET fetched_at = now() - interval '11 minutes' WHERE id = $1",
+      [Ecto.UUID.dump!(id2)]
+    )
+
+    assert b.c |> recycle_authed() |> get("/v1/media/#{id2}") |> json_response(404)
+    Thirstr.Chat.sweep()
+
+    assert %{rows: []} =
+             Thirstr.Repo.query!("SELECT 1 FROM media_blobs WHERE id = $1", [Ecto.UUID.dump!(id2)])
+  end
+
   @tag ac: "AC-16.1"
   test "push: token registered, payload is content-free, wake job enqueued", %{alice: a, bob: b} do
     b.c

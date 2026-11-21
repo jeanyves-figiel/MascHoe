@@ -50,7 +50,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Thirstr uses the camera for the selfie check (checked on your phone and deleted) and when you take a photo to send in a chat.",
+          "cameraPermission": "Thirstr uses the camera for the selfie check (checked on your phone and deleted), to take a photo to send in a chat, and to record a video check someone asked you for.",
           "microphonePermission": false,
           "recordAudioAndroid": false
         }

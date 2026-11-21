@@ -24,7 +24,7 @@ export async function readBytes(uri: string): Promise<Uint8Array> {
 }
 
 /** Encrypts and uploads bytes; returns the blob reference (key never leaves the device unencrypted). */
-export async function uploadEncrypted(bytes: Uint8Array, opts: { album?: boolean; ttl_s?: number } = {}) {
+export async function uploadEncrypted(bytes: Uint8Array, opts: { album?: boolean; ttl_s?: number; once?: boolean } = {}) {
   const key = rand(32);
   const iv = rand(12);
   const ct = gcm(key, iv).encrypt(bytes);

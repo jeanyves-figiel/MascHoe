@@ -10,8 +10,8 @@ defmodule Thirstr.Storage do
     )
   end
 
-  def presigned_get(key) do
-    {:ok, url} = ExAws.S3.presigned_url(public_cfg(), :get, bucket(), key, expires_in: @get_ttl)
+  def presigned_get(key, ttl \\ @get_ttl) do
+    {:ok, url} = ExAws.S3.presigned_url(public_cfg(), :get, bucket(), key, expires_in: ttl)
     url
   end
 

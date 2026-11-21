@@ -51,7 +51,7 @@ defmodule ThirstrWeb.ChatController do
   end
 
   def blob(conn, %{"id" => id}) do
-    with {:ok, res} <- Chat.blob_url(id), do: json(conn, res)
+    with {:ok, res} <- Chat.blob_url(a(conn), id), do: json(conn, res)
   end
 
   def delete_blob(conn, %{"id" => id}) do
