@@ -49,7 +49,11 @@ defmodule ThirstrWeb.MeJSON do
       reject_reason: ph.reject_reason,
       main_ok: Map.get(ph.classifier_score || %{}, "main_ok", ph.status == "ok_main"),
       url:
-        if(ph.status in ~w(ok_main ok_public pending), do: Storage.presigned_get(ph.storage_key))
+        if(ph.status in ~w(ok_main ok_public pending), do: Storage.presigned_get(ph.storage_key)),
+      thumb_url:
+        if(ph.status in ~w(ok_main ok_public) and ph.thumb_key,
+          do: Storage.presigned_get(ph.thumb_key)
+        )
     }
   end
 

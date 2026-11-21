@@ -136,7 +136,7 @@ defmodule Thirstr.Nearby do
   def people(ctx, ids) do
     Repo.query!(
       """
-      SELECT p.id::text, p.display_name, p.age, a.verified_at IS NOT NULL, ph.storage_key,
+      SELECT p.id::text, p.display_name, p.age, a.verified_at IS NOT NULL, COALESCE(ph.thumb_key, ph.storage_key),
              p.fields->>'sport_intent', a.id::text
       FROM profiles p JOIN accounts a ON a.id = p.account_id
       LEFT JOIN photos ph ON ph.id = p.photo_ids[1]

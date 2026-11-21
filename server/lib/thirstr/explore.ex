@@ -447,7 +447,7 @@ defmodule Thirstr.Explore do
            p.seeded, a.id::text, a.verified_at, a.inserted_at, a.settings, lc.level, lc.display_res,
            d.dcell::text, (h3_cell_to_lat_lng(d.dcell))[1], (h3_cell_to_lat_lng(d.dcell))[0],
            h3_great_circle_distance(h3_cell_to_lat_lng(d.dcell), vp.pt, 'm'),
-           ns.status, ns.text, ns.created_at, ph.storage_key,
+           ns.status, ns.text, ns.created_at, COALESCE(ph.thumb_key, ph.storage_key),
            lc.cell_r7, lc.cell_r5, p.public_updated_at, p.show_in
     FROM vp, location_cells lc
     JOIN profiles p ON p.id = lc.profile_id

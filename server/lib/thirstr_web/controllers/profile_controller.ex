@@ -40,9 +40,11 @@ defmodule ThirstrWeb.ProfileController do
   def create_photo(conn, %{"profile_id" => pid} = params) do
     ct = params["content_type"] || "image/jpeg"
 
-    with {:ok, photo, put_url} <-
+    with {:ok, photo, put_url, thumb_url} <-
            Profiles.create_photo_upload(a(conn), pid, params["slot"] || 0, ct) do
-      conn |> put_status(201) |> json(%{photo_id: photo.id, put_url: put_url, content_type: ct})
+      conn
+      |> put_status(201)
+      |> json(%{photo_id: photo.id, put_url: put_url, thumb_put_url: thumb_url, content_type: ct})
     end
   end
 

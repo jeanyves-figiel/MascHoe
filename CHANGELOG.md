@@ -6,6 +6,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Fixed
+- **Grid and lists load small photos** (server + app, SR-10 #150): the app now uploads a 480 px copy (~30–60 KB) next to each public photo; Explore, Tonight, parties, activities, chats lists and block/hide lists show it instead of the full photo (1–2 MB), about 95 % less data per grid page. The copy is checked by the photo classifier on its own and is only used if it passes; otherwise the full photo is shown. Deleted together with the photo.
 - **Explore scrolls faster, lighter on the database** (server, SR-09 #149): scrolling the grid used to re-run the full nearby search (up to 1 500 profiles) for every page; later pages now read only their own 60 profiles in the order of the first page (kept 2 min; blocks and hides still apply). Distances for Tonight, parties, activities and venues are computed in memory instead of one database query per item.
 - **Pushes are retried** (server, SR-02 #142, R-16.10): a failed APNs send (rate limit, Apple outage, network) used to be dropped; it now retries after 5 s, 15 s, 45 s and 2 min. An Android device on an account no longer stops pushes to the account's iPhones. Android pushes via FCM are ready (off until the FCM key is set).
 - **Deploys no longer cut work short** (server, SR-03 #143): machines get 30 s to finish requests and jobs before they stop (was 5 s), so a push or job killed by a deploy no longer waits 45 min to be rescued.

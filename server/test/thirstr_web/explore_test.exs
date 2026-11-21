@@ -20,6 +20,8 @@ defmodule ThirstrWeb.ExploreTest do
     card = Enum.find(res["items"], &(&1["id"] == o.pid))
     assert card["distance"]["kind"] == "area"
     refute Map.has_key?(card, "lat")
+    # SR-10: grid cards load the card-size copy
+    assert card["photo"] =~ "-t?"
     refute res |> Jason.encode!() =~ "account"
   end
 
